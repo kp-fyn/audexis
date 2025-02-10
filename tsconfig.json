@@ -1,28 +1,27 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": [
-      "ES2020",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "node",
-      "electron"
-    ],
-    "module": "ESNext",
+    "target": "ESNext",
+    "module": "commonjs",
+    "allowJs": true,
     "skipLibCheck": true,
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "outDir": "dist",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
+
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": ["node", "electron"],
+
+    "allowImportingTsExtensions": true,
+
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
@@ -31,14 +30,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
-  },
-  "include": [
-    "src",
-    "electron"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
+  }
 }
