@@ -1,4 +1,16 @@
 {
+  "plugins": ["import"],
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".ts", ".tsx"]
+      },
+      "typescript": {
+        "project": "./tsconfig.json"
+      }
+    }
+  },
+
   "env": {
     "browser": true,
     "es6": true,

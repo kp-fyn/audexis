@@ -2,7 +2,6 @@ import { AudioFile } from "../types/index";
 import {
   ColumnDef,
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -10,7 +9,6 @@ import {
   arrayMove,
   SortableContext,
   horizontalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
 
 import {
@@ -24,7 +22,6 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useState, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import { useSidebarWidth } from "./hooks/useSidebarWidth";
