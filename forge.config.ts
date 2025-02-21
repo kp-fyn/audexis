@@ -1,18 +1,50 @@
-import type { ForgeConfig } from '@electron-forge/shared-types';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
-import { MakerZIP } from '@electron-forge/maker-zip';
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
-import { VitePlugin } from '@electron-forge/plugin-vite';
-import { FusesPlugin } from '@electron-forge/plugin-fuses';
-import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import type { ForgeConfig } from "@electron-forge/shared-types";
+import { MakerZIP } from "@electron-forge/maker-zip";
+
+import { VitePlugin } from "@electron-forge/plugin-vite";
+import { FusesPlugin } from "@electron-forge/plugin-fuses";
+import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import MakerDMG from "@electron-forge/maker-dmg";
 
 const config: ForgeConfig = {
+  publishers: [
+    {
+      name: "@electron-forge/publisher-github",
+      config: {
+        authToken: `${process.env.GITHUB_TOKEN}`,
+        draft: true,
+        prerelease: true,
+        generateReleaseNotes: true,
+
+        repository: {
+          owner: "kp-fyn",
+          name: "audexis",
+        },
+      },
+    },
+  ],
   packagerConfig: {
+    name: "Audexis",
+    icon: "./resources/images/Audexis",
     asar: true,
+    extraResource: ["resources"],
+
+    osxSign: {
+      identity: `${process.env.APPLE_IDENTITY}`,
+    },
+
+    osxNotarize: {
+      appleId: `${process.env.APPLE_ID}`,
+      appleIdPassword: `${process.env.APPLE_PASSWORD}`,
+      teamId: `${process.env.APPLE_TEAM_ID}`,
+    },
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
+  makers: [
+    new MakerZIP({}, ["darwin"]),
+    new MakerDMG({ name: "Audexis", format: "ULFO" }, ["darwin"]),
+  ],
+
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -20,20 +52,20 @@ const config: ForgeConfig = {
       build: [
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
-          entry: 'src/backend/main.ts',
-          config: 'vite.main.config.ts',
-          target: 'main',
+          entry: "src/backend/main.ts",
+          config: "vite.main.config.ts",
+          target: "main",
         },
         {
-          entry: 'src/backend/preload.ts',
-          config: 'vite.preload.config.ts',
-          target: 'preload',
+          entry: "src/backend/preload.ts",
+          config: "vite.preload.config.ts",
+          target: "preload",
         },
       ],
       renderer: [
         {
-          name: 'main_window',
-          config: 'vite.renderer.config.ts',
+          name: "main_window",
+          config: "vite.renderer.config.ts",
         },
       ],
     }),

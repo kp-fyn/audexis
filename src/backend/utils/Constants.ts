@@ -12,6 +12,10 @@ const Constants = {
     WINDOW_BLUR: "window-blur",
     UPDATE: "update",
     SAVE: "save",
+    IMAGE_UPLOAD: "image-upload",
+    RELOAD_FILES: "reload-files",
+    UNDO: "undo",
+    REDO: "redo",
   },
 };
 export default Constants;

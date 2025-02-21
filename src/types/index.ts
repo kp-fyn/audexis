@@ -2,6 +2,7 @@ export interface ElectronAPI {
   minimize: () => void;
   maximize: () => void;
   unmaximize: () => void;
+  reloadFiles: () => void;
   close: () => void;
   save: (changes: Partial<Changes>) => void;
   isMaximized: () => Promise<boolean>;
@@ -9,23 +10,19 @@ export interface ElectronAPI {
   openDialog: () => Promise<AudioFile[]>;
   onBlur: (listener: () => void) => void;
   onUpdate: (listener: (_event: unknown, files: AudioFile[]) => void) => void;
+  onOpenDialog: (listener: () => void) => void;
   onFocus: (listener: () => void) => void;
-  getWindowPosition: () => Promise<{ x: number; y: number }>; 
+  getWindowPosition: () => Promise<{ x: number; y: number }>;
+  uploadImage: () => Promise<UploadedImage>;
+  onUndo: (listener: () => void) => void;
+  onRedo: (listener: () => void) => void;
+}
+export interface FullImage extends UploadedImage {
+  url: string;
 }
 
-interface ImageBuffer {
-  mime: string;
-  type: { id: number; name?: string };
-  description: string;
-  imageBuffer: Buffer;
-}
-
-export interface Image extends ImageBuffer {
-  image: string;
-}
 export interface Changes extends Tags {
   paths: string[];
-  image?: ImageBuffer;
 }
 
 declare global {
@@ -36,14 +33,25 @@ declare global {
 export interface AudioFile extends Tags {
   path: string;
   release: string;
+  [key: string]: any;
 }
-export interface ImageData {
+export interface UploadedImage {
   mime: string;
-  type: { id: number; name?: string };
-  description: string;
-  imageBuffer: Buffer;
+  type?: { id: number; name?: string };
+  description?: string;
+  buffer: Buffer;
 }
+export interface ImgData {
+  mime: string;
+  type?: { id: number; name?: string };
+  description?: string;
+  buffer: Buffer;
+}
+export type Frames = {
+  [key: string]: any;
+};
 export interface Tags {
+  corrupted: boolean;
   title: string; // TIT2
   artist: string; // TPE1
   album: string; // TALB
@@ -57,7 +65,7 @@ export interface Tags {
   unsyncedLyrics: string; // USLT
   length: string; // TLEN
   conductor: string; // TPE3
-  attachedPicture: string | null | ImageData; // APIC
+  attachedPicture: ImgData | null; // APIC
   userDefinedURL: string; // WXXX
   comments: string; // COMM
   private: string; // PRIV

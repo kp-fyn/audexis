@@ -65,11 +65,13 @@ export default function Header() {
         });
       }}
       className={
-        "bg-neutral-950 border-b-2  w-full z-50 border-gray-700  fixed h-[48px] top-0 flex"
+        "bg-neutral-950 border-b  w-full z-50 border-gray-700  fixed h-[48px] top-0 flex"
       }
     >
       <div className="ml-auto justify-center px-2 flex items-center h-full">
-        <Button size={"sm"} onClick={() => window.app.openDialog()}>Import FIle</Button>
+        <Button size={"sm"} onClick={() => window.app.openDialog()}>
+          Import FIle
+        </Button>
       </div>
     </div>
   );

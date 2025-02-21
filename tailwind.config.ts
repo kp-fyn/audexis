@@ -11,8 +11,8 @@ export default {
     extend: {
       colors: {
         border: "#374151",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
+        input: "#EB5757",
+        ring: "#EB5757",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
@@ -32,7 +32,7 @@ export default {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
+          DEFAULT: "#EB5757",
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {

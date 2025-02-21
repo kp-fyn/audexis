@@ -6,24 +6,22 @@ import {
   Dispatch,
   SetStateAction,
   ReactNode,
+  useEffect,
 } from "react";
+import { useHistoryState } from "@uidotdev/usehooks";
 
-import { Changes, AudioFile } from "@/types";
-interface ImageData {
-  mime: string;
-  type: { id: number };
-  description: string;
-  imageBuffer: Buffer;
-}
+import { Changes, AudioFile, UploadedImage } from "@/types";
+
 interface ChangesContxt {
   changes: Partial<AudioFile>;
   neededItems: { value: string; label: string; maxLength?: number }[];
-  setChanges: Dispatch<SetStateAction<Partial<AudioFile>>>;
+  setChanges: (newPresent: Partial<AudioFile>) => void;
   setSelected: Dispatch<SetStateAction<string[]>>;
   selected: string[];
-  imageData: ImageData | null;
-  setImageData: Dispatch<SetStateAction<ImageData | null>>;
+  imageData: UploadedImage | null;
+  setImageData: Dispatch<SetStateAction<UploadedImage | null>>;
   saveChanges: () => void;
+  clearChanges: () => void;
   files: AudioFile[];
   setFiles: Dispatch<SetStateAction<AudioFile[]>>;
 }
@@ -31,6 +29,9 @@ interface ChangesContxt {
 const ChangesContext = createContext<ChangesContxt>({
   changes: {},
   neededItems: [],
+  clearChanges: () => {
+    throw new Error("clearChanges function must be overridden");
+  },
   imageData: null,
   setImageData: () => {
     throw new Error("setImageData function must be overridden");
@@ -62,22 +63,30 @@ export function useChanges(): ChangesContxt {
 }
 
 export function ChangesProvider({ children }: { children: ReactNode }) {
-  const [changes, setChanges] = useState<Partial<AudioFile>>({});
+  const { state, set, undo, redo, clear, canUndo, canRedo } = useHistoryState<
+    Partial<AudioFile>
+  >({});
+
   const [files, setFiles] = useState<AudioFile[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [imageData, setImageData] = useState<{
-    mime: string;
-    type: { id: number; name?: string };
-    description: string;
-    imageBuffer: Buffer;
-  } | null>(null);
+  const [imageData, setImageData] = useState<UploadedImage | null>(null);
+  useEffect(() => {
+    window.app.onUndo(() => {
+      if (canUndo) undo();
+    });
+    window.app.onRedo(() => {
+      if (canRedo) redo();
+    });
+  }, []);
+
   return (
     <ChangesContext.Provider
       value={{
-        changes,
+        changes: state,
         neededItems: getNeededItems(),
-        setChanges,
+        setChanges: set,
         saveChanges,
+        clearChanges: clear,
         selected,
         imageData,
         setImageData,
@@ -91,17 +100,22 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
   );
 
   function saveChanges() {
+    const changes = state;
     if (!changes) return;
     if (!selected) return;
-    console.log({ changes, selected });
+    console.log(changes);
     const parsedChanges: Partial<Changes> = {
       ...changes,
       paths: selected,
-      image: imageData ? imageData : undefined,
+      attachedPicture: changes.attachedPicture
+        ? changes.attachedPicture
+        : imageData
+        ? imageData
+        : undefined,
     };
 
     window.app.save(parsedChanges);
-    setChanges({});
+    clear();
   }
 }
 function getNeededItems(): {

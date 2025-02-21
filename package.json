@@ -1,25 +1,30 @@
 {
-  "name": "test",
-  "productName": "test",
-  "version": "1.0.0",
-  "description": "My Electron application description",
+  "name": "audexis",
+  "productName": "Audexis",
+  "version": "0.0.1",
+  "description": "Simple Audio Tag Editor",
   "main": ".vite/build/main.js",
+  "build": {
+    "productName": "Audexis"
+  },
   "scripts": {
     "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
+    "package": "electron-forge package --verbose",
+    "make": "DEBUG=electron-forge* electron-forge make --verbose",
+    "publish": "EBUG=electron-forge* electron-forge publish",
     "lint": "eslint --ext .ts,.tsx ."
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.6.1",
     "@electron-forge/maker-deb": "^7.6.1",
+    "@electron-forge/maker-dmg": "^7.6.1",
     "@electron-forge/maker-rpm": "^7.6.1",
     "@electron-forge/maker-squirrel": "^7.6.1",
     "@electron-forge/maker-zip": "^7.6.1",
     "@electron-forge/plugin-auto-unpack-natives": "^7.6.1",
     "@electron-forge/plugin-fuses": "^7.6.1",
     "@electron-forge/plugin-vite": "^7.6.1",
+    "@electron-forge/publisher-github": "^7.7.0",
     "@electron/fuses": "^1.8.0",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react": "^19.0.8",
@@ -28,6 +33,8 @@
     "@typescript-eslint/parser": "^5.62.0",
     "autoprefixer": "^10.4.20",
     "electron": "34.1.1",
+    "electron-notarize": "^1.2.2",
+    "electron-osx-sign": "^0.6.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
     "postcss": "^8.5.1",
@@ -40,13 +47,27 @@
   "author": "kpadeyinka",
   "license": "MIT",
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^9.0.0",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@radix-ui/react-context-menu": "^2.2.6",
     "@radix-ui/react-slot": "^1.1.2",
     "@tanstack/react-table": "^8.20.6",
+    "@uidotdev/usehooks": "^2.4.1",
     "@vitejs/plugin-react": "^4.3.4",
     "class-variance-authority": "^0.7.1",
     "electron-squirrel-startup": "^1.0.1",
+    "lucide-react": "^0.475.0",
+    "mime": "^4.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.0.1"
+    "react-error-boundary": "^5.0.0",
+    "react-image": "^4.1.0",
+    "tailwind-merge": "^3.0.1",
+    "update-electron-app": "^3.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kp-fyn/audexis.git"
   }
 }

@@ -3,7 +3,8 @@ import { ipcMain, dialog } from "electron";
 import Constants from "@/backend/utils/Constants";
 import { mainWindow, audioFiles, tagManager } from "@/backend/main";
 import { Changes } from "@/types";
-
+import fs from "node:fs";
+import mime from "mime";
 export function handleEvents() {
   ipcMain.on(Constants.channels.SET_WINDOW_POSITION, (_event, { x, y }) => {
     if (mainWindow) mainWindow.setPosition(x, y);
@@ -36,13 +37,14 @@ export function handleEvents() {
     }
   });
   ipcMain.handle(Constants.channels.OPEN_DIALOG, async () => {
-    if (!wndowReady()) return;
+    console.log("e");
+    if (!wndowReady()) return null;
     if (mainWindow) {
       const files = await dialog.showOpenDialog(mainWindow, {
         properties: ["openFile", "multiSelections"],
         filters: [{ name: "MP3 Audio", extensions: ["mp3"] }],
       });
-      if (files.canceled) return [];
+      if (files.canceled) return null;
       if (files.filePaths.length > 0) {
         const parsedFiles = files.filePaths.filter((file) =>
           file.endsWith(".mp3")
@@ -68,8 +70,57 @@ export function handleEvents() {
       }
     }
   });
+  ipcMain.handle(Constants.channels.IMAGE_UPLOAD, async () => {
+    if (!wndowReady()) return;
+    if (mainWindow) {
+      const files = await dialog.showOpenDialog(mainWindow, {
+        properties: ["openFile"],
+        filters: [{ name: "Image Files", extensions: ["jpg", "png"] }],
+      });
+      if (files.canceled) return [];
+      if (files.filePaths.length > 0) {
+        const parsedFiles = files.filePaths.filter(
+          (file) =>
+            file.toLowerCase().endsWith(".png") ||
+            file.toLocaleLowerCase().endsWith(".jpg")
+        );
+        if (parsedFiles.length === 0) return null;
+        const file = parsedFiles[0];
+        const buffer = fs.readFileSync(file);
+        if (!buffer) return null;
+        const mimeType = mime.getType(file);
+        console.log({ mimeType });
+        if (!mimeType) return null;
+        if (!mimeType.startsWith("image/")) return null;
+
+        return {
+          mime: mimeType,
+          buffer,
+        };
+      } else {
+        return null;
+      }
+    }
+  });
+  ipcMain.on(Constants.channels.RELOAD_FILES, () => {
+    if (!wndowReady()) return;
+    audioFiles.forEach((file) => {
+      const release = tagManager.detectTagFormat(file.path);
+      if (!release) return;
+      const releaseClass = tagManager.getReleaseClass(release);
+      if (!releaseClass) return;
+      const tags = releaseClass.getTags(file.path);
+      if (!tags) return;
+      audioFiles.set(file.path, { ...tags, release, path: file.path });
+    });
+    const toArray = [...audioFiles].map(([_fp, value]) => ({
+      ...value,
+    }));
+    mainWindow?.webContents.send(Constants.channels.UPDATE, toArray);
+  });
   ipcMain.handle(Constants.channels.SAVE, (_e, ch: Partial<Changes>) => {
     if (!ch.paths) return;
+    console.log(ch);
     if (ch.paths.length === 0) return;
     ch.paths.forEach((path) => {
       const file = audioFiles.get(path);

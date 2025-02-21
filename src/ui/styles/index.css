@@ -51,5 +51,9 @@ body,
   font-family: "Reddit Sans", sans-serif;
   box-sizing: border-box;
   color: hsl(var(--foreground));
-  border-color: #4a5568;
+  border-color: #374151;
+  outline-color: #eb5757 !important;
+}
+.border {
+  border-color: #374151;
 }

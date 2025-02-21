@@ -1,178 +1,74 @@
-import { TagFormatRelease } from "@/backend/classes/abstractions";
-import { Tags } from "@/types";
+import { Tags, ImgData, Frames } from "@/types";
 import fs from "node:fs";
+import Id3V2 from "../../abstractions/Id3v2";
+import { id3v23ReverseMapping, id3v23Tags } from "@/backend/utils/Id3v2";
 
-export default class v3 extends TagFormatRelease {
+export default class v3 extends Id3V2 {
+  picFrame: string;
+  id3ReverseMapping: Record<string, string>;
+  id3Tags: Frames;
   constructor() {
     super();
+    this.picFrame = "APIC";
+    this.id3ReverseMapping = id3v23ReverseMapping;
+    this.id3Tags = id3v23Tags;
   }
 
-  getTags(filePath: string): Tags | null {
-    const header = this.readId3Header(filePath);
-    if (!header) return null;
+  isID3Corrupted(filePath: string): boolean {
+    try {
+      let fd = fs.openSync(filePath, "r");
+      let header = Buffer.alloc(10);
+      fs.readSync(fd, header, 0, 10, 0);
+      fs.closeSync(fd);
 
-    const size =
-      ((header[6] & 0x7f) << 21) |
-      ((header[7] & 0x7f) << 14) |
-      ((header[8] & 0x7f) << 7) |
-      (header[9] & 0x7f);
-
-    const buffer = Buffer.alloc(size);
-    const fd = fs.openSync(filePath, "r");
-    fs.readSync(fd, buffer, 0, size, 10);
-    fs.closeSync(fd);
-
-    const frames: Record<string, string | Buffer> = {};
-    let offset = 0;
-
-    while (offset < buffer.length) {
-      if (offset + 10 > buffer.length) break;
-
-      const frameId = buffer.toString("utf8", offset, offset + 4);
-      const frameSize = buffer.readUInt32BE(offset + 4);
-      if (!/^[A-Z0-9]{3,4}$/.test(frameId) || frameSize === 0) break;
-      const encoding = buffer[offset + 10];
-      const frameData = buffer.slice(offset + 11, offset + 10 + frameSize);
-
-      let textValue = "";
-
-      switch (encoding) {
-        case 0x00: // ISO-8859-1
-          textValue = frameData.toString("latin1").replace(/\x00/g, "").trim();
-          break;
-        case 0x01: // UTF-16 with BOM
-          textValue = frameData.toString("utf16le").replace(/\x00/g, "").trim();
-          break;
-        case 0x02: // UTF-16BE without BOM
-          textValue = frameData
-            .toString("utf16be" as BufferEncoding)
-            .replace(/\x00/g, "")
-            .trim();
-          break;
-        case 0x03: // UTF-8
-          textValue = frameData.toString("utf8").replace(/\x00/g, "").trim();
-          break;
-        default:
-          textValue = frameData.toString("utf8").replace(/\x00/g, "").trim();
+      if (header.toString("utf8", 0, 3) !== "ID3") {
+        return true;
       }
 
-      if (frameId === "APIC") {
-        const frameSize = buffer.readUInt32BE(offset + 4);
+      let version = header[3];
+      if (version < 2 || version > 4) {
+        return true;
+      }
+      // let flags = header[5];
+      let tagSize =
+        ((header[6] & 0x7f) << 21) |
+        ((header[7] & 0x7f) << 14) |
+        ((header[8] & 0x7f) << 7) |
+        (header[9] & 0x7f);
 
-        const mimeTypeStart = offset + 11;
-        const mimeTypeEnd = buffer.indexOf(0, mimeTypeStart);
-        const mime = buffer.toString("utf8", mimeTypeStart, mimeTypeEnd);
+      if (tagSize <= 0 || tagSize > fs.statSync(filePath).size - 10) {
+        return true;
+      }
 
-        const pictureType = buffer[mimeTypeEnd + 1];
+      let buffer = fs.readFileSync(filePath).subarray(10, 10 + tagSize);
+      let offset = 0;
 
-        const descriptionStart = mimeTypeEnd + 2;
-        let descriptionEnd = 0;
-        let description = "";
-
-        if (encoding === 0 || encoding === 3) {
-          descriptionEnd = buffer.indexOf(0, descriptionStart);
-          description = buffer.toString(
-            "utf8",
-            descriptionStart,
-            descriptionEnd
-          );
-        } else if (encoding === 1) {
-          descriptionEnd = buffer.indexOf("\x00\x00", descriptionStart);
-          description = buffer.toString(
-            "utf16le",
-            descriptionStart,
-            descriptionEnd
-          );
+      while (offset < buffer.length) {
+        if (offset + 10 > buffer.length) {
+          return true;
         }
 
-        const imageStart = descriptionEnd + (encoding === 1 ? 2 : 1);
-        const imageBuffer = buffer.subarray(
-          imageStart,
-          offset + 10 + frameSize
-        );
+        let frameID = buffer.toString("utf8", offset, offset + 4);
+        let frameSize = buffer.readUInt32BE(offset + 4);
 
-        frames[frameId] = {
-          mime,
-          type: { id: pictureType },
-          description,
-          imageBuffer,
-        };
-      } else {
-        if (!/^[A-Z0-9]{3,4}$/.test(frameId) || frameSize === 0) break;
-
-        // const frameData = buffer.slice(offset + 10, offset + 10 + frameSize);
-
-        frames[frameId] = textValue;
-      }
-      offset += 10 + frameSize;
-    }
-
-    const rawMetadata = { ...id3v2Tags, ...frames };
-
-    return this.rawToTags(rawMetadata);
-  }
-  getImage(filePath: string): {
-    mime: string;
-    type: { id: number; name?: string };
-    description: string;
-    imageBuffer: Buffer;
-  } | null {
-    const buffer = fs.readFileSync(filePath);
-
-    let offset = 10;
-
-    while (offset < buffer.length) {
-      const frameID = buffer.toString("utf8", offset, offset + 4);
-      if (frameID === "APIC") {
-        const frameSize = buffer.readUInt32BE(offset + 4);
-
-        const encoding = buffer[offset + 10];
-
-        const mimeTypeStart = offset + 11;
-        const mimeTypeEnd = buffer.indexOf(0, mimeTypeStart);
-        const mime = buffer.toString("utf8", mimeTypeStart, mimeTypeEnd);
-
-        const pictureType = buffer[mimeTypeEnd + 1];
-
-        const descriptionStart = mimeTypeEnd + 2;
-        let descriptionEnd = 0;
-        let description = "";
-
-        if (encoding === 0 || encoding === 3) {
-          descriptionEnd = buffer.indexOf(0, descriptionStart);
-          description = buffer.toString(
-            "utf8",
-            descriptionStart,
-            descriptionEnd
-          );
-        } else if (encoding === 1) {
-          descriptionEnd = buffer.indexOf("\x00\x00", descriptionStart);
-          description = buffer.toString(
-            "utf16le",
-            descriptionStart,
-            descriptionEnd
-          );
+        if (!/^[A-Z0-9]{3,4}$/.test(frameID) || frameSize < 0) {
+          return true;
         }
 
-        const imageStart = descriptionEnd + (encoding === 1 ? 2 : 1);
-        const imageBuffer = buffer.subarray(
-          imageStart,
-          offset + 10 + frameSize
-        );
+        if (offset + 10 + frameSize > buffer.length) {
+          return true;
+        }
 
-        return {
-          mime,
-          type: { id: pictureType },
-          description,
-          imageBuffer,
-        };
+        offset += 10 + frameSize;
       }
 
-      offset += 10 + buffer.readUInt32BE(offset + 4);
+      return false;
+    } catch (error) {
+      console.error("Error checking ID3 tag:", error);
+      return true;
     }
-
-    return null;
   }
+
   readId3Header(filePath: string): Buffer | null {
     const buffer = Buffer.alloc(10);
     const fd = fs.openSync(filePath, "r");
@@ -183,232 +79,155 @@ export default class v3 extends TagFormatRelease {
 
     return buffer;
   }
-  rawToTags(rawMetadata: ID3v23Frames): Tags {
-    const readableTags: Record<string, string> = {};
-    for (const key in rawMetadata) {
-      if (Object.prototype.hasOwnProperty.call(rawMetadata, key)) {
-        const readableKey = id3ReverseMapping[key];
-        if (readableKey) {
-          readableTags[readableKey] = rawMetadata[key];
-        }
-      }
-    }
-    return readableTags as unknown as Tags;
-  }
-  tagsToRaw(tags: Partial<Tags>): ID3v23Frames {
-    const rawMetadata: Record<string, string> = {};
-    for (const key in tags) {
-      if (Object.prototype.hasOwnProperty.call(tags, key)) {
-        const rawKey = Object.keys(id3ReverseMapping).find(
-          (k) => id3ReverseMapping[k] === key
-        );
-        if (rawKey) {
-          rawMetadata[rawKey] = tags[key];
-        }
-      }
-    }
-    return rawMetadata as ID3v23Frames;
-  }
 
   writeTags(tgs: Partial<Tags>, filePath: string): void {
-    let fd = fs.openSync(filePath, "r+");
-    let header = Buffer.alloc(10);
-    fs.readSync(fd, header, 0, 10, 0);
-
-    if (header.toString("utf8", 0, 3) !== "ID3") {
-      fs.closeSync(fd);
-      return;
-    }
-
-    let existingSize =
-      ((header[6] & 0x7f) << 21) |
-      ((header[7] & 0x7f) << 14) |
-      ((header[8] & 0x7f) << 7) |
-      (header[9] & 0x7f);
-
-    let buffer = Buffer.alloc(existingSize);
-    fs.readSync(fd, buffer, 0, existingSize, 10);
-    fs.closeSync(fd);
-
+    const isCorrupted = this.isID3Corrupted(filePath);
+    console.log({ tgs });
     let newFrames: Buffer[] = [];
-    let tags = this.tagsToRaw(tgs);
+    const tags = this.tagsToRaw(tgs);
+    console.log("New tags:", tags);
 
-    let offset = 0;
+    let audioData: Buffer;
 
-    while (offset < buffer.length) {
-      let frameID = buffer.toString("utf8", offset, offset + 4);
-      let frameSize = buffer.readUInt32BE(offset + 4);
-      let frameFlags = buffer.subarray(offset + 8, offset + 10);
+    if (isCorrupted) {
+      console.log("Corruption detected! Clearing existing tags...");
+      audioData = fs.readFileSync(filePath).subarray(10);
+    } else {
+      const fd = fs.openSync(filePath, "r+");
+      const header = Buffer.alloc(10);
+      fs.readSync(fd, header, 0, 10, 0);
+      const existingSize =
+        ((header[6] & 0x7f) << 21) |
+        ((header[7] & 0x7f) << 14) |
+        ((header[8] & 0x7f) << 7) |
+        (header[9] & 0x7f);
 
-      if (frameSize === 0 || !/^[A-Z0-9]{3,4}$/.test(frameID)) break;
+      const buffer = Buffer.alloc(existingSize);
+      fs.readSync(fd, buffer, 0, existingSize, 10);
+      fs.closeSync(fd);
 
-      if (frameID === "APIC") {
-        let apicFrame = buffer.subarray(offset, offset + 10 + frameSize);
-        newFrames.push(apicFrame);
-      } else if (tags[frameID]) {
-        let textBuffer = Buffer.from("\x00" + tags[frameID], "utf8");
-        let newFrameSize = textBuffer.length;
-        let newFrameBuffer = Buffer.concat([
-          Buffer.from(frameID, "utf8"),
-          Buffer.alloc(4),
-          frameFlags,
-          textBuffer,
-        ]);
+      let offset = 0;
+      while (offset < buffer.length) {
+        if (offset + 10 > buffer.length) break;
 
-        newFrameBuffer.writeUInt32BE(newFrameSize, 4);
-        newFrames.push(newFrameBuffer);
+        const frameID = buffer.toString("utf8", offset, offset + 4);
+        const frameSize = buffer.readUInt32BE(offset + 4);
+        // const frameFlags = buffer.subarray(offset + 8, offset + 10);
+
+        if (frameSize === 0 || !/^[A-Z0-9]{3,4}$/.test(frameID)) break;
+        if (offset + 10 + frameSize > buffer.length) break;
+
+        if (!tags[frameID]) {
+          newFrames.push(buffer.subarray(offset, offset + 10 + frameSize));
+        }
+
+        offset += 10 + frameSize;
       }
 
-      offset += 10 + frameSize;
+      audioData = fs.readFileSync(filePath).subarray(10 + existingSize);
     }
+    console.log({ tags });
 
     for (const frameID in tags) {
-      if (frameID === "APIC") continue;
+      if (frameID === "APIC") {
+        const imgData = tags[frameID] as ImgData;
+        if (!imgData) continue;
+        if (!imgData.buffer) continue;
+        const supportedMimes: Record<string, string> = {
+          "image/jpeg": "image/jpeg",
+          "image/jpg": "image/jpeg",
+          "image/png": "image/png",
+          "image/gif": "image/gif",
+        };
+        const cleanMime =
+          supportedMimes[imgData.mime.toLowerCase()] || "image/jpeg";
+
+        const encodingByte = Buffer.from([0x00]);
+        const mimeBuffer = Buffer.from(cleanMime + "\x00", "utf8");
+        const typeBuffer = Buffer.from([imgData.type?.id ?? 0x03]);
+        const descBuffer = imgData.description
+          ? Buffer.concat([
+              Buffer.from(imgData.description, "utf8"),
+              Buffer.from([0x00]),
+            ])
+          : Buffer.from([0x00]);
+        const imageDataBuffer = imgData.buffer;
+
+        const apicData = Buffer.concat([
+          encodingByte,
+          mimeBuffer,
+          typeBuffer,
+          descBuffer,
+          imageDataBuffer,
+        ]);
+        const apicFrameSize = apicData.length;
+
+        const apicFrameHeader = Buffer.alloc(10);
+        apicFrameHeader.write("APIC", 0, 4, "utf8");
+        apicFrameHeader.writeUInt32BE(apicFrameSize, 4);
+
+        const apicFrame = Buffer.concat([apicFrameHeader, apicData]);
+        newFrames.push(apicFrame);
+        continue;
+      }
+
       if (!/^[A-Z0-9]{3,4}$/.test(frameID)) continue;
 
-      let textBuffer = Buffer.from("\x00" + tags[frameID], "utf8");
-      let frameSize = textBuffer.length;
-      let frameBuffer = Buffer.concat([
-        Buffer.from(frameID, "utf8"),
-        Buffer.alloc(4),
-        Buffer.alloc(2),
-        textBuffer,
-      ]);
+      const textBuffer = Buffer.from("\x00" + tags[frameID], "utf8");
+      const frameSize = textBuffer.length;
+      const frameHeader = Buffer.alloc(10);
+      frameHeader.write(frameID, 0, 4, "utf8");
+      frameHeader.writeUInt32BE(frameSize, 4);
 
-      frameBuffer.writeUInt32BE(frameSize, 4);
+      const frameBuffer = Buffer.concat([frameHeader, textBuffer]);
       newFrames.push(frameBuffer);
     }
 
-    let newTagSize = newFrames.reduce((sum, frame) => sum + frame.length, 0);
-    let newSizeBuffer = Buffer.from([
+    const newTagSize = newFrames.reduce((sum, frame) => sum + frame.length, 0);
+    const newSizeBuffer = Buffer.from([
       (newTagSize >> 21) & 0x7f,
       (newTagSize >> 14) & 0x7f,
       (newTagSize >> 7) & 0x7f,
       newTagSize & 0x7f,
     ]);
 
-    let audioData = fs.readFileSync(filePath).subarray(10 + existingSize);
-
-    let newBuffer = Buffer.concat([
-      header.subarray(0, 6),
+    const newHeader = Buffer.concat([
+      Buffer.from("ID3\x03\x00\x00"),
       newSizeBuffer,
-      ...newFrames,
-      Buffer.alloc(10),
-      audioData,
     ]);
 
+    const padding = Buffer.alloc(10);
+    const newBuffer = Buffer.concat([
+      newHeader,
+      ...newFrames,
+      padding,
+      audioData,
+    ]);
+    console.log();
     fs.writeFileSync(filePath, newBuffer);
   }
-  clearTags(_filePath: string): void {
-    return;
+
+  clearTags(filePath: string): void {
+    const fd = fs.openSync(filePath, "r+");
+    const header = Buffer.alloc(10);
+    fs.readSync(fd, header, 0, 10, 0);
+
+    if (header.toString("utf8", 0, 3) !== "ID3") {
+      console.log("No ID3 tag found, nothing to clear.");
+      fs.closeSync(fd);
+      return;
+    }
+
+    const existingSize =
+      ((header[6] & 0x7f) << 21) |
+      ((header[7] & 0x7f) << 14) |
+      ((header[8] & 0x7f) << 7) |
+      (header[9] & 0x7f);
+
+    fs.closeSync(fd);
+
+    const audioData = fs.readFileSync(filePath).subarray(10 + existingSize);
+
+    fs.writeFileSync(filePath, audioData);
   }
 }
-type ID3v23Frames = {
-  [key: string]: any;
-};
-const id3v2Tags: ID3v23Frames = {
-  TIT2: "", // Title
-  TPE1: "", // Artist
-  TALB: "", // Album
-  TYER: "", // Year
-  TRCK: "", // Track Number
-  TCON: "", // Genre
-  TPE2: "", // Band/Orchestra/Accompaniment
-  TIT1: "", // Content group description
-  TCOM: "", // Composer
-  TENC: "", // Encoded by
-  USLT: "", // Unsynchronized lyrics
-  TLEN: "", // Length (in milliseconds)
-  TPE3: "", // Conductor
-  APIC: null, // Attached picture
-  WXXX: "", // User-defined URL link
-  COMM: "", // Comments
-  PRIV: "", // Private frame
-  RVA2: "", // Relative volume adjustment
-  ENCR: "", // Encryption method
-  GRID: "", // Group identification registration
-  GEOB: "", // General encapsulated object
-  WCOM: "", // Commercial URL
-  WCOP: "", // Copyright URL
-  WOAF: "", // Official audio file URL
-  WOAR: "", // Official artist/performer URL
-  WORS: "", // Official radio station URL
-  WPAY: "", // Payment URL
-  WBMP: "", // Bitmap image URL
-  TXXX: "", // User-defined text information
-  SYLT: "", // Synchronized lyrics
-  SYTC: "", // Synchronized tempo codes
-  MCDI: "", // Music CD Identifier
-  ETCO: "", // Event timing codes
-  SEQU: "", // Sequence (Track number of set)
-  PCNT: "", // Play count
-  ASPI: "", // Audio seek point index
-  STIK: "", // Media type (Spotify)
-  COMR: "", // Commercial frame
-  AENC: "", // Audio encryption
-  SIGN: "", // Signature frame
-  TSSE: "", // Software/Encoder
-  CART: "", // Audio encoding method
-  RBUF: "", // Recommended buffer size
-  TBPM: "", // Beats per minute
-  TLAN: "", // Language
-  TFLT: "", // File type
-  TIME: "", // Time
-  TSOT: "", // Set to track (non-existant in 2.3 but sometimes used)
-  TDRC: "", // Recording date
-  TDOR: "", // Original release date
-};
-const id3Mapping: Record<string, string> = {
-  title: "TIT2",
-  artist: "TPE1",
-  album: "TALB",
-  year: "TYER",
-  trackNumber: "TRCK",
-  genre: "TCON",
-  albumArtist: "TPE2",
-  contentGroup: "TIT1",
-  composer: "TCOM",
-  encodedBy: "TENC",
-  unsyncedLyrics: "USLT",
-  length: "TLEN",
-  conductor: "TPE3",
-  attachedPicture: "APIC",
-  userDefinedURL: "WXXX",
-  comments: "COMM",
-  private: "PRIV",
-  relativeVolumeAdjustment: "RVA2",
-  encryptionMethod: "ENCR",
-  groupIdRegistration: "GRID",
-  generalObject: "GEOB",
-  commercialURL: "WCOM",
-  copyrightURL: "WCOP",
-  audioFileURL: "WOAF",
-  artistURL: "WOAR",
-  radioStationURL: "WORS",
-  paymentURL: "WPAY",
-  bitmapImageURL: "WBMP",
-  userDefinedText: "TXXX",
-  synchronizedLyrics: "SYLT",
-  tempoCodes: "SYTC",
-  musicCDIdentifier: "MCDI",
-  eventTimingCodes: "ETCO",
-  sequence: "SEQU",
-  playCount: "PCNT",
-  audioSeekPointIndex: "ASPI",
-  mediaType: "STIK",
-  commercialFrame: "COMR",
-  audioEncryption: "AENC",
-  signatureFrame: "SIGN",
-  softwareEncoder: "TSSE",
-  audioEncodingMethod: "CART",
-  recommendedBufferSize: "RBUF",
-  beatsPerMinute: "TBPM",
-  language: "TLAN",
-  fileType: "TFLT",
-  time: "TIME",
-  recordingDate: "TDRC",
-  releaseDate: "TDOR",
-};
-const id3ReverseMapping: Record<string, string> = Object.fromEntries(
-  Object.entries(id3Mapping).map(([readable, original]) => [original, readable])
-);

@@ -13,7 +13,7 @@ export default class TagManager {
     return null;
   }
   detectTagFormat(filePath: string): string | null {
-    return "ID3v2.3";
+
     const buffer = fs.readFileSync(filePath);
 
     if (buffer.subarray(-128, -123).toString() === "TAG") {
