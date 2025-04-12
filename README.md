@@ -1,76 +1,34 @@
+# lockin
 
+An Electron application with React and TypeScript
 
-# Audexis - Metadata Editor
+## Recommended IDE Setup
 
-  
+- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
-Audexis is a powerful and easy-to-use metadata editor for audio files. Currently, it supports editing **ID3v2 tags**, with plans to expand to other metadata formats and advanced features.
+## Project Setup
 
-## Features
+### Install
 
-✅ **Edit ID3v2 Tags** - Modify metadata such as title, artist, album, genre, year, and more.
+```bash
+$ npm install
+```
 
-✅ **Add/Replace Album Artwork** - Update cover images embedded in your audio files.
+### Development
 
-✅ **Real-Time Metadata Preview** - See changes instantly before saving.
+```bash
+$ npm run dev
+```
 
-✅ **Simple & Fast UI** - Easy-to-use interface with a focus on efficiency.
+### Build
 
-✅ **Batch Editing** - Edit multiple files at once.
+```bash
+# For windows
+$ npm run build:win
 
-  
+# For macOS
+$ npm run build:mac
 
-## Upcoming Features
-
-🚀 **Website** - Website for dowloads, documentation etc
-🚀 **Drag & Drop Support** - Quickly add files by dragging them into the app.
-
-🚀 **Customizable Prefrences** - Customizable Settings Menu where you can configure the app
-
-🚀 **ID3v1 & other taggging formats** - Compatibility with more metadata versions.
-
-🚀 **MusicBrainz/Discogs Integration** - Auto-fetch metadata from online databases.
-
-🚀 **Auto-Rename Files** - Rename audio files based on metadata (e.g., `Artist - Title.mp3`).
-
-🚀 **Lyrics Tagging** - Embed lyrics inside ID3 tags.
-
-🚀 **Duplicate Song Finder** - Identify and remove duplicate files.
-
-🚀 **Tag Import/Export** - Export metadata as CSV, JSON, or XML.
-
-  
-
-## Installation
-
-  
-
-1.  **Download** the latest release from [GitHub Releases](https://github.com/kp-fyn/audexis/releases).
-
-2.  **Run the installer** 
-
-3.  **Open Audexis** and start editing metadata!
-
-  
-
-## Contributing
-
-  
-
-Want to contribute? Feel free to open issues or submit pull requests! We're looking for help with:
-
-- New metadata formats (MP4, WMA, Vorbis, APE, etc.)
-
-- UI/UX improvements
--  Windows support
-
-- Performance optimizations 
-
-
-## License  
-
-Audexis is open-source under the [MIT License](LICENSE).  
-
----
-
-⭐ **Star this repo** if you find it useful! Feedback and suggestions are always welcome. 🚀
+# For Linux
+$ npm run build:linux
+```

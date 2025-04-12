@@ -16,6 +16,10 @@ export interface ElectronAPI {
   uploadImage: () => Promise<UploadedImage>;
   onUndo: (listener: () => void) => void;
   onRedo: (listener: () => void) => void;
+  offUndo: (listener: () => void) => void;
+  offRedo: (listener: () => void) => void;
+  onSelectAll: (listener: () => void) => void;
+  showInFinder(path: string): void;
 }
 export interface FullImage extends UploadedImage {
   url: string;
@@ -33,6 +37,7 @@ declare global {
 export interface AudioFile extends Tags {
   path: string;
   release: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 export interface UploadedImage {
@@ -48,6 +53,7 @@ export interface ImgData {
   buffer: Buffer;
 }
 export type Frames = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
 export interface Tags {
