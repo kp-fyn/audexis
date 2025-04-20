@@ -1,7 +1,7 @@
-import { Tags, ImgData, Frames } from "../../../../types";
+import { Tags, ImgData, Frames } from "../../../../../types";
 import fs from "node:fs";
 import Id3V2 from "../../abstractions/Id3v2";
-import { id3v24ReverseMapping, id3v24Tags } from "../../..//utils/Id3v2";
+import { id3v24ReverseMapping, id3v24Tags } from "../../../../utils/Id3v2";
 
 export default class v4 extends Id3V2 {
   picFrame = "APIC";
@@ -59,7 +59,7 @@ export default class v4 extends Id3V2 {
           "image/jpeg": "image/jpeg",
           "image/jpg": "image/jpeg",
           "image/png": "image/png",
-          "image/gif": "image/gif"
+          "image/gif": "image/gif",
         };
         const cleanMime = supportedMimes[imgData.mime.toLowerCase()] || "image/jpeg";
 
@@ -76,7 +76,7 @@ export default class v4 extends Id3V2 {
           mimeBuffer,
           typeBuffer,
           descBuffer,
-          imageDataBuffer
+          imageDataBuffer,
         ]);
 
         const apicFrameSize = apicData.length;
@@ -86,7 +86,7 @@ export default class v4 extends Id3V2 {
         const apicFrameHeader = Buffer.concat([
           Buffer.from("APIC"),
           frameSizeSyncSafe,
-          Buffer.from([0x00, 0x00])
+          Buffer.from([0x00, 0x00]),
         ]);
 
         const apicFrame = Buffer.concat([apicFrameHeader, apicData]);
@@ -106,7 +106,7 @@ export default class v4 extends Id3V2 {
       const frameHeader = Buffer.concat([
         Buffer.from(frameID),
         frameSizeSyncSafe,
-        Buffer.from([0x00, 0x00])
+        Buffer.from([0x00, 0x00]),
       ]);
 
       newFrames.push(Buffer.concat([frameHeader, textBuffer]));
@@ -120,7 +120,7 @@ export default class v4 extends Id3V2 {
       Buffer.from("ID3"),
       Buffer.from([0x04, 0x00]),
       Buffer.from([0x00]),
-      newSizeBuffer
+      newSizeBuffer,
     ]);
 
     let audioData: Buffer = fs.readFileSync(filePath);

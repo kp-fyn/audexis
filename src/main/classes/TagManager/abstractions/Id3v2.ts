@@ -1,6 +1,6 @@
 import TagFormatRelease from "./TagFormatRelease";
 import fs from "node:fs";
-import { Frames, ImgData, Tags } from "../../../types";
+import { Frames, ImgData, Tags } from "../../../../types";
 type ID3V2Frames = {
   [key: string]: string | Buffer<ArrayBufferLike> | ImgData | null;
 };

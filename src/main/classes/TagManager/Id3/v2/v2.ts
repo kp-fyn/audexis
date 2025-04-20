@@ -1,6 +1,6 @@
-import { Tags, ImgData, Frames } from "../../../../types";
+import { Tags, ImgData, Frames } from "../../../../../types";
 import fs from "node:fs";
-import { id3v22ReverseMapping, id3v22Tags } from "../../../utils/Id3v2";
+import { id3v22ReverseMapping, id3v22Tags } from "../../../../utils/Id3v2";
 import Id3V2 from "../../abstractions/Id3v2";
 
 export default class v2 extends Id3V2 {
@@ -37,7 +37,7 @@ export default class v2 extends Id3V2 {
           mimeBuffer,
           typeBuffer,
           descBuffer,
-          imageDataBuffer
+          imageDataBuffer,
         ]);
 
         const picFrameHeader = Buffer.alloc(6);
@@ -62,7 +62,7 @@ export default class v2 extends Id3V2 {
       (newTagSize >> 21) & 0x7f,
       (newTagSize >> 14) & 0x7f,
       (newTagSize >> 7) & 0x7f,
-      newTagSize & 0x7f
+      newTagSize & 0x7f,
     ]);
 
     const newHeader = Buffer.concat([Buffer.from("ID3\x02\x00\x00"), newSizeBuffer]);

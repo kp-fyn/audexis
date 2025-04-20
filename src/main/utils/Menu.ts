@@ -1,5 +1,5 @@
 import { BrowserWindow, Menu, MenuItem, MenuItemConstructorOptions, app } from "electron";
-import { audioFiles, mainWindowId } from "../index";
+import { audioFiles, createSettingsWindow, mainWindowId } from "../index";
 import Constants from "./Constants";
 const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 const menuItems: MenuItemConstructorOptions[] = [
@@ -13,21 +13,21 @@ const menuItems: MenuItemConstructorOptions[] = [
           if (mainWindow) {
             mainWindow.webContents.send(Constants.channels.OPEN_DIALOG);
           }
-        }
+        },
       },
-      { label: "Close Editor", role: "close" }
-    ]
+      { label: "Close Editor", role: "close" },
+    ],
   },
   {
     label: "Edit",
     submenu: [
       {
         role: "undo",
-        click: () => mainWindow?.webContents.send(Constants.channels.UNDO)
+        click: () => mainWindow?.webContents.send(Constants.channels.UNDO),
       },
       {
         role: "redo",
-        click: () => mainWindow?.webContents.send(Constants.channels.REDO)
+        click: () => mainWindow?.webContents.send(Constants.channels.REDO),
       },
       { type: "separator" },
       { role: "cut" },
@@ -38,9 +38,9 @@ const menuItems: MenuItemConstructorOptions[] = [
 
       {
         role: "selectAll",
-        click: () => mainWindow?.webContents.send(Constants.channels.REDO)
-      }
-    ]
+        click: () => mainWindow?.webContents.send(Constants.channels.REDO),
+      },
+    ],
   },
   {
     label: "View",
@@ -51,20 +51,20 @@ const menuItems: MenuItemConstructorOptions[] = [
         click: (): void => {
           audioFiles.clear();
           mainWindow?.reload();
-        }
+        },
       },
       { type: "separator" },
-      { role: "togglefullscreen" }
-    ]
+      { role: "togglefullscreen" },
+    ],
   },
-  { role: "windowMenu" }
+  { role: "windowMenu" },
 ];
 export default function getMenu(): Menu {
   app.setAboutPanelOptions({
     applicationName: "Audexis",
     applicationVersion: app.getVersion(),
     copyright: "© 2025 Kp Adeyinka",
-    authors: ["Kp Adeyinka"]
+    authors: ["Kp Adeyinka"],
   });
   app.name = "Audexis";
   const menu = new Menu();
@@ -73,29 +73,36 @@ export default function getMenu(): Menu {
       label: app.name,
       submenu: [
         {
-          role: "about"
+          role: "about",
+        },
+        {
+          label: "Preferences",
+          accelerator: "CmdOrCtrl+,",
+          click: (): void => {
+            createSettingsWindow();
+          },
         },
         { type: "separator" },
         {
           role: "services",
-          submenu: []
+          submenu: [],
         },
         { type: "separator" },
         {
-          role: "hide"
+          role: "hide",
         },
         {
-          role: "hideOthers"
+          role: "hideOthers",
         },
         {
-          role: "unhide"
+          role: "unhide",
         },
         { type: "separator" },
         {
           role: "quit",
-          label: "Quit Audexis"
-        }
-      ]
+          label: "Quit Audexis",
+        },
+      ],
     })
   );
   menuItems.forEach((item) => {

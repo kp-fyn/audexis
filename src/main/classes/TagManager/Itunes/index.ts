@@ -9,6 +9,7 @@ export default class Itunes extends TagFormatMajor {
   }
   getReleaseClass(version: string): TagFormatRelease | null {
     if (!version) return null;
+
     return this.itunes;
   }
 }

@@ -4,7 +4,7 @@ import useWindowDimensions from "../hooks/useWindowDimensions";
 import { useChanges } from "../hooks/useChanges";
 import { Input } from "./input";
 import { AudioFile, FullImage } from "../../../types";
-
+import Img from "../assets/images/unknown.jpg";
 // import useClickOutside from "../hooks/useClickOutside";
 import { Button } from "./button";
 import ContextMenuHandler from "./ContextMenuHandler";
@@ -15,9 +15,7 @@ export default function Sidebar(): ReactNode {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const [image, setImage] = React.useState<FullImage | null>(null);
-  console.log(image);
-  const { files, changes, saveChanges, setChanges, selected, neededItems, setImageData } =
-    useChanges();
+  const { files, changes, saveChanges, setChanges, selected, neededItems } = useChanges();
   const disabled = selected.length === 0 || files.length === 0;
   const { width } = useWindowDimensions();
   const [defaultValues, setDefaultValues] = React.useState<Partial<AudioFile>>();
@@ -44,7 +42,7 @@ export default function Sidebar(): ReactNode {
 
   const stopResizing = (): void => {
     isResizing.current = false;
-    document.body.style.userSelect = ""; // Re-enable selection
+    document.body.style.userSelect = "";
 
     document.removeEventListener("mousemove", resize);
     document.removeEventListener("mouseup", stopResizing);
@@ -172,9 +170,9 @@ export default function Sidebar(): ReactNode {
       style={{
         width: `${sidebarWidth}`,
         // minWidth: "300px",
-        maxWidth: `${width - 200} px`
+        maxWidth: `${width - 200} px`,
       }}
-      className="fixed top-12 left-0 h-screen z-[9999] bg-neutral-950  text-white overflow-y-auto"
+      className="fixed pb-12 top-12 left-0 h-screen z-[9999] bg-background  text-foreground overflow-y-auto"
     >
       <div className="m py-2  ">
         {defaultValues && (
@@ -182,7 +180,7 @@ export default function Sidebar(): ReactNode {
             {neededItems.map((item) => (
               <div
                 key={item.value}
-                className={`text-white text-md flex flex-col capitalize ${
+                className={`text-foreground text-md flex flex-col capitalize ${
                   disabled ? "opacity-50" : ""
                 }`}
               >
@@ -193,9 +191,11 @@ export default function Sidebar(): ReactNode {
                   maxLength={item.maxLength}
                   minLength={item.maxLength}
                   value={
-                    changes[item.value] === "" || changes[item.value]
-                      ? changes[item.value]
-                      : defaultValues[item.value]
+                    selected.length > 0
+                      ? changes[item.value] === "" || changes[item.value]
+                        ? changes[item.value]
+                        : defaultValues[item.value]
+                      : ""
                   }
                   onChange={(e) => setChanges({ ...changes, [item.value]: e.target.value })}
                 />
@@ -204,32 +204,42 @@ export default function Sidebar(): ReactNode {
           </div>
         )}
 
-        <Button onClick={() => saveChanges()}>Save</Button>
         <ContextMenuHandler contextMenuContent={<ImageContextMenu />}>
           <img
-            src="/images/unknown.jpg?asset"
+            src={image ? image.url : Img}
             onDoubleClick={async () => {
               const img = await window.app.uploadImage();
               if (!img) return;
               if (!img.buffer) return;
+              setChanges({
+                ...changes,
+                attachedPicture: {
+                  mime: img.mime,
+                  buffer: img.buffer,
+                  type: img.type,
+                  description: img.description,
+                },
+              });
 
               const blob = new Blob([img.buffer]);
               const url = URL.createObjectURL(blob);
               const fullImage = { ...img, url };
               setImage(fullImage);
-              setImageData(img);
             }}
-            className="w-full aspect-square"
+            className="w-full aspect-square self-center justify-self-center mt-4"
           ></img>
         </ContextMenuHandler>
+        <Button className="mt-4" onClick={() => saveChanges()}>
+          Save
+        </Button>
       </div>
 
       <div
         style={{ marginLeft: `${sidebarWidth}` }}
-        className={`fixed top-12 bottom-0  h-screen w-[6px] cursor-col-resize  hover:bg-gray-700 bg-neutral-950 `}
+        className={`fixed top-12 bottom-0  h-screen w-[6px] cursor-col-resize  bg-background hover:bg-border `}
         onMouseDown={startResizing}
       >
-        <div className="border-r h-screen border-gray-700 "></div>
+        <div className="border-r h-screen border-border "></div>
       </div>
     </div>
   );

@@ -7,8 +7,8 @@
 //https://github.com/sergiomb2/libmp4v2/wiki/iTunesMetadata
 // I don't want to open this file again
 
-import { itunesReverseMapping, itunesTags } from "../../utils/Itunes";
-import { ImgData, Tags } from "../../../types";
+import { itunesReverseMapping, itunesTags } from "../../../utils/Itunes";
+import { ImgData, Tags } from "../../../../types";
 
 import fs from "node:fs";
 import { TagFormatRelease } from "../abstractions";
@@ -302,7 +302,7 @@ export default class Itunes extends TagFormatRelease {
         stcoAtoms.push(stco);
       }
     }
-    console.log({ stcoAtoms });
+
     if (stcoAtoms.length) return stcoAtoms;
 
     return null;

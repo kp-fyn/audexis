@@ -19,7 +19,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useState, useCallback, ReactNode } from "react";
+import { useEffect, useState, useCallback, ReactNode, useRef } from "react";
 import Sidebar from "./components/Sidebar";
 import { useSidebarWidth } from "./hooks/useSidebarWidth";
 import { useChanges } from "./hooks/useChanges";
@@ -27,49 +27,46 @@ import DragCell from "./components/DragCell";
 import DraggableHeader from "./components/DraggableHeader";
 import ContextMenuHandler from "./components/ContextMenuHandler";
 import TrackContextMenu from "./components/contextMenus/TrackContextMenu";
+import { useUserConfig } from "./hooks/useUserConfig";
+import ColumnContextMenu from "./components/contextMenus/ColumnContextMenu";
 
 const columnHelper = createColumnHelper<AudioFile>();
 
 export default function App(): ReactNode {
   const [previous, setPrevious] = useState<number>(0);
+  const { config, setColumns } = useUserConfig();
 
-  const { selected, setSelected, files, setFiles, neededItems } = useChanges();
+  const { selected, setSelected, files, setFiles } = useChanges();
   const [lastSelected, setLastSelected] = useState<number>(-1);
   const { sidebarWidth } = useSidebarWidth();
 
-  const helpers = neededItems.map((item) =>
+  const helpers = config.columns.map((item) =>
     columnHelper.accessor(item.value, {
       id: item.value,
       cell: (info) => {
         const value = info.getValue();
         return <i className="truncate">{typeof value === "string" ? value : ""}</i>;
       },
-      size: 200,
+      size: item.size,
       header: () => <span>{item.label}</span>,
       footer: (info) => info.column.id,
     })
   );
 
-  const columns: ColumnDef<AudioFile, string>[] = [
-    columnHelper.accessor("path", {
-      id: "path",
-      cell: (info) => <i className="truncate">{info.getValue()}</i>,
+  const columns: ColumnDef<AudioFile, string>[] = [...helpers];
+  const isResizing = useRef(false);
+  const tableRef = useRef<HTMLDivElement | null>(null);
+  const resizingColumnIdRef = useRef<string | null>(null);
+  const initialResizeData = useRef<{
+    startX: number;
+    startWidth: number;
+  }>({ startX: 0, startWidth: 0 });
 
-      size: 200,
-      header: () => <span>Path</span>,
-      footer: (info) => info.column.id,
-    }),
-    columnHelper.accessor("release", {
-      id: "release",
-      cell: (info) => <i className="truncate">{info.getValue()}</i>,
-
-      size: 200,
-      header: () => <span>Tag Manager</span>,
-      footer: (info) => info.column.id,
-    }),
-    ...helpers,
-  ];
   const [columnOrder, setColumnOrder] = useState<string[]>(() => columns.map((c) => c.id ?? ""));
+
+  useEffect(() => {
+    setColumnOrder(columns.map((c) => c.id ?? ""));
+  }, [config.columns]);
 
   const table = useReactTable({
     data: files,
@@ -180,6 +177,20 @@ export default function App(): ReactNode {
       setColumnOrder((columnOrder) => {
         const oldIndex = columnOrder.indexOf(active.id as string);
         const newIndex = columnOrder.indexOf(over.id as string);
+        const newColumns = arrayMove(columnOrder, oldIndex, newIndex);
+
+        const newRc = newColumns.map((item) => {
+          const rc = config.columns.find((c) => c.value === item);
+          if (!rc) return null;
+
+          return {
+            value: item,
+            label: rc.label,
+            size: rc.size,
+          };
+        });
+        const newRealColumns = newRc.filter((item) => item !== null);
+        setColumns(newRealColumns as { label: string; size: number; value: string }[]);
         return arrayMove(columnOrder, oldIndex, newIndex);
       });
     }
@@ -189,6 +200,51 @@ export default function App(): ReactNode {
     useSensor(TouchSensor, {}),
     useSensor(KeyboardSensor, {})
   );
+
+  const startResizing = (columnId: string, event: React.MouseEvent): void => {
+    if (!tableRef.current) return;
+
+    const column = config.columns.find((c) => c.value === columnId);
+    if (!column) return;
+
+    resizingColumnIdRef.current = columnId;
+    isResizing.current = true;
+    document.body.style.userSelect = "none";
+
+    initialResizeData.current = {
+      startX: event.clientX,
+      startWidth: column.size ?? 200,
+    };
+
+    document.addEventListener("mousemove", resize);
+    document.addEventListener("mouseup", stopResizing);
+  };
+
+  const resize = (event: MouseEvent): void => {
+    if (!isResizing.current) return;
+    const columnId = resizingColumnIdRef.current;
+    if (!columnId) return;
+
+    const deltaX = event.clientX - initialResizeData.current.startX;
+    const newWidth = initialResizeData.current.startWidth + deltaX;
+
+    const minWidth = 150;
+    const maxWidth = window.innerWidth - 200;
+    if (newWidth < minWidth || newWidth > maxWidth) return;
+
+    setColumns(
+      config.columns.map((item) => (item.value === columnId ? { ...item, size: newWidth } : item))
+    );
+  };
+
+  const stopResizing = (): void => {
+    resizingColumnIdRef.current = null;
+    isResizing.current = false;
+    document.body.style.userSelect = "";
+
+    document.removeEventListener("mousemove", resize);
+    document.removeEventListener("mouseup", stopResizing);
+  };
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -196,33 +252,52 @@ export default function App(): ReactNode {
       onDragEnd={handleDragEnd}
       sensors={sensors}
     >
-      <div className="w-full h-full block mt-12" id="App">
+      <div className="w-full h-full block mt-12 text-foreground" id="App">
         <Sidebar />
         <div className="w-full h-full" style={{ marginLeft: sidebarWidth }}>
-          <div className="min-w-max min-h-full " id="table">
-            <div className="sticky z-[999]  top-[48px] h-[48px]  bg-neutral-950 text-white">
+          <div className="min-w-max min-h-full" ref={tableRef} id="table">
+            <div className="sticky z-[999]  top-[48px] h-[40px]  bg-background text-foreground border-b border-border p-0">
               {table.getHeaderGroups().map((headerGroup) => (
-                <div key={headerGroup.id} className="ml-12 flex">
-                  <SortableContext
-                    items={columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                    key={headerGroup.id}
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <DraggableHeader key={header.id} header={header}>
-                        <div
-                          onDoubleClick={() => header.column.resetSize()}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            header.getResizeHandler()(e);
-                          }}
-                          onTouchStart={header.getResizeHandler()}
-                          className="absolute top-0 right-0 h-full w-[2px] cursor-col-resize bg-gray-700 select-none transition-opacity hover:opacity-100"
-                        />
-                      </DraggableHeader>
-                    ))}
-                  </SortableContext>
-                </div>
+                <ContextMenuHandler
+                  key={headerGroup.id}
+                  contextMenuContent={<ColumnContextMenu selected={"__nun"} />}
+                >
+                  <div className="flex ml-12 h-full">
+                    <SortableContext
+                      items={columnOrder}
+                      strategy={horizontalListSortingStrategy}
+                      key={headerGroup.id}
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <ContextMenuHandler
+                          key={header.id}
+                          contextMenuContent={<ColumnContextMenu selected={header.id} />}
+                        >
+                          <DraggableHeader header={header}>
+                            <div
+                              onDoubleClick={() => {
+                                setColumns(
+                                  config.columns.map((item) =>
+                                    item.value === header.id ? { ...item, size: 200 } : item
+                                  )
+                                );
+                              }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+
+                                startResizing(header.id, e);
+                              }}
+                              onTouchStart={header.getResizeHandler()}
+                              className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-background select-none transition-opacity hover:bg-border hover:opacity-100"
+                            >
+                              <div className=" border-r border-border h-full"></div>
+                            </div>
+                          </DraggableHeader>
+                        </ContextMenuHandler>
+                      ))}
+                    </SortableContext>
+                  </div>
+                </ContextMenuHandler>
               ))}
             </div>
 
@@ -237,8 +312,8 @@ export default function App(): ReactNode {
                     key={row.id}
                   >
                     <div
-                      className={`flex cursor-pointer  h-12 items-center px-1 border-t border-gray-700 transition-colors ${
-                        isSelected ? "bg-accent" : "bg-neutral-950 hover:bg-neutral-900"
+                      className={`flex cursor-pointer  h-12 items-center px-1 border-b border-border   transition-colors ${
+                        isSelected ? "bg-accent" : "bg-background  hover:bg-hover"
                         // : row.index % 2 === 0
                         //   ? "bg-neutral-900"
                         //   : "bg-neutral-950"

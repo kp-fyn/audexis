@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useHistoryState } from "@uidotdev/usehooks";
 
-import { Changes, AudioFile, UploadedImage } from "./../../../types";
+import { Changes, AudioFile } from "./../../../types";
 
 interface ChangesContxt {
   changes: Partial<AudioFile>;
@@ -19,8 +19,7 @@ interface ChangesContxt {
   setChanges: (newPresent: Partial<AudioFile>) => void;
   setSelected: Dispatch<SetStateAction<string[]>>;
   selected: string[];
-  imageData: UploadedImage | null;
-  setImageData: Dispatch<SetStateAction<UploadedImage | null>>;
+
   saveChanges: () => void;
   clearChanges: () => void;
   files: AudioFile[];
@@ -33,10 +32,7 @@ const ChangesContext = createContext<ChangesContxt>({
   clearChanges: () => {
     throw new Error("clearChanges function must be overridden");
   },
-  imageData: null,
-  setImageData: () => {
-    throw new Error("setImageData function must be overridden");
-  },
+
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
@@ -69,7 +65,7 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
 
   const [files, setFiles] = useState<AudioFile[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [imageData, setImageData] = useState<UploadedImage | null>(null);
+
   function handleUndo(): void {
     if (canUndo) {
       undo();
@@ -82,22 +78,26 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
     const handleKeyDown = (event: KeyboardEvent): void => {
       if ((event.metaKey || event.ctrlKey) && event.key === "a") {
         event.preventDefault();
-
         setSelected(files.map((file) => file.path));
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    const undoHandler = (): void => handleUndo();
+    const redoHandler = (): void => handleRedo();
 
-    window.app.onUndo(() => handleUndo);
-    window.app.onRedo(() => handleRedo);
+    document.addEventListener("keydown", handleKeyDown);
+    window.app.onUndo(undoHandler);
+    window.app.onRedo(redoHandler);
+
     return (): void => {
       document.removeEventListener("keydown", handleKeyDown);
-      window.app.offUndo(() => handleUndo);
-      window.app.offRedo(() => handleRedo);
+      window.app.offUndo(undoHandler);
+      window.app.offRedo(redoHandler);
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canUndo, canRedo, undo, redo, files]);
+  }, [canUndo, canRedo, undo, redo]);
+
   useEffect(() => {
     const handleClick = (event: MouseEvent): void => {
       const targets = ["App", "table"];
@@ -109,6 +109,10 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
     document.addEventListener("click", handleClick);
     return (): void => document.removeEventListener("click", handleClick);
   }, []);
+  useEffect(() => {
+    clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   return (
     <ChangesContext.Provider
@@ -119,8 +123,7 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
         saveChanges,
         clearChanges: clear,
         selected,
-        imageData,
-        setImageData,
+
         setSelected,
         files,
         setFiles,
@@ -138,9 +141,7 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
       ...changes,
       paths: selected,
     };
-    if (imageData) {
-      parsedChanges.attachedPicture = imageData;
-    }
+
     window.app.save(parsedChanges);
     clear();
   }

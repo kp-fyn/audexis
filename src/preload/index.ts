@@ -2,7 +2,7 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { ipcRenderer, contextBridge } from "electron";
 import Constants from "./Constants";
 
-import { Changes } from "../types";
+import { Changes, Base, SetWindowPosition, UserConfig } from "../types";
 // Custom APIs for renderer
 const api = {};
 
@@ -30,14 +30,18 @@ try {
     invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
       const [channel, ...omit] = args;
       return ipcRenderer.invoke(channel, ...omit);
-    }
+    },
   });
   contextBridge.exposeInMainWorld("app", {
-    minimize: () => ipcRenderer.send(Constants.channels.WINDOW_MINIMIZE),
-    maximize: () => ipcRenderer.send(Constants.channels.WINDOW_MAXIMIZE),
+    minimize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MINIMIZE, props),
+    maximize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MAXIMIZE, props),
     reloadFiles: () => ipcRenderer.send(Constants.channels.RELOAD_FILES),
     save: (changes: Partial<Changes>): void => {
       ipcRenderer.invoke(Constants.channels.SAVE, changes);
+      return;
+    },
+    updateConfig: (config: Partial<UserConfig>): void => {
+      ipcRenderer.invoke(Constants.channels.UPDATE_CONFIG, config);
       return;
     },
     showInFinder: (path: string): void => {
@@ -49,6 +53,10 @@ try {
     onUpdate(listener: () => void) {
       return ipcRenderer.on(Constants.channels.UPDATE, listener);
     },
+    onUserConfigUpdate(listener: () => void) {
+      return ipcRenderer.on(Constants.channels.USER_CONFIG_UPDATE, listener);
+    },
+
     onUndo(listener: () => void) {
       return ipcRenderer.on(Constants.channels.UNDO, listener);
     },
@@ -67,16 +75,21 @@ try {
     onSelectAll(listener: () => void) {
       return ipcRenderer.on(Constants.channels.SELECT_ALL, listener);
     },
+    openSettings: () => ipcRenderer.send(Constants.channels.OPEN_SETTINGS),
+    openOnboarding: () => ipcRenderer.send(Constants.channels.OPEN_ONBOARDING),
+    closeOnboarding: () => ipcRenderer.send(Constants.channels.CLOSE_ONBOARDING),
+    test: () => ipcRenderer.invoke(Constants.channels.TEST),
 
-    unmaximize: () => ipcRenderer.send(Constants.channels.WINDOW_UNMAXIMIZE),
-    close: () => ipcRenderer.send(Constants.channels.WINDOW_CLOSE),
-    isMaximized: () => ipcRenderer.invoke(Constants.channels.WINDOW_IS_MAXIMIZED),
-    setWindowPosition: (x: number, y: number) =>
-      ipcRenderer.send(Constants.channels.SET_WINDOW_POSITION, { x, y }),
-    getWindowPosition: () => ipcRenderer.invoke(Constants.channels.GET_WINDOW_POSITION),
+    unmaximize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_UNMAXIMIZE, props),
+    close: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_CLOSE, props),
+    isMaximized: (props: Base) => ipcRenderer.invoke(Constants.channels.WINDOW_IS_MAXIMIZED, props),
+    setWindowPosition: ({ x, y, windowName }: SetWindowPosition) =>
+      ipcRenderer.send(Constants.channels.SET_WINDOW_POSITION, { x, y, windowName }),
+    getWindowPosition: (props: Base) =>
+      ipcRenderer.invoke(Constants.channels.GET_WINDOW_POSITION, props),
     openDialog: () => ipcRenderer.invoke(Constants.channels.OPEN_DIALOG),
 
-    uploadImage: () => ipcRenderer.invoke(Constants.channels.IMAGE_UPLOAD)
+    uploadImage: () => ipcRenderer.invoke(Constants.channels.IMAGE_UPLOAD),
   });
 } catch (error) {
   console.error(error);

@@ -34,7 +34,7 @@ const imageTypes = [
 ];
 
 export default function ImageContextMenu(): ReactNode {
-  const { selected, files, changes, setChanges, setImageData } = useChanges();
+  const { selected, files, changes, setChanges } = useChanges();
 
   const currentFile = files.find((file) => file.path === selected[0]);
   if (!currentFile) return null;
@@ -48,7 +48,6 @@ export default function ImageContextMenu(): ReactNode {
           if (!img) return;
           if (!img.buffer) return;
 
-          setImageData(img);
           setChanges({
             ...changes,
             attachedPicture: {

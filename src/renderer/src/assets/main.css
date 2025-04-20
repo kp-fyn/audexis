@@ -18,46 +18,75 @@
   }
 }
 
-:root {
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 0 0% 9%;
-  --secondary: 0 0% 14.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 14.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 220 70% 50%;
-  --input: 0 0% 14.9%;
-  --ring: 0 0% 83.1%;
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+.light {
+  --background: #f1f1f1;
+  --border: #010101;
+  --foreground: #000;
+  --hover: #d3d5d7;
+  --muted: #b2bdcd;
+  --muted-foreground: #65676d;
+
+  --popover: #e2e5f0;
+  --popover-foreground: #020202;
+
+  --card: #e2e5f0;
+  --card-foreground: #020202;
+
+  --input: #6b7280;
+
+  --primary: #eb5757;
+  --primary-foreground: #e8e9e9;
+
+  --secondary: #f4f4f4;
+  --secondary-foreground: #1b1c1e;
+
+  --accent: #f4f4f4;
+  --accent-foreground: #f8fafc;
+
+  --destructive: #ef4444;
   --radius: 0.5rem;
+  --destructive-foreground: #fafafa;
+}
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f8fafc;
+  --hover: #40404083;
+  --card: #060e14;
+  --card-foreground: #f8fafc;
+
+  --popover: #020609;
+  --popover-foreground: #f8fafc;
+
+  --primary: #eb5757;
+  --primary-foreground: #e8e9e9;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+
+  --border: #1e293b;
+  --input: #1e293b;
+  --radius: 0.5rem;
+  --ring: #cbd5e1;
 }
 html,
 body,
 #root {
-  background-color: hsl(var(--background));
+  background-color: var(--background);
   height: 100%;
   width: 100%;
   position: relative;
   font-family: "Reddit Sans", sans-serif;
   box-sizing: border-box;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   border-color: #374151;
   outline-color: #eb5757 !important;
-}
-.border {
-  border-color: #374151;
 }

@@ -1,4 +1,4 @@
-import { Tags } from "../../../types";
+import { Tags } from "../../../../types";
 
 export default abstract class TagFormatRelease {
   abstract getTags(filePath: string): Tags | null;

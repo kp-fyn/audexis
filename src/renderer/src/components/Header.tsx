@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { ReactNode, useState } from "react";
 import { Button } from "./button";
+import { Settings } from "lucide-react";
 
-export default function Header(): ReactNode {
+export default function Header({ windowName, headerShown }: Props): ReactNode {
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const [startMousePosition, setStartMousePosition] = useState<{
@@ -16,11 +17,10 @@ export default function Header(): ReactNode {
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
     setIsDragging(true);
-    console.log(e.currentTarget);
 
     setStartMousePosition({ x: e.screenX, y: e.screenY });
 
-    window.app.getWindowPosition().then((position: { x: number; y: number }) => {
+    window.app.getWindowPosition({ windowName }).then((position: { x: number; y: number }) => {
       setStartWindowPosition({ x: position.x, y: position.y });
     });
   };
@@ -30,7 +30,11 @@ export default function Header(): ReactNode {
       const dx = e.screenX - startMousePosition.x;
       const dy = e.screenY - startMousePosition.y;
 
-      window.app.setWindowPosition(startWindowPosition.x + dx, startWindowPosition.y + dy);
+      window.app.setWindowPosition({
+        x: startWindowPosition.x + dx,
+        y: startWindowPosition.y + dy,
+        windowName,
+      });
     }
   };
 
@@ -49,18 +53,16 @@ export default function Header(): ReactNode {
   }, [isDragging, startMousePosition, startWindowPosition]);
   return (
     <div
-      className={
-        "z-[999999] bg-neutral-950 border-b  w-full  border-gray-700  fixed h-[48px] top-0 flex"
-      }
+      className={`z-[999999] bg-background border-b  w-full  border-border  fixed h-[48px] top-0 ${headerShown ? "flex" : "hidden"} `}
     >
       <div
         onMouseDown={handleMouseDown}
         onDoubleClick={() => {
-          window.app.isMaximized().then((isMaximized: boolean) => {
+          window.app.isMaximized({ windowName }).then((isMaximized: boolean) => {
             if (isMaximized) {
-              window.app.unmaximize();
+              window.app.unmaximize({ windowName });
             } else {
-              window.app.maximize();
+              window.app.maximize({ windowName });
             }
           });
         }}
@@ -68,11 +70,25 @@ export default function Header(): ReactNode {
       >
         <></>
       </div>
-      <div className="ml-auto justify-center px-2 flex items-center h-full">
-        <Button id="import" size={"sm"} onClick={() => window.app.openDialog()}>
-          Import FIle
-        </Button>
+      <div className="ml-auto justify-center px-2 gap-2 flex items-center h-full">
+        {windowName === "app" && (
+          <>
+            <Button id="import" size={"sm"} onClick={() => window.app.openDialog()}>
+              Import FIle
+            </Button>
+            <button
+              className="hover:bg-hover px-1 py-1 rounded-md"
+              onClick={() => window.app.openSettings()}
+            >
+              <Settings />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
+}
+interface Props {
+  windowName: string;
+  headerShown: boolean;
 }

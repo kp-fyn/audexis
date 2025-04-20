@@ -3,10 +3,12 @@ import { Header, flexRender } from "@tanstack/react-table";
 import { CSSProperties, ReactNode } from "react";
 import { CSS as CSSUtil } from "@dnd-kit/utilities";
 import { AudioFile } from "../../../types";
+import { useUserConfig } from "@renderer/hooks/useUserConfig";
 export default function DraggableHeader({ header, children }: Props): ReactNode {
   const { attributes, isDragging, listeners, setNodeRef, transform } = useSortable({
     id: header.column.id,
   });
+  const { config, setColumns } = useUserConfig();
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.8 : 1,
@@ -24,6 +26,11 @@ export default function DraggableHeader({ header, children }: Props): ReactNode 
       {...listeners}
       tabIndex={-1}
       className="relative px-4 py-2 font-bold truncate"
+      onDoubleClick={() =>
+        setColumns(
+          config.columns.map((item) => (item.value === header.id ? { ...item, size: 200 } : item))
+        )
+      }
       style={{
         ...style,
         width: `${header.getSize()}px`,

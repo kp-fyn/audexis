@@ -1,7 +1,7 @@
-import { Tags, ImgData, Frames } from "../../../../types";
+import { Tags, ImgData, Frames } from "../../../../../types";
 import fs from "node:fs";
 import Id3V2 from "../../abstractions/Id3v2";
-import { id3v23ReverseMapping, id3v23Tags } from "../../../utils/Id3v2";
+import { id3v23ReverseMapping, id3v23Tags } from "../../../../utils/Id3v2";
 
 export default class v3 extends Id3V2 {
   picFrame: string;
@@ -134,7 +134,7 @@ export default class v3 extends Id3V2 {
           "image/jpeg": "image/jpeg",
           "image/jpg": "image/jpeg",
           "image/png": "image/png",
-          "image/gif": "image/gif"
+          "image/gif": "image/gif",
         };
         const cleanMime = supportedMimes[imgData.mime.toLowerCase()] || "image/jpeg";
 
@@ -151,7 +151,7 @@ export default class v3 extends Id3V2 {
           mimeBuffer,
           typeBuffer,
           descBuffer,
-          imageDataBuffer
+          imageDataBuffer,
         ]);
         const apicFrameSize = apicData.length;
 
@@ -181,7 +181,7 @@ export default class v3 extends Id3V2 {
       (newTagSize >> 21) & 0x7f,
       (newTagSize >> 14) & 0x7f,
       (newTagSize >> 7) & 0x7f,
-      newTagSize & 0x7f
+      newTagSize & 0x7f,
     ]);
 
     const newHeader = Buffer.concat([Buffer.from("ID3\x03\x00\x00"), newSizeBuffer]);

@@ -17,7 +17,13 @@ const Constants = {
     UNDO: "undo",
     REDO: "redo",
     SELECT_ALL: "select-all",
-    SHOW_IN_FINDER: "show-in-finder"
-  }
+    SHOW_IN_FINDER: "show-in-finder",
+    OPEN_SETTINGS: "open-settings",
+    USER_CONFIG_UPDATE: "user-config-update",
+    TEST: "test",
+    OPEN_ONBOARDING: "open-onboarding",
+    UPDATE_CONFIG: "update-config",
+    CLOSE_ONBOARDING: "close-onboarding",
+  },
 };
 export default Constants;

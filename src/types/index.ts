@@ -1,18 +1,26 @@
+import { UserConfig as UCon } from "../main/db/config";
+
+export interface UserConfig extends UCon {
+  _nothing?: never;
+}
+
 export interface ElectronAPI {
-  minimize: () => void;
-  maximize: () => void;
-  unmaximize: () => void;
+  minimize: (props: Base) => void;
+  maximize: (props: Base) => void;
+  unmaximize: (props: Base) => void;
   reloadFiles: () => void;
-  close: () => void;
+  close: (props: Base) => void;
   save: (changes: Partial<Changes>) => void;
-  isMaximized: () => Promise<boolean>;
-  setWindowPosition: (x: number, y: number) => void;
+  test: () => Promise<void>;
+  isMaximized: (props: Base) => Promise<boolean>;
+  setWindowPosition: ({ x, y, windowName }: SetWindowPosition) => void;
   openDialog: () => Promise<AudioFile[]>;
   onBlur: (listener: () => void) => void;
+  onUserConfigUpdate: (listener: (_event: unknown, updatedConfig: UserConfig) => void) => void;
   onUpdate: (listener: (_event: unknown, files: AudioFile[]) => void) => void;
   onOpenDialog: (listener: () => void) => void;
   onFocus: (listener: () => void) => void;
-  getWindowPosition: () => Promise<{ x: number; y: number }>;
+  getWindowPosition: (props: Base) => Promise<{ x: number; y: number }>;
   uploadImage: () => Promise<UploadedImage>;
   onUndo: (listener: () => void) => void;
   onRedo: (listener: () => void) => void;
@@ -20,6 +28,18 @@ export interface ElectronAPI {
   offRedo: (listener: () => void) => void;
   onSelectAll: (listener: () => void) => void;
   showInFinder(path: string): void;
+  openSettings(): void;
+  openOnboarding(): void;
+  updateConfig(config: Partial<UserConfig>): void;
+  closeOnboarding(): void;
+}
+export interface SetWindowPosition extends Base {
+  x: number;
+  y: number;
+  windowName: string;
+}
+export interface Base {
+  windowName: string;
 }
 export interface FullImage extends UploadedImage {
   url: string;
@@ -45,6 +65,16 @@ export interface UploadedImage {
   type?: { id: number; name?: string };
   description?: string;
   buffer: Buffer;
+}
+export interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  children?: Map<string, FileNode>;
+}
+export interface RootFileTree {
+  organized: Map<string, FileNode>;
+  disorgainzed: Map<string, FileNode>;
 }
 export interface ImgData {
   mime: string;

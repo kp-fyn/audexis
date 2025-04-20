@@ -6,16 +6,16 @@ import { AudioFile } from "../../../types";
 
 export default function DragCell({ cell }: Props): ReactNode {
   const { isDragging, setNodeRef, transform } = useSortable({
-    id: cell.column.id
+    id: cell.column.id,
   });
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.8 : 1,
     position: "relative",
-    transform: CSSUtil.Translate.toString(transform), // translate instead of transform to avoid squishing
+    transform: CSSUtil.Translate.toString(transform),
     transition: "width transform 0.2s ease-in-out",
     width: cell.column.getSize(),
-    zIndex: isDragging ? 1 : 0
+    zIndex: isDragging ? 1 : 0,
   };
 
   return (
@@ -24,7 +24,7 @@ export default function DragCell({ cell }: Props): ReactNode {
       style={{
         ...style,
         width: `${cell.column.getSize()}px`,
-        minWidth: `${cell.column.columnDef.minSize}px`
+        minWidth: `${cell.column.columnDef.minSize}px`,
       }}
       ref={setNodeRef}
     >

@@ -4,7 +4,9 @@ export default function ContextMenuHandler({ children, contextMenuContent }: Pro
   return (
     <ContextMenu>
       <ContextMenuTrigger className="">{children}</ContextMenuTrigger>
-      <ContextMenuContent className="z-[99999]">{contextMenuContent}</ContextMenuContent>
+      <ContextMenuContent className="z-[99999] max-h-60 overflow-y-auto bg-background">
+        {contextMenuContent}x
+      </ContextMenuContent>
     </ContextMenu>
   );
 }
