@@ -24,6 +24,7 @@ const Constants = {
     OPEN_ONBOARDING: "open-onboarding",
     UPDATE_CONFIG: "update-config",
     CLOSE_ONBOARDING: "close-onboarding",
+    WORKSPACE_ACTION: "workspace-action",
   },
 };
 export default Constants;

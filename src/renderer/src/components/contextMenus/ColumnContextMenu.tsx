@@ -8,7 +8,7 @@ export default function ColumnContextMenu({ selected }: { selected: string }): R
   const { config, setColumns } = useUserConfig();
   const allColumns = getAllColumns();
   return (
-    <div>
+    <div className="z-[99999999]">
       {allColumns.map((column) => (
         <div key={column.value}>
           {config.columns.find((c) => c.value === column.value) ? (

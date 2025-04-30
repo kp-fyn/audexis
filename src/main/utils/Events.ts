@@ -3,21 +3,31 @@ import { ipcMain, dialog, BrowserWindow, shell } from "electron";
 import Constants from "./Constants";
 import {
   mainWindowId,
-  audioFiles,
   tagManager,
   createSettingsWindow,
   windows,
   createOnboardingWindow,
   workspace,
 } from "../index";
-import { Changes } from "../../types";
+import { Changes, WorkspaceAction } from "../../types";
 import fs from "node:fs";
 import mime from "mime";
 
 import { loadConfig, saveConfig, UserConfig } from "../db/config";
 import { Low } from "lowdb/lib";
+import path from "node:path";
 let cachedDb: Low<UserConfig>;
-
+ipcMain.on(Constants.channels.WORKSPACE_ACTION, async (_event, conf: WorkspaceAction) => {
+  switch (conf.action) {
+    case "rename": {
+      workspace.rename(conf);
+      break;
+    }
+    case "move": {
+      workspace.move(conf);
+    }
+  }
+});
 ipcMain.handle(Constants.channels.UPDATE_CONFIG, async (_event, config) => {
   saveConfig(config, windows);
 });
@@ -158,20 +168,26 @@ ipcMain.handle(
 ipcMain.on(Constants.channels.RELOAD_FILES, () => {
   const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 
-  audioFiles.forEach((file) => {
+  workspace.audioFiles.forEach((file) => {
     const release = tagManager.detectTagFormat(file.path);
     if (!release) return;
     const releaseClass = tagManager.getReleaseClass(release);
     if (!releaseClass) return;
     const tags = releaseClass.getTags(file.path);
     if (!tags) return;
-    audioFiles.set(file.path, { ...tags, release, path: file.path });
+
+    workspace.audioFiles.set(file.path, {
+      ...tags,
+      release,
+      path: file.path,
+      fileName: path.basename(file.path),
+    });
   });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const toArray = [...audioFiles].map(([_fp, value]) => ({
+  const toArray = [...workspace.audioFiles].map(([_fp, value]) => ({
     ...value,
   }));
-  mainWindow?.webContents.send(Constants.channels.UPDATE, toArray);
+  mainWindow?.webContents.send(Constants.channels.UPDATE, toArray, workspace.fileTree);
 });
 
 ipcMain.handle(Constants.channels.SAVE, (_e, ch: Partial<Changes>) => {
@@ -180,19 +196,19 @@ ipcMain.handle(Constants.channels.SAVE, (_e, ch: Partial<Changes>) => {
   const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 
   ch.paths.forEach((path) => {
-    const file = audioFiles.get(path);
+    const file = workspace.audioFiles.get(path);
     if (!file) return;
     const release = tagManager.getReleaseClass(file.release);
     if (!release) return;
     release.writeTags(ch, path);
-    audioFiles.set(path, { ...file, ...ch });
+    workspace.audioFiles.set(path, { ...file, ...ch });
   });
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const toArray = [...audioFiles].map(([_n, value]) => ({
+  const toArray = [...workspace.audioFiles].map(([_n, value]) => ({
     ...value,
   }));
 
-  mainWindow?.webContents.send(Constants.channels.UPDATE, toArray);
+  mainWindow?.webContents.send(Constants.channels.UPDATE, toArray, workspace.fileTree);
 });
 ipcMain.on(Constants.channels.SHOW_IN_FINDER, (_e, path): void => {
   shell.showItemInFolder(path);

@@ -3,6 +3,15 @@ import { UserConfig as UCon } from "../main/db/config";
 export interface UserConfig extends UCon {
   _nothing?: never;
 }
+export interface Watcher {
+  unsubscribe: () => Promise<void>;
+  isFile: boolean;
+}
+export interface WorkspaceAction {
+  action: "rename" | "new-directory" | "move";
+  str: string;
+  path: string;
+}
 
 export interface ElectronAPI {
   minimize: (props: Base) => void;
@@ -12,12 +21,15 @@ export interface ElectronAPI {
   close: (props: Base) => void;
   save: (changes: Partial<Changes>) => void;
   test: () => Promise<void>;
+  workspaceAction: (action: WorkspaceAction) => void;
   isMaximized: (props: Base) => Promise<boolean>;
   setWindowPosition: ({ x, y, windowName }: SetWindowPosition) => void;
   openDialog: () => Promise<AudioFile[]>;
   onBlur: (listener: () => void) => void;
   onUserConfigUpdate: (listener: (_event: unknown, updatedConfig: UserConfig) => void) => void;
-  onUpdate: (listener: (_event: unknown, files: AudioFile[]) => void) => void;
+  onUpdate: (
+    listener: (_event: unknown, files: AudioFile[], fileTree: RootFileTree) => void
+  ) => void;
   onOpenDialog: (listener: () => void) => void;
   onFocus: (listener: () => void) => void;
   getWindowPosition: (props: Base) => Promise<{ x: number; y: number }>;
@@ -57,6 +69,8 @@ declare global {
 export interface AudioFile extends Tags {
   path: string;
   release: string;
+  fileName: string;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }

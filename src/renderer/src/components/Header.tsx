@@ -77,7 +77,7 @@ export default function Header({ windowName, headerShown }: Props): ReactNode {
               Import FIle
             </Button>
             <button
-              className="hover:bg-hover px-1 py-1 rounded-md"
+              className="hover:bg-hover px-2 py-1 rounded-md"
               onClick={() => window.app.openSettings()}
             >
               <Settings />

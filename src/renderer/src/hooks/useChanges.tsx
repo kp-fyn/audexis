@@ -11,15 +11,16 @@ import {
 } from "react";
 import { useHistoryState } from "@uidotdev/usehooks";
 
-import { Changes, AudioFile } from "./../../../types";
+import { Changes, AudioFile, RootFileTree } from "./../../../types";
 
 interface ChangesContxt {
   changes: Partial<AudioFile>;
   neededItems: { value: string; label: string; maxLength?: number }[];
   setChanges: (newPresent: Partial<AudioFile>) => void;
   setSelected: Dispatch<SetStateAction<string[]>>;
+  setFileTree: Dispatch<SetStateAction<RootFileTree>>;
   selected: string[];
-
+  fileTree: RootFileTree;
   saveChanges: () => void;
   clearChanges: () => void;
   files: AudioFile[];
@@ -32,7 +33,13 @@ const ChangesContext = createContext<ChangesContxt>({
   clearChanges: () => {
     throw new Error("clearChanges function must be overridden");
   },
-
+  setFileTree: () => {
+    throw new Error("clearChanges function must be overridden");
+  },
+  fileTree: {
+    disorgainzed: new Map(),
+    organized: new Map(),
+  },
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
@@ -65,6 +72,10 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
 
   const [files, setFiles] = useState<AudioFile[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [fileTree, setFileTree] = useState<RootFileTree>({
+    disorgainzed: new Map(),
+    organized: new Map(),
+  });
 
   function handleUndo(): void {
     if (canUndo) {
@@ -123,7 +134,8 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
         saveChanges,
         clearChanges: clear,
         selected,
-
+        fileTree,
+        setFileTree,
         setSelected,
         files,
         setFiles,

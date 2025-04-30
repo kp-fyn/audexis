@@ -5,6 +5,7 @@ import { app, BrowserWindow } from "electron";
 
 import path from "path";
 import Constants from "../utils/Constants";
+import { workspace } from "..";
 
 const columns = z
   .object({
@@ -55,9 +56,19 @@ export async function saveConfig(
   config: Partial<UserConfig>,
   windows: Map<string, number>
 ): Promise<void> {
+  const initial = { ...db.data };
   db.data = ConfigSchema.parse({ ...db.data, ...config });
 
   await db.write();
+  if (config.view) {
+    if (db.data.view !== initial.view) {
+      if (db.data.view === "folder") {
+        workspace.startWatching();
+      } else {
+        workspace.stopWatching();
+      }
+    }
+  }
   // workspace.init(db.data.view);
   windows.forEach((window) => {
     const win = BrowserWindow.fromId(window);

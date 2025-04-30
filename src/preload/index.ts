@@ -2,7 +2,7 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { ipcRenderer, contextBridge } from "electron";
 import Constants from "./Constants";
 
-import { Changes, Base, SetWindowPosition, UserConfig } from "../types";
+import { Changes, Base, SetWindowPosition, UserConfig, WorkspaceAction } from "../types";
 // Custom APIs for renderer
 const api = {};
 
@@ -35,6 +35,8 @@ try {
   contextBridge.exposeInMainWorld("app", {
     minimize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MINIMIZE, props),
     maximize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MAXIMIZE, props),
+    workspaceAction: (workspaceAction: WorkspaceAction) =>
+      ipcRenderer.send(Constants.channels.WORKSPACE_ACTION, workspaceAction),
     reloadFiles: () => ipcRenderer.send(Constants.channels.RELOAD_FILES),
     save: (changes: Partial<Changes>): void => {
       ipcRenderer.invoke(Constants.channels.SAVE, changes);

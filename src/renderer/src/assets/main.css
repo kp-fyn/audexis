@@ -50,7 +50,7 @@
 .dark {
   --background: #0a0a0a;
   --foreground: #f8fafc;
-  --hover: #40404083;
+  --hover: rgba(157, 172, 196, 0.1);
   --card: #060e14;
   --card-foreground: #f8fafc;
 

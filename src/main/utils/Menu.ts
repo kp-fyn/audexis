@@ -1,5 +1,5 @@
 import { BrowserWindow, Menu, MenuItem, MenuItemConstructorOptions, app } from "electron";
-import { audioFiles, createSettingsWindow, mainWindowId } from "../index";
+import { workspace, createSettingsWindow, mainWindowId } from "../index";
 import Constants from "./Constants";
 const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 const menuItems: MenuItemConstructorOptions[] = [
@@ -47,10 +47,13 @@ const menuItems: MenuItemConstructorOptions[] = [
     submenu: [
       { role: "reload" },
       {
-        role: "forceReload",
+        label: "Force Reload",
+        accelerator: "CmdOrCtrl+Shift+R",
         click: (): void => {
-          audioFiles.clear();
-          mainWindow?.reload();
+          console.log("e");
+          workspace.audioFiles.clear();
+          workspace.resetTree();
+          workspace.sendUpdate();
         },
       },
       { type: "separator" },

@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, Menu } from "electron";
 import { join } from "path";
 import { electronApp, is } from "@electron-toolkit/utils";
-import { AudioFile } from "../types";
+
 import getMenu from "./utils/Menu";
 import TagManager from "./classes/TagManager";
 
@@ -12,10 +12,10 @@ import Constants from "./utils/Constants";
 import Workspace from "./classes/Workspace";
 
 const tagManager = new TagManager();
-const audioFiles = new Map<string, AudioFile>();
+
 const workspace = new Workspace();
 const windows = new Map<string, number>();
-const folders: string[] = [];
+
 const menu = getMenu();
 
 let mainWindowId: number = 0;
@@ -207,12 +207,10 @@ async function createOnboardingWindow(): Promise<void> {
 
 export {
   mainWindowId,
-  audioFiles,
   tagManager,
   settingsWindowId,
   createSettingsWindow,
   windows,
   createOnboardingWindow,
-  folders,
   workspace,
 };

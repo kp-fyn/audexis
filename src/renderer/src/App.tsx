@@ -36,7 +36,8 @@ export default function App(): ReactNode {
   const [previous, setPrevious] = useState<number>(0);
   const { config, setColumns } = useUserConfig();
 
-  const { selected, setSelected, files, setFiles } = useChanges();
+  const { selected, setSelected, files, setFiles, setFileTree } = useChanges();
+
   const [lastSelected, setLastSelected] = useState<number>(-1);
   const { sidebarWidth } = useSidebarWidth();
 
@@ -83,12 +84,13 @@ export default function App(): ReactNode {
   useEffect(() => {
     window.app.reloadFiles();
 
-    window.app.onUpdate((_e, updatedFiles) => {
+    window.app.onUpdate((_e, updatedFiles, ft) => {
       //  updatedFiles.map((file) => {
       //     if (file.corrupted) return file;
       //   });
 
       setFiles(updatedFiles);
+      setFileTree(ft);
     });
   }, []);
   useEffect(() => {
@@ -252,102 +254,104 @@ export default function App(): ReactNode {
       onDragEnd={handleDragEnd}
       sensors={sensors}
     >
-      <div className="w-full h-full block mt-12 text-foreground" id="App">
-        <Sidebar />
-        <div className="w-full h-full" style={{ marginLeft: sidebarWidth }}>
-          <div className="min-w-max min-h-full" ref={tableRef} id="table">
-            <div className="sticky z-[999]  top-[48px] h-[40px]  bg-background text-foreground border-b border-border p-0">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <ContextMenuHandler
-                  key={headerGroup.id}
-                  contextMenuContent={<ColumnContextMenu selected={"__nun"} />}
-                >
-                  <div className="flex ml-12 h-full">
-                    <SortableContext
-                      items={columnOrder}
-                      strategy={horizontalListSortingStrategy}
-                      key={headerGroup.id}
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <ContextMenuHandler
-                          key={header.id}
-                          contextMenuContent={<ColumnContextMenu selected={header.id} />}
-                        >
-                          <DraggableHeader header={header}>
-                            <div
-                              onDoubleClick={() => {
-                                setColumns(
-                                  config.columns.map((item) =>
-                                    item.value === header.id ? { ...item, size: 200 } : item
-                                  )
-                                );
-                              }}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
+      <div className="overflow-hidden flex flex-row h-full">
+        <Sidebar></Sidebar>
+        <div
+          className="w-full h-full block text-foreground overflow-x-scroll"
+          id="App"
+          style={{ marginLeft: sidebarWidth }}
+        >
+          <div className="w-full h-full  flex">
+            <div className=" min-h-full" ref={tableRef} id="table">
+              <ContextMenuHandler contextMenuContent={<ColumnContextMenu selected={"__nun"} />}>
+                <div className="sticky z-50   top-[48px] h-[40px]    bg-background text-foreground border-b border-border p-0">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <div key={headerGroup.id} className="flex ml-12 h-full">
+                      <SortableContext
+                        items={columnOrder}
+                        strategy={horizontalListSortingStrategy}
+                        key={headerGroup.id}
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <ContextMenuHandler
+                            key={header.id}
+                            contextMenuContent={<ColumnContextMenu selected={header.id} />}
+                          >
+                            <DraggableHeader header={header}>
+                              <div
+                                onDoubleClick={() => {
+                                  setColumns(
+                                    config.columns.map((item) =>
+                                      item.value === header.id ? { ...item, size: 200 } : item
+                                    )
+                                  );
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
 
-                                startResizing(header.id, e);
-                              }}
-                              onTouchStart={header.getResizeHandler()}
-                              className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-background select-none transition-opacity hover:bg-border hover:opacity-100"
-                            >
-                              <div className=" border-r border-border h-full"></div>
-                            </div>
-                          </DraggableHeader>
-                        </ContextMenuHandler>
-                      ))}
-                    </SortableContext>
-                  </div>
-                </ContextMenuHandler>
-              ))}
-            </div>
-
-            <div className="divide-y divide-gray-700">
-              {table.getRowModel().rows.map((row) => {
-                const isSelected = selected.includes(row.original.path);
-                const currentFile = row.original as AudioFile;
-
-                return (
-                  <ContextMenuHandler
-                    contextMenuContent={<TrackContextMenu file={currentFile} />}
-                    key={row.id}
-                  >
-                    <div
-                      className={`flex cursor-pointer  h-12 items-center px-1 border-b border-border   transition-colors ${
-                        isSelected ? "bg-accent" : "bg-background  hover:bg-hover"
-                        // : row.index % 2 === 0
-                        //   ? "bg-neutral-900"
-                        //   : "bg-neutral-950"
-                      } }`}
-                      onClick={(e) => handleSelection(row.index, row.original.path, e)}
-                    >
-                      <div className="w-12 h-12 rounded ">
-                        {row.original.attachedPicture &&
-                          typeof row.original.attachedPicture !== "string" && (
-                            <img
-                              className=" h-full"
-                              src={URL.createObjectURL(
-                                new Blob([row.original.attachedPicture.buffer], {
-                                  type: row.original.attachedPicture.mime,
-                                })
-                              )}
-                            />
-                          )}
-                      </div>
-                      {row.getVisibleCells().map((cell) => (
-                        <SortableContext
-                          key={cell.id}
-                          items={columnOrder}
-                          strategy={horizontalListSortingStrategy}
-                        >
-                          {/* <DragAlongCell key={cell.id} cell={cell} /> */}
-
-                          <DragCell key={cell.id} cell={cell} />
-                        </SortableContext>
-                      ))}
+                                  startResizing(header.id, e);
+                                }}
+                                onTouchStart={header.getResizeHandler()}
+                                className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-background select-none transition-opacity hover:bg-border hover:opacity-100"
+                              >
+                                <div className=" border-r border-border h-full"></div>
+                              </div>
+                            </DraggableHeader>
+                          </ContextMenuHandler>
+                        ))}
+                      </SortableContext>
                     </div>
-                  </ContextMenuHandler>
-                );
-              })}
+                  ))}
+                </div>
+              </ContextMenuHandler>
+              <div className="divide-y divide-gray-700 mt-[48px]">
+                {table.getRowModel().rows.map((row) => {
+                  const isSelected = selected.includes(row.original.path);
+                  const currentFile = row.original as AudioFile;
+
+                  return (
+                    <ContextMenuHandler
+                      contextMenuContent={<TrackContextMenu file={currentFile} />}
+                      key={row.id}
+                    >
+                      <div
+                        className={`flex cursor-pointer  h-12 items-center px-1 border-b border-border   transition-colors ${
+                          isSelected ? "bg-accent" : "bg-background  hover:bg-hover focus:bg-hover"
+                          // : row.index % 2 === 0
+                          //   ? "bg-neutral-900"
+                          //   : "bg-neutral-950"
+                        } }`}
+                        onClick={(e) => handleSelection(row.index, row.original.path, e)}
+                      >
+                        <div className="w-12 h-12 rounded ">
+                          {row.original.attachedPicture &&
+                            typeof row.original.attachedPicture !== "string" && (
+                              <img
+                                className=" h-full"
+                                src={URL.createObjectURL(
+                                  new Blob([row.original.attachedPicture.buffer], {
+                                    type: row.original.attachedPicture.mime,
+                                  })
+                                )}
+                              />
+                            )}
+                        </div>
+                        {row.getVisibleCells().map((cell) => (
+                          <SortableContext
+                            key={cell.id}
+                            items={columnOrder}
+                            strategy={horizontalListSortingStrategy}
+                          >
+                            {/* <DragAlongCell key={cell.id} cell={cell} /> */}
+
+                            <DragCell key={cell.id} cell={cell} />
+                          </SortableContext>
+                        ))}
+                      </div>
+                    </ContextMenuHandler>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
