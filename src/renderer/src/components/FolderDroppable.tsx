@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { FileNode } from "src/types";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 export default function FolderDroppable({ children, fn }: Props): ReactNode {
-  const isFake = fn.path === ":/fake";
+  const isFake = fn.path === ":/fake" || fn.path === ":/fake2";
   const {
     attributes,
     listeners,

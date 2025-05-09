@@ -13,6 +13,7 @@ import { Button } from "./components/button";
 import queryString from "query-string";
 import { UserConfigProvider } from "./hooks/useUserConfig";
 import Onboarding from "./Onboarding";
+import { BottomHeightProvider } from "./hooks/useBottombarHeight";
 window.app.onOpenDialog(() => {
   window.app.openDialog();
 });
@@ -55,7 +56,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <Header headerShown={headerShown} windowName={page} />
 
         <ChangesProvider>
-          <SidebarWidthProvider>{content}</SidebarWidthProvider>
+          <BottomHeightProvider>
+            <SidebarWidthProvider>{content}</SidebarWidthProvider>
+          </BottomHeightProvider>
         </ChangesProvider>
       </UserConfigProvider>
     </ErrorBoundary>

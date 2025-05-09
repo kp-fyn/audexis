@@ -4,12 +4,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FileMusic, FolderClosed, FolderOpen } from "lucide-react";
 import path from "path-browserify";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { FileNode } from "src/types";
+import { AudioFile, FileNode } from "src/types";
 import { useChanges } from "../hooks/useChanges";
 import ContextMenuHandler from "./ContextMenuHandler";
 import FileContextMenu from "./contextMenus/FileContextMenu";
-import FileDraggable from "./FileDraggable";
+// import FileDraggable from "./FileDraggable";
 import FolderDroppable from "./FolderDroppable";
+import useKeyDown from "@renderer/hooks/useKeyDown";
+import FileDraggable from "./FileDraggable";
 export default function FileTree(): ReactNode {
   const { fileTree } = useChanges();
   const [activeDragItem, setActiveDragItem] = useState<FileNode | null>(null);
@@ -31,7 +33,7 @@ export default function FileTree(): ReactNode {
   const disorganized: Map<string, FileNode> = new Map();
   disorganized.set(":/fake", {
     name: "Disorganized Files",
-    path: ":/fake",
+    path: ":/fake2",
     type: "directory",
     children: fileTree.disorgainzed,
   });
@@ -82,7 +84,12 @@ export default function FileTree(): ReactNode {
   );
 }
 
-function FileNodeHandler({ items, num = 0, initial = false }: CollapsibleProps): ReactNode {
+function FileNodeHandler({
+  items,
+  num = 0,
+  initial = false,
+  showFiles = false,
+}: CollapsibleProps): ReactNode {
   const values = [...items.values()].sort((a, b) => {
     if (a.type === "directory" && b.type !== "directory") return -1;
     if (a.type !== "directory" && b.type === "directory") return 1;
@@ -91,7 +98,7 @@ function FileNodeHandler({ items, num = 0, initial = false }: CollapsibleProps):
 
   return (
     <>
-      {values.map((v) => {
+      {values.map((v: FileNode) => {
         if (v.type === "directory") {
           return (
             <FolderDroppable key={v.path + "folder"} fn={v}>
@@ -99,12 +106,21 @@ function FileNodeHandler({ items, num = 0, initial = false }: CollapsibleProps):
             </FolderDroppable>
           );
         } else {
-          return (
-            <FileDraggable key={v.path + "file"} fn={v}>
-              <FileTreeItem initial={initial} node={v} depth={num} />
-            </FileDraggable>
-          );
+          if (showFiles) {
+            return (
+              <FileDraggable key={v.path + "file"} fn={v}>
+                <FileTreeItem initial={initial} node={v} depth={num} />
+              </FileDraggable>
+            );
+          } else return null;
         }
+        // else {
+        //   return (
+        //     <FileDraggable key={v.path + "file"} fn={v}>
+        //       <FileTreeItem initial={initial} node={v} depth={num} />
+        //     </FileDraggable>
+        //   );
+        // }
       })}
     </>
   );
@@ -115,17 +131,22 @@ interface FileTreeItemProps {
   initial?: boolean;
 }
 
-function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): ReactNode {
-  const [open, setOpen] = useState(initial);
+function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
+  const { setFileTreeFolderSelected, fileTreeFolderSelected, setFilesToShow } = useChanges();
+  const { fileTree, setSelected, selected } = useChanges();
+  // const [open, setOpen] = useState(initial);
   const isDir = node.type === "directory";
   const [isRenaming, setisRenaming] = useState(false);
   const [contextHover, setContextHover] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
+  const metaKeyDown = useKeyDown("Meta");
 
   const [val, setVal] = useState(node.name);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent): void => {
+    if (e.button !== 0) return;
     pointerDownRef.current = { x: e.clientX, y: e.clientY };
   };
 
@@ -136,9 +157,84 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
     const dy = Math.abs(e.clientY - pointerDownRef.current.y);
 
     const isClick = dx < 5 && dy < 5;
+    if (!isClick) return;
+    if (isDir) {
+      // setOpen((prev) => !prev);
+      if (fileTreeFolderSelected.includes(node.path)) {
+        if (metaKeyDown) {
+          if (fileTreeFolderSelected.length < 2) {
+            setFilesToShow([]);
+            setFileTreeFolderSelected([]);
+          } else {
+            const newFiles: AudioFile[] = [];
+            if (node.children) {
+              node.children.forEach((child) => {
+                if (child.type !== "directory" && child.audioFile) {
+                  newFiles.push({ ...child.audioFile, parentPath: node.path });
+                }
+              });
+            }
 
-    if (isClick && isDir) {
-      setOpen((prev) => !prev);
+            setFilesToShow([...newFiles]);
+            setFileTreeFolderSelected([node.path]);
+          }
+        } else {
+          setFileTreeFolderSelected((prev) => prev.filter((v) => v !== node.path));
+
+          setFilesToShow((prev) => prev.filter((v) => v.parentPath !== node.path));
+        }
+        selected.forEach((s) => {
+          const parentPath = path.dirname(s);
+
+          const parentNode = findFileNodeByPath(fileTree, parentPath);
+          if (!parentNode) return;
+          if (parentNode.path === node.path) {
+            setSelected((prev) => prev.filter((v) => v !== s));
+          }
+        });
+      } else {
+        if (metaKeyDown) {
+          const newFiles: AudioFile[] = [];
+          if (node.children) {
+            node.children.forEach((child) => {
+              if (child.type !== "directory" && child.audioFile) {
+                newFiles.push({ ...child.audioFile, parentPath: node.path });
+              }
+            });
+            setFilesToShow((prev) => [...prev, ...newFiles]);
+            setFileTreeFolderSelected((prev) => [...prev, node.path]);
+          }
+        } else {
+          const newFiles: AudioFile[] = [];
+          if (node.children) {
+            node.children.forEach((child) => {
+              if (child.type !== "directory" && child.audioFile) {
+                newFiles.push({ ...child.audioFile, parentPath: node.path });
+              }
+            });
+          }
+
+          setFilesToShow([...newFiles]);
+          setFileTreeFolderSelected([node.path]);
+        }
+      }
+    } else {
+      const parentPath = path.dirname(node.path);
+      const parentNode = findFileNodeByPath(fileTree, parentPath);
+      if (!parentNode) return;
+      if (metaKeyDown) {
+        if (selected.includes(node.path)) {
+          setSelected((prev) => prev.filter((v) => v !== node.path));
+        } else {
+          setSelected((prev) => [...prev, node.path]);
+        }
+      } else {
+        if (selected.includes(node.path)) {
+          setSelected((prev) => prev.filter((v) => v !== node.path));
+        } else {
+          setSelected([node.path]);
+        }
+      }
     }
 
     pointerDownRef.current = null;
@@ -157,29 +253,42 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
     }
   }, [isRenaming]);
   useEffect(() => {
+    if (fileTreeFolderSelected.length === 0) setSelected([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileTreeFolderSelected]);
+  useEffect(() => {
     setVal(node.name);
-  }, [node.name]);
+  }, [node]);
 
   return (
     <ContextMenuHandler
       setOpen={setContextHover}
-      disabled={node.path === ":/fake"}
-      contextMenuContent={<FileContextMenu setIsRenaming={setisRenaming} file={node} />}
+      // disabled={}
+      contextMenuContent={
+        <FileContextMenu
+          checked={showFiles}
+          setChecked={setShowFiles}
+          setIsRenaming={setisRenaming}
+          file={node}
+        />
+      }
     >
       <div className={`flex flex-col relative  transition `}>
         <div
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
-          className={`relative  cursor-pointer select bg-none hover:bg-hover flex flex-nowrap`}
+          className={`relative  cursor-pointer select ${(contextHover || fileTreeFolderSelected.includes(node.path) || selected.includes(node.path)) && "bg-hover"} hover:bg-hover flex flex-nowrap`}
         >
           <div className="absolute inset-0 z-[-1] rounded-sm" />
 
           <div
-            className="flex items-center gap-1 py-1 px-4 text-xs  text-nowrap flex-nowrap w-full"
+            className="flex items-center gap-1 py-1 px-4 text-xs  text-nowrap flex-nowrap w-full text-muted-foreground"
             style={{ paddingLeft: `${depth + 24}px` }}
           >
+            {/* {isDir ? (
+              open ? ( */}
             {isDir ? (
-              open ? (
+              showFiles ? (
                 <FolderOpen size={16} className="shrink-0" />
               ) : (
                 <FolderClosed size={16} className="shrink-0" />
@@ -187,12 +296,18 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
             ) : (
               <FileMusic size={16} className="shrink-0" />
             )}
+            {/* ) : (
+                <FolderClosed size={16} className="shrink-0" />
+              )
+            ) : (
+              <FileMusic size={16} className="shrink-0" />
+            )} */}
 
             {isRenaming ? (
               <input
                 ref={inputRef}
                 defaultValue={node.name}
-                className="inset-0 w-full border-accent border-2 outline-none"
+                className="inset-0 w-full bg-background rounded border-accent border-2 outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && inputRef.current) {
                     const newName = inputRef.current.value;
@@ -224,7 +339,7 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
         </div>
 
         <AnimatePresence initial={false}>
-          {isDir && open && node.children && (
+          {isDir && node.children && (
             <motion.div
               className="relative flex flex-col w-full"
               initial={{ height: 0, opacity: 1, y: -10 }}
@@ -236,7 +351,7 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
                 className="absolute top-0 bottom-0 w-[1px] bg-gray-400 z-[9999999999]"
                 style={{ left: `${depth + 28}px` }}
               />
-              <FileNodeHandler items={node.children} num={depth + 16} />
+              <FileNodeHandler showFiles={showFiles} items={node.children} num={depth + 16} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -247,6 +362,7 @@ function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): Reac
 interface CollapsibleProps {
   items: Map<string, FileNode>;
   num?: number;
+  showFiles?: boolean;
   initial?: boolean;
 }
 function isDescendant(parent: FileNode, child: FileNode): boolean {

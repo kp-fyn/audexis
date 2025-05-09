@@ -48,6 +48,7 @@ export default function Sidebar(): ReactNode {
   return (
     <div
       ref={sidebarRef}
+      tabIndex={1}
       style={{
         width: `${sidebarWidth}`,
         // minWidth: "300px",

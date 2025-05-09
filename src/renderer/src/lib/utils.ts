@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
-import { FileNode } from "src/types";
+import { AudioFile, FileNode } from "src/types";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]): string {
@@ -78,4 +78,26 @@ export function findFileNodeByPath(
   };
 
   return search(tree.organized) || search(tree.disorgainzed);
+}
+
+export function getAudioFiles(tree: Map<string, FileNode>): AudioFile[] {
+  const audioFiles: AudioFile[] = [];
+
+  const traverse = (node: FileNode): void => {
+    if (node.type === "file" && node.audioFile) {
+      audioFiles.push(node.audioFile);
+    }
+
+    if (node.type === "directory" && node.children) {
+      for (const child of node.children.values()) {
+        traverse(child);
+      }
+    }
+  };
+
+  for (const node of tree.values()) {
+    traverse(node);
+  }
+
+  return audioFiles;
 }

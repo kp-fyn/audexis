@@ -3,7 +3,7 @@
 import { createContext, useContext, ReactNode, useEffect, useState } from "react";
 import { UserConfig } from "../../../types";
 
-const UserConfigContext = createContext<config>({
+const UserConfigContext = createContext<Config>({
   config: {
     theme: "light",
     onboarding: false,
@@ -14,14 +14,14 @@ const UserConfigContext = createContext<config>({
   setView: () => {},
   setColumns: () => {},
 });
-interface config {
+interface Config {
   config: UserConfig;
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: "simple" | "folder") => void;
   setColumns: (column: { label: string; size: number; value: string }[]) => void;
 }
 
-export function useUserConfig(): config {
+export function useUserConfig(): Config {
   const context = useContext(UserConfigContext);
 
   if (!context) {
@@ -59,7 +59,11 @@ export function UserConfigProvider({
       document.documentElement.classList.add(cachedTheme as "light" | "dark");
     }
     window.app.onUserConfigUpdate((_e, config) => {
-      setUserConfig(config);
+      setUserConfig((prev) => {
+        const hasChanged = JSON.stringify(prev) !== JSON.stringify(config);
+        if (!hasChanged) return prev;
+        return config;
+      });
       localStorage.setItem("theme", config.theme);
       if (config.onboarding === true) {
         setHasOpened(true);
@@ -93,8 +97,11 @@ export function UserConfigProvider({
           window.app.updateConfig({ view });
         },
         setColumns: (c) => {
-          setUserConfig({ ...userConfig, columns: c });
-          window.app.updateConfig({ columns: c });
+          setUserConfig((prev) => {
+            const updated = { ...prev, columns: c };
+            window.app.updateConfig({ columns: c });
+            return updated;
+          });
         },
       }}
     >

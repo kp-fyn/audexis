@@ -1,4 +1,4 @@
-"use client";
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, FC, ReactNode } from "react";
 
 import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
@@ -10,7 +10,7 @@ interface SidebarWidth {
 
 const SidebarWidthContext = createContext<SidebarWidth>({
   sidebarWidth: "300px",
-  setSidebarWidth: () => {}
+  setSidebarWidth: () => {},
 });
 
 export const useSidebarWidth = (): SidebarWidth => {
@@ -36,38 +36,17 @@ export const SidebarWidthProvider: FC<{
 
       setPercentage((300 / width) * 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (sidebarWidth.endsWith("px")) {
-      const nw = sidebarWidth.split("px")[0];
-      if (parseInt(nw) < 300 || isNaN(parseInt(nw))) {
-        setSidebarWidth("300px");
-        setPercentage((300 / width) * 100);
-      } else if (parseInt(nw) > width - 200) {
-        setSidebarWidth(`${width - 200}px`);
-        setPercentage(((width - 200) / width) * 100);
-      } else {
-        const d = percentage / 100;
-        const newWidth = d * width;
-        if (newWidth >= 300) {
-          setSidebarWidth(`${newWidth}px`);
-          setPercentage((newWidth / width) * 100);
-        } else {
-          setSidebarWidth("300px");
-          setPercentage((300 / width) * 100);
-        }
-      }
-    } else {
-      setSidebarWidth("300px");
-      setPercentage((300 / width) * 100);
-    }
-  }, [width]);
+    setSidebarWidth(`${width * (percentage / 100)}px`);
+  }, [width, percentage]);
   function setWidth(w: string): void {
     if (w.endsWith("px")) {
       const nw = w.split("px")[0];
       if (parseInt(nw) < 300 || isNaN(parseInt(nw))) {
         setSidebarWidth(w);
-        // setSidebarWidth("300px");
+        setSidebarWidth("300px");
       } else if (parseInt(nw) > width - 100) {
         setSidebarWidth(`${width - 100}px`);
       } else {
@@ -75,6 +54,7 @@ export const SidebarWidthProvider: FC<{
       }
     }
   }
+
   return (
     <SidebarWidthContext.Provider value={{ sidebarWidth, setSidebarWidth: setWidth }}>
       {children}

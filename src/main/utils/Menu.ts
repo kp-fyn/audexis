@@ -38,7 +38,6 @@ const menuItems: MenuItemConstructorOptions[] = [
 
       {
         role: "selectAll",
-        click: () => mainWindow?.webContents.send(Constants.channels.REDO),
       },
     ],
   },
@@ -50,8 +49,6 @@ const menuItems: MenuItemConstructorOptions[] = [
         label: "Force Reload",
         accelerator: "CmdOrCtrl+Shift+R",
         click: (): void => {
-          console.log("e");
-          workspace.audioFiles.clear();
           workspace.resetTree();
           workspace.sendUpdate();
         },

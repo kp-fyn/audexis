@@ -1,17 +1,17 @@
-import { AudioFile, RootFileTree, FileNode, Watcher, WorkspaceAction } from "../../../types";
+import { RootFileTree, FileNode, Watcher, WorkspaceAction } from "../../../types";
 import { subscribe, Event } from "@parcel/watcher";
 import { tagManager, mainWindowId } from "../..";
 import fs from "fs-extra";
 import path from "path";
 import { BrowserWindow } from "electron";
 import Constants from "../../utils/Constants";
-import { loadConfig } from "../../db/config";
+
 import { findFileNodeByPath } from "../../utils/findNodeByPath";
 import { isDescendant } from "../../utils/isDescendant";
 
 export default class Workspace {
   public fileTree: RootFileTree;
-  public audioFiles: Map<string, AudioFile>;
+
   private watchers: Map<string, Watcher>;
 
   constructor() {
@@ -19,7 +19,7 @@ export default class Workspace {
       organized: new Map<string, FileNode>(),
       disorgainzed: new Map<string, FileNode>(),
     };
-    this.audioFiles = new Map<string, AudioFile>();
+
     this.watchers = new Map<string, Watcher>();
   }
   public resetTree(): void {
@@ -49,17 +49,17 @@ export default class Workspace {
         const updatedPath = path.join(newBase, relative);
         const updatedName = path.basename(updatedPath);
 
-        if (node.type === "file") {
-          if (this.audioFiles.has(node.path)) {
-            const oldMeta = this.audioFiles.get(node.path)!;
-            this.audioFiles.delete(node.path);
-            this.audioFiles.set(updatedPath, {
-              ...oldMeta,
-              path: updatedPath,
-              fileName: updatedName,
-            });
-          }
-        }
+        // if (node.type === "file") {
+        //   if (this.audioFiles.has(node.path)) {
+        //     const oldMeta = this.audioFiles.get(node.path)!;
+        //     this.audioFiles.delete(node.path);
+        //     this.audioFiles.set(updatedPath, {
+        //       ...oldMeta,
+        //       path: updatedPath,
+        //       fileName: updatedName,
+        //     });
+        //   }
+        // }
 
         let updatedChildren: Map<string, FileNode> | undefined = undefined;
 
@@ -97,15 +97,15 @@ export default class Workspace {
                   name: path.basename(newPath),
                 };
 
-          if (node.type === "file" && this.audioFiles.has(oldPath)) {
-            const oldMeta = this.audioFiles.get(oldPath)!;
-            this.audioFiles.delete(oldPath);
-            this.audioFiles.set(newPath, {
-              ...oldMeta,
-              path: newPath,
-              fileName: path.basename(newPath),
-            });
-          }
+          // if (node.type === "file" && this.audioFiles.has(oldPath)) {
+          //   const oldMeta = this.audioFiles.get(oldPath)!;
+          //   this.audioFiles.delete(oldPath);
+          //   this.audioFiles.set(newPath, {
+          //     ...oldMeta,
+          //     path: newPath,
+          //     fileName: path.basename(newPath),
+          //   });
+          // }
 
           tree.delete(oldPath);
           tree.set(newPath, updatedNode);
@@ -122,7 +122,7 @@ export default class Workspace {
   }
   public async import(importPath: string, recursion: boolean = false): Promise<string[]> {
     const ft = await this.checkFileType(importPath);
-    if (this.audioFiles.get(importPath)) return [];
+    // if (this.audioFiles.get(importPath)) return [];
     if (!ft) return [];
     const files: string[] = [];
 
@@ -150,18 +150,19 @@ export default class Workspace {
         if (entry.isDirectory()) {
           const subFiles = await this.import(fullPath, true);
           files.push(...subFiles);
-        } else if (this.isSupportedFile(fullPath)) {
-          const file = path.join(entry.parentPath, entry.name);
-
-          const release = tagManager.detectTagFormat(file);
-          if (!release) continue;
-          const releaseClass = tagManager.getReleaseClass(release);
-          if (!releaseClass) continue;
-          const tags = releaseClass.getTags(file);
-          if (!tags) continue;
-
-          this.audioFiles.set(file, { ...tags, release, path: file, fileName: entry.name });
         }
+        // else if (this.isSupportedFile(fullPath)) {
+        //   const file = path.join(entry.parentPath, entry.name);
+
+        //   const release = tagManager.detectTagFormat(file);
+        //   if (!release) continue;
+        //   const releaseClass = tagManager.getReleaseClass(release);
+        //   if (!releaseClass) continue;
+        //   const tags = releaseClass.getTags(file);
+        //   if (!tags) continue;
+
+        //   this.audioFiles.set(file, { ...tags, release, path: file, fileName: entry.name });
+        // }
       }
     } else if (ft === "file") {
       if (this.isSupportedFile(importPath)) {
@@ -173,29 +174,24 @@ export default class Workspace {
         if (!releaseClass) return [];
         const tags = releaseClass.getTags(file);
         if (!tags) return [];
-        this.audioFiles.set(file, {
-          ...tags,
-          release,
-          path: file,
-          fileName: path.basename(importPath),
-        });
+
         if (!recursion)
           this.fileTree.disorgainzed.set(importPath, {
             name: path.basename(importPath),
             path: importPath,
             type: "file",
+            audioFile: {
+              ...tags,
+              release,
+              path: file,
+              fileName: path.basename(importPath),
+            },
           });
       }
     }
     if (!recursion) {
-      const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
-      const toArray = [...this.audioFiles].map(([, value]) => ({
-        ...value,
-      }));
-      const db = await loadConfig();
-
-      if (db.data.view === "folder") this.startWatching();
-      mainWindow?.webContents.send(Constants.channels.UPDATE, toArray, this.fileTree);
+      this.startWatching();
+      this.sendUpdate();
     }
 
     return files;
@@ -222,10 +218,20 @@ export default class Workspace {
         } else if (entry.isFile()) {
           if (!this.isSupportedFile(fullPath)) continue;
           if (!item.children) continue;
+          const file = path.join(entry.parentPath, entry.name);
+
+          const release = tagManager.detectTagFormat(file);
+          if (!release) continue;
+          const releaseClass = tagManager.getReleaseClass(release);
+          if (!releaseClass) continue;
+          const tags = releaseClass.getTags(file);
+          if (!tags) continue;
+
           item.children.set(fullPath, {
             name: entry.name,
             path: fullPath,
             type: "file",
+            audioFile: { ...tags, release, path: file, fileName: entry.name },
           });
         }
       }
@@ -254,7 +260,7 @@ export default class Workspace {
 
       if (type === "delete") {
         deleted.add(changedPath);
-        this.audioFiles.delete(changedPath);
+
         const oldWatcher = this.watchers.get(changedPath);
         if (oldWatcher) {
           oldWatcher.unsubscribe();
@@ -270,27 +276,6 @@ export default class Workspace {
           if (!releaseClass) continue;
           const tags = releaseClass.getTags(changedPath);
           if (!tags) continue;
-
-          const possibleOldPath = [...deleted].find(
-            (d) => path.dirname(d) === path.dirname(changedPath)
-          );
-
-          if (possibleOldPath && this.audioFiles.has(possibleOldPath)) {
-            const oldMeta = this.audioFiles.get(possibleOldPath)!;
-            this.audioFiles.delete(possibleOldPath);
-            this.audioFiles.set(changedPath, {
-              ...oldMeta,
-              path: changedPath,
-              fileName: path.basename(changedPath),
-            });
-          } else {
-            this.audioFiles.set(changedPath, {
-              ...tags,
-              release,
-              path: changedPath,
-              fileName: path.basename(changedPath),
-            });
-          }
         }
       }
 
@@ -310,13 +295,41 @@ export default class Workspace {
       this.sendUpdate();
     }
   }
-  public sendUpdate(): void {
-    const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
-    const toArray = [...this.audioFiles].map(([, value]) => ({
-      ...value,
-    }));
+  private async processNode(node: FileNode): Promise<void> {
+    if (node.type === "file" && node.audioFile) {
+      const release = tagManager.detectTagFormat(node.path);
+      if (!release) return;
+      const releaseClass = tagManager.getReleaseClass(release);
+      if (!releaseClass) return;
+      const tags = await releaseClass.getTags(node.path);
+      if (!tags) return;
 
-    mainWindow?.webContents.send(Constants.channels.UPDATE, toArray, this.fileTree);
+      node.audioFile = {
+        ...node.audioFile,
+        ...tags,
+        release,
+        fileName: path.basename(node.path),
+        path: node.path,
+      };
+    }
+
+    if (node.children) {
+      for (const child of node.children.values()) {
+        await this.processNode(child);
+      }
+    }
+  }
+  public async sendUpdate(reloadFiles: boolean = false): Promise<void> {
+    if (reloadFiles) {
+      for (const tree of [this.fileTree.organized, this.fileTree.disorgainzed]) {
+        for (const node of tree.values()) {
+          await this.processNode(node);
+        }
+      }
+    }
+    const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
+
+    mainWindow?.webContents.send(Constants.channels.UPDATE, this.fileTree);
   }
   public async startWatching(opts?: { path: string; isDir: boolean }): Promise<void> {
     if (!opts) {
@@ -390,18 +403,6 @@ export default class Workspace {
         const updatedPath = path.join(newBase, relative);
         const updatedName = path.basename(updatedPath);
 
-        if (node.type === "file") {
-          if (this.audioFiles.has(node.path)) {
-            const oldMeta = this.audioFiles.get(node.path)!;
-            this.audioFiles.delete(node.path);
-            this.audioFiles.set(updatedPath, {
-              ...oldMeta,
-              path: updatedPath,
-              fileName: updatedName,
-            });
-          }
-        }
-
         let updatedChildren: Map<string, FileNode> | undefined = undefined;
 
         if (node.children) {
@@ -437,16 +438,6 @@ export default class Workspace {
                   path: newPath,
                   name: path.basename(newPath),
                 };
-
-          if (node.type === "file" && this.audioFiles.has(oldPath)) {
-            const oldMeta = this.audioFiles.get(oldPath)!;
-            this.audioFiles.delete(oldPath);
-            this.audioFiles.set(newPath, {
-              ...oldMeta,
-              path: newPath,
-              fileName: path.basename(newPath),
-            });
-          }
 
           tree.delete(oldPath);
           tree.set(newPath, updatedNode);

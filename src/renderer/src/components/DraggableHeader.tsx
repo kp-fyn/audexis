@@ -33,7 +33,7 @@ export default function DraggableHeader({ header, children }: Props): ReactNode 
       }
       style={{
         ...style,
-        width: `${header.getSize()}px`,
+        width: `${header.column.getSize()}px`,
         minWidth: `${header.column.columnDef.minSize}px`,
       }}
       ref={setNodeRef}

@@ -22,8 +22,8 @@
   --background: #f1f1f1;
   --border: #010101;
   --foreground: #000;
-  --hover: #d3d5d7;
-  --muted: #b2bdcd;
+  --hover: #cccccc;
+  --muted: #040505;
   --muted-foreground: #65676d;
 
   --popover: #e2e5f0;
@@ -47,10 +47,31 @@
   --radius: 0.5rem;
   --destructive-foreground: #fafafa;
 }
+.headhead {
+  -webkit-app-region: drag;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #eb5757 #eb5757;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #eb5757;
+  border-radius: 20px;
+}
 .dark {
   --background: #0a0a0a;
   --foreground: #f8fafc;
-  --hover: rgba(157, 172, 196, 0.1);
+  --hover: #333333;
   --card: #060e14;
   --card-foreground: #f8fafc;
 

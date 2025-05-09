@@ -27,9 +27,7 @@ export interface ElectronAPI {
   openDialog: () => Promise<AudioFile[]>;
   onBlur: (listener: () => void) => void;
   onUserConfigUpdate: (listener: (_event: unknown, updatedConfig: UserConfig) => void) => void;
-  onUpdate: (
-    listener: (_event: unknown, files: AudioFile[], fileTree: RootFileTree) => void
-  ) => void;
+  onUpdate: (listener: (_event: unknown, fileTree: RootFileTree) => void) => void;
   onOpenDialog: (listener: () => void) => void;
   onFocus: (listener: () => void) => void;
   getWindowPosition: (props: Base) => Promise<{ x: number; y: number }>;
@@ -70,6 +68,7 @@ export interface AudioFile extends Tags {
   path: string;
   release: string;
   fileName: string;
+  parentPath?: string;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
@@ -85,6 +84,7 @@ export interface FileNode {
   path: string;
   type: "file" | "directory";
   children?: Map<string, FileNode>;
+  audioFile?: AudioFile;
 }
 export interface RootFileTree {
   organized: Map<string, FileNode>;

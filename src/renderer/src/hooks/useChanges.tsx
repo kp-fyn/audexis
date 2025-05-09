@@ -18,7 +18,11 @@ interface ChangesContxt {
   neededItems: { value: string; label: string; maxLength?: number }[];
   setChanges: (newPresent: Partial<AudioFile>) => void;
   setSelected: Dispatch<SetStateAction<string[]>>;
+  setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
+  fileTreeFolderSelected: string[];
+  setFilesToShow: Dispatch<SetStateAction<AudioFile[]>>;
   setFileTree: Dispatch<SetStateAction<RootFileTree>>;
+  filesToShow: AudioFile[];
   selected: string[];
   fileTree: RootFileTree;
   saveChanges: () => void;
@@ -29,6 +33,14 @@ interface ChangesContxt {
 
 const ChangesContext = createContext<ChangesContxt>({
   changes: {},
+  setFileTreeFolderSelected: () => {
+    throw new Error("setFileTreeFolderSelected function must be overridden");
+  },
+  fileTreeFolderSelected: [],
+  setFilesToShow: () => {
+    throw new Error("setFilesToShow function must be overridden");
+  },
+
   neededItems: [],
   clearChanges: () => {
     throw new Error("clearChanges function must be overridden");
@@ -36,6 +48,7 @@ const ChangesContext = createContext<ChangesContxt>({
   setFileTree: () => {
     throw new Error("clearChanges function must be overridden");
   },
+  filesToShow: [],
   fileTree: {
     disorgainzed: new Map(),
     organized: new Map(),
@@ -71,6 +84,8 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
   );
 
   const [files, setFiles] = useState<AudioFile[]>([]);
+  const [filesToShow, setFilesToShow] = useState<AudioFile[]>([]);
+  const [fileTreeFolderSelected, setFileTreeFolderSelected] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [fileTree, setFileTree] = useState<RootFileTree>({
     disorgainzed: new Map(),
@@ -85,29 +100,21 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
   function handleRedo(): void {
     if (canRedo) redo();
   }
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "a") {
-        event.preventDefault();
-        setSelected(files.map((file) => file.path));
-      }
-    };
 
+  useEffect(() => {
     const undoHandler = (): void => handleUndo();
     const redoHandler = (): void => handleRedo();
 
-    document.addEventListener("keydown", handleKeyDown);
     window.app.onUndo(undoHandler);
     window.app.onRedo(redoHandler);
 
     return (): void => {
-      document.removeEventListener("keydown", handleKeyDown);
       window.app.offUndo(undoHandler);
       window.app.offRedo(redoHandler);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canUndo, canRedo, undo, redo]);
+  }, [canUndo, canRedo, undo, redo, files, selected]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent): void => {
@@ -121,9 +128,34 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
     return (): void => document.removeEventListener("click", handleClick);
   }, []);
   useEffect(() => {
+    const isEditable = (el: Element | null): boolean =>
+      el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+        if (!document.activeElement) return;
+        if (isEditable(document.activeElement)) {
+          const el = document.activeElement as HTMLInputElement;
+          el.select();
+        } else {
+          if (document.activeElement.id !== "App") return;
+
+          event.preventDefault();
+          if (selected.length >= files.length) {
+            setSelected([]);
+          } else {
+            setSelected(files.map((file) => file.path));
+          }
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
     clear();
+    return (): void => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selected, files]);
 
   return (
     <ChangesContext.Provider
@@ -135,6 +167,10 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
         clearChanges: clear,
         selected,
         fileTree,
+        setFilesToShow,
+        fileTreeFolderSelected,
+        setFileTreeFolderSelected,
+        filesToShow,
         setFileTree,
         setSelected,
         files,

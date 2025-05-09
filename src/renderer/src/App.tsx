@@ -19,7 +19,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useState, useCallback, ReactNode, useRef } from "react";
+import { useEffect, useState, useCallback, ReactNode, useRef, CSSProperties } from "react";
 import Sidebar from "./components/Sidebar";
 import { useSidebarWidth } from "./hooks/useSidebarWidth";
 import { useChanges } from "./hooks/useChanges";
@@ -30,16 +30,22 @@ import TrackContextMenu from "./components/contextMenus/TrackContextMenu";
 import { useUserConfig } from "./hooks/useUserConfig";
 import ColumnContextMenu from "./components/contextMenus/ColumnContextMenu";
 
+import { getAudioFiles } from "./lib/utils";
+import { useBottombarHeight } from "./hooks/useBottombarHeight";
+import Bottombar from "./components/Bottombar";
+
 const columnHelper = createColumnHelper<AudioFile>();
 
 export default function App(): ReactNode {
   const [previous, setPrevious] = useState<number>(0);
   const { config, setColumns } = useUserConfig();
 
-  const { selected, setSelected, files, setFiles, setFileTree } = useChanges();
+  const { selected, setSelected, files, setFiles, setFileTree, setFilesToShow, filesToShow } =
+    useChanges();
 
   const [lastSelected, setLastSelected] = useState<number>(-1);
   const { sidebarWidth } = useSidebarWidth();
+  const { bottombarHeight } = useBottombarHeight();
 
   const helpers = config.columns.map((item) =>
     columnHelper.accessor(item.value, {
@@ -70,7 +76,7 @@ export default function App(): ReactNode {
   }, [config.columns]);
 
   const table = useReactTable({
-    data: files,
+    data: filesToShow,
     state: {
       columnOrder,
     },
@@ -84,25 +90,26 @@ export default function App(): ReactNode {
   useEffect(() => {
     window.app.reloadFiles();
 
-    window.app.onUpdate((_e, updatedFiles, ft) => {
+    window.app.onUpdate((_e, ft) => {
       //  updatedFiles.map((file) => {
       //     if (file.corrupted) return file;
       //   });
-
+      const updatedFiles = [...getAudioFiles(ft.disorgainzed), ...getAudioFiles(ft.organized)];
       setFiles(updatedFiles);
       setFileTree(ft);
+      if (config.view === "simple") setFilesToShow(updatedFiles);
     });
   }, []);
+  useEffect(() => {
+    console.log({ filesToShow });
+  }, [filesToShow]);
   useEffect(() => {
     setLastSelected(-1);
   }, [files]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "Tab") {
-        event.preventDefault();
-        return;
-      }
+      if (document.activeElement?.id !== "App") return;
       if (!files.length) return;
 
       let currentIndex = lastSelected;
@@ -221,7 +228,6 @@ export default function App(): ReactNode {
     document.addEventListener("mousemove", resize);
     document.addEventListener("mouseup", stopResizing);
   };
-
   const resize = (event: MouseEvent): void => {
     if (!isResizing.current) return;
     const columnId = resizingColumnIdRef.current;
@@ -233,10 +239,13 @@ export default function App(): ReactNode {
     const minWidth = 150;
     const maxWidth = window.innerWidth - 200;
     if (newWidth < minWidth || newWidth > maxWidth) return;
+    const columnsCopy = config.columns.map((col) => ({ ...col })); // deep enough for shallow objects
 
-    setColumns(
-      config.columns.map((item) => (item.value === columnId ? { ...item, size: newWidth } : item))
-    );
+    const columnIndex = columnsCopy.findIndex((c) => c.value === columnId);
+    if (columnIndex === -1) return;
+
+    columnsCopy[columnIndex].size = newWidth;
+    setColumns(columnsCopy);
   };
 
   const stopResizing = (): void => {
@@ -247,6 +256,20 @@ export default function App(): ReactNode {
     document.removeEventListener("mousemove", resize);
     document.removeEventListener("mouseup", stopResizing);
   };
+  function getWidth(): number {
+    const w = sidebarWidth.split("px")[0];
+    if (parseInt(w) < 300 || isNaN(parseInt(w))) {
+      return 300;
+    } else {
+      return parseInt(w);
+    }
+  }
+  const styles: CSSProperties = {};
+  if (config.view === "folder") {
+    styles.paddingBottom = `${bottombarHeight}`;
+  } else {
+    styles.paddingBottom = undefined;
+  }
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -254,107 +277,132 @@ export default function App(): ReactNode {
       onDragEnd={handleDragEnd}
       sensors={sensors}
     >
-      <div className="overflow-hidden flex flex-row h-full">
+      <div className="overflow-hidden flex flex-col h-full">
         <Sidebar></Sidebar>
         <div
-          className="w-full h-full block text-foreground overflow-x-scroll"
-          id="App"
-          style={{ marginLeft: sidebarWidth }}
+          className="flex flex-col w-full h-full overflow-x-hidden"
+          style={{
+            ...styles,
+            paddingLeft: `${getWidth() + 6}px`,
+            paddingTop: "48px",
+          }}
         >
-          <div className="w-full h-full  flex">
-            <div className=" min-h-full" ref={tableRef} id="table">
-              <ContextMenuHandler contextMenuContent={<ColumnContextMenu selected={"__nun"} />}>
-                <div className="sticky z-50   top-[48px] h-[40px]    bg-background text-foreground border-b border-border p-0">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <div key={headerGroup.id} className="flex ml-12 h-full">
-                      <SortableContext
-                        items={columnOrder}
-                        strategy={horizontalListSortingStrategy}
-                        key={headerGroup.id}
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <ContextMenuHandler
-                            key={header.id}
-                            contextMenuContent={<ColumnContextMenu selected={header.id} />}
-                          >
-                            <DraggableHeader header={header}>
-                              <div
-                                onDoubleClick={() => {
-                                  setColumns(
-                                    config.columns.map((item) =>
-                                      item.value === header.id ? { ...item, size: 200 } : item
-                                    )
-                                  );
-                                }}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
+          <div
+            className="w-full h-full flex text-foreground overflow-x-scroll"
+            id="App"
+            tabIndex={0}
+          >
+            <div className="w-full h-full  flex">
+              <div className="min-h-full block select-none relative" ref={tableRef} id="table">
+                <ContextMenuHandler contextMenuContent={<ColumnContextMenu selected={"__nun"} />}>
+                  <div className="sticky z-50 top-0   h-[40px]    bg-background text-foreground border-b border-border p-0 ">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <div key={headerGroup.id} className="flex ml-12 h-full">
+                        <SortableContext
+                          items={columnOrder}
+                          strategy={horizontalListSortingStrategy}
+                          key={headerGroup.id}
+                        >
+                          {headerGroup.headers.map((header) => (
+                            <ContextMenuHandler
+                              key={header.id}
+                              contextMenuContent={<ColumnContextMenu selected={header.id} />}
+                            >
+                              <DraggableHeader header={header}>
+                                <div
+                                  onDoubleClick={() => {
+                                    setColumns(
+                                      config.columns.map((item) =>
+                                        item.value === header.id ? { ...item, size: 200 } : item
+                                      )
+                                    );
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
 
-                                  startResizing(header.id, e);
-                                }}
-                                onTouchStart={header.getResizeHandler()}
-                                className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-background select-none transition-opacity hover:bg-border hover:opacity-100"
-                              >
-                                <div className=" border-r border-border h-full"></div>
-                              </div>
-                            </DraggableHeader>
-                          </ContextMenuHandler>
-                        ))}
-                      </SortableContext>
-                    </div>
-                  ))}
-                </div>
-              </ContextMenuHandler>
-              <div className="divide-y divide-gray-700 mt-[48px]">
-                {table.getRowModel().rows.map((row) => {
-                  const isSelected = selected.includes(row.original.path);
-                  const currentFile = row.original as AudioFile;
-
-                  return (
-                    <ContextMenuHandler
-                      contextMenuContent={<TrackContextMenu file={currentFile} />}
-                      key={row.id}
-                    >
-                      <div
-                        className={`flex cursor-pointer  h-12 items-center px-1 border-b border-border   transition-colors ${
-                          isSelected ? "bg-accent" : "bg-background  hover:bg-hover focus:bg-hover"
-                          // : row.index % 2 === 0
-                          //   ? "bg-neutral-900"
-                          //   : "bg-neutral-950"
-                        } }`}
-                        onClick={(e) => handleSelection(row.index, row.original.path, e)}
-                      >
-                        <div className="w-12 h-12 rounded ">
-                          {row.original.attachedPicture &&
-                            typeof row.original.attachedPicture !== "string" && (
-                              <img
-                                className=" h-full"
-                                src={URL.createObjectURL(
-                                  new Blob([row.original.attachedPicture.buffer], {
-                                    type: row.original.attachedPicture.mime,
-                                  })
-                                )}
-                              />
-                            )}
-                        </div>
-                        {row.getVisibleCells().map((cell) => (
-                          <SortableContext
-                            key={cell.id}
-                            items={columnOrder}
-                            strategy={horizontalListSortingStrategy}
-                          >
-                            {/* <DragAlongCell key={cell.id} cell={cell} /> */}
-
-                            <DragCell key={cell.id} cell={cell} />
-                          </SortableContext>
-                        ))}
+                                    startResizing(header.id, e);
+                                  }}
+                                  onTouchStart={header.getResizeHandler()}
+                                  className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-background select-none transition-opacity hover:bg-border hover:opacity-100"
+                                >
+                                  <div className=" border-r border-border h-full"></div>
+                                </div>
+                              </DraggableHeader>
+                            </ContextMenuHandler>
+                          ))}
+                        </SortableContext>
                       </div>
-                    </ContextMenuHandler>
-                  );
-                })}
+                    ))}
+                  </div>
+                </ContextMenuHandler>
+                <div className="divide-y h-full divide-gray-700">
+                  {filesToShow.length < 1 && (
+                    <div className="flex items-center h-full w-full">
+                      <div className="text-foreground text-sm">
+                        No files found. Please import files to see them here.
+                      </div>
+                    </div>
+                  )}
+                  {table.getRowModel().rows.map((row) => {
+                    const isSelected = selected.includes(row.original.path);
+                    const currentFile = row.original as AudioFile;
+
+                    return (
+                      <ContextMenuHandler
+                        contextMenuContent={<TrackContextMenu file={currentFile} />}
+                        key={row.id}
+                      >
+                        <div
+                          className={`flex cursor-pointer  h-12 items-center px-1 border-b border-border   transition-colors ${
+                            isSelected
+                              ? "bg-accent"
+                              : "bg-background  hover:bg-hover focus:bg-hover"
+                            // : row.index % 2 === 0
+                            //   ? "bg-neutral-900"
+                            //   : "bg-neutral-950"
+                          } }`}
+                          onClick={(e) => handleSelection(row.index, row.original.path, e)}
+                        >
+                          <div className="w-12 h-12 rounded ">
+                            {row.original.attachedPicture &&
+                              typeof row.original.attachedPicture !== "string" && (
+                                <img
+                                  className=" h-full"
+                                  src={URL.createObjectURL(
+                                    new Blob([row.original.attachedPicture.buffer], {
+                                      type: row.original.attachedPicture.mime,
+                                    })
+                                  )}
+                                />
+                              )}
+                          </div>
+                          {row.getVisibleCells().map((cell) => (
+                            <SortableContext
+                              key={cell.id}
+                              items={columnOrder}
+                              strategy={horizontalListSortingStrategy}
+                            >
+                              {/* <DragAlongCell key={cell.id} cell={cell} /> */}
+
+                              <DragCell key={cell.id} cell={cell} />
+                            </SortableContext>
+                          ))}
+                        </div>
+                      </ContextMenuHandler>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
         </div>
+        {config.view === "folder" && <Bottombar></Bottombar>}
+        {/* <div
+          style={{ marginLeft: `${sidebarWidth}`, height: bottombarHeight }}
+          className={` overflow-x-scroll px-4  bottom-0  border-t border-border   w-full cursor-row-resize  bg-background `}
+        >
+          hi
+        </div> */}
       </div>
     </DndContext>
   );
