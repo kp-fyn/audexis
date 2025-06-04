@@ -4,16 +4,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FileMusic, FolderClosed, FolderOpen } from "lucide-react";
 import path from "path-browserify";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { AudioFile, FileNode } from "src/types";
+import type { FileNode } from "src/types";
 import { useChanges } from "../hooks/useChanges";
 import ContextMenuHandler from "./ContextMenuHandler";
 import FileContextMenu from "./contextMenus/FileContextMenu";
 // import FileDraggable from "./FileDraggable";
+import { FileIdentifier } from "../../../types/index";
 import FolderDroppable from "./FolderDroppable";
 import useKeyDown from "@renderer/hooks/useKeyDown";
 import FileDraggable from "./FileDraggable";
 export default function FileTree(): ReactNode {
-  const { fileTree } = useChanges();
+  const { fileTree, files } = useChanges();
   const [activeDragItem, setActiveDragItem] = useState<FileNode | null>(null);
 
   const sensors = useSensors(
@@ -37,6 +38,7 @@ export default function FileTree(): ReactNode {
     type: "directory",
     children: fileTree.disorgainzed,
   });
+  console.log({ fileTree });
   return (
     <div className="h-full flex flex-col">
       <DndContext
@@ -71,6 +73,17 @@ export default function FileTree(): ReactNode {
       >
         <FileNodeHandler initial={true} items={importedFiles} />
         <FileNodeHandler initial={true} items={disorganized} />
+        {files.length === 0 && (
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+            No files imported yet
+            <button
+              onClick={() => window.app.openDialog()}
+              className="ml-2 text-sm text-primary underline"
+            >
+              Import Files
+            </button>
+          </div>
+        )}
 
         <DragOverlay>
           {activeDragItem ? (
@@ -131,14 +144,23 @@ interface FileTreeItemProps {
   initial?: boolean;
 }
 
-function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
-  const { setFileTreeFolderSelected, fileTreeFolderSelected, setFilesToShow } = useChanges();
-  const { fileTree, setSelected, selected } = useChanges();
+function FileTreeItem({ node, depth, initial = false }: FileTreeItemProps): ReactNode {
+  const {
+    setFileTreeFolderSelected,
+    fileTreeFolderSelected,
+    setFilesToShow,
+    filesToShow,
+    fileTree,
+    setSelected,
+    selected,
+  } = useChanges();
+
   // const [open, setOpen] = useState(initial);
   const isDir = node.type === "directory";
   const [isRenaming, setisRenaming] = useState(false);
   const [contextHover, setContextHover] = useState(false);
-  const [showFiles, setShowFiles] = useState(false);
+  const [showFiles, setShowFiles] = useState(initial);
+  const [showSubDirectories, setShowSubDirectories] = useState(initial);
   const metaKeyDown = useKeyDown("Meta");
 
   const [val, setVal] = useState(node.name);
@@ -166,11 +188,13 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
             setFilesToShow([]);
             setFileTreeFolderSelected([]);
           } else {
-            const newFiles: AudioFile[] = [];
+            const newFiles: FileIdentifier[] = [];
             if (node.children) {
               node.children.forEach((child) => {
                 if (child.type !== "directory" && child.audioFile) {
-                  newFiles.push({ ...child.audioFile, parentPath: node.path });
+                  if (child.hash) {
+                    newFiles.push({ path: child.path, hash: child.hash });
+                  }
                 }
               });
             }
@@ -179,9 +203,10 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
             setFileTreeFolderSelected([node.path]);
           }
         } else {
+          setSelected([]);
           setFileTreeFolderSelected((prev) => prev.filter((v) => v !== node.path));
 
-          setFilesToShow((prev) => prev.filter((v) => v.parentPath !== node.path));
+          setFilesToShow((prev) => prev.filter((v) => v.path !== node.path));
         }
         selected.forEach((s) => {
           const parentPath = path.dirname(s);
@@ -194,22 +219,25 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
         });
       } else {
         if (metaKeyDown) {
-          const newFiles: AudioFile[] = [];
+          const newFiles: FileIdentifier[] = [];
           if (node.children) {
             node.children.forEach((child) => {
               if (child.type !== "directory" && child.audioFile) {
-                newFiles.push({ ...child.audioFile, parentPath: node.path });
+                if (child.hash) {
+                  newFiles.push({ path: child.path, hash: child.hash });
+                }
               }
             });
             setFilesToShow((prev) => [...prev, ...newFiles]);
             setFileTreeFolderSelected((prev) => [...prev, node.path]);
           }
         } else {
-          const newFiles: AudioFile[] = [];
+          setSelected([]);
+          const newFiles: FileIdentifier[] = [];
           if (node.children) {
             node.children.forEach((child) => {
-              if (child.type !== "directory" && child.audioFile) {
-                newFiles.push({ ...child.audioFile, parentPath: node.path });
+              if (child.type !== "directory" && child.audioFile && child.hash) {
+                newFiles.push({ path: child.path, hash: child.hash });
               }
             });
           }
@@ -221,7 +249,50 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
     } else {
       const parentPath = path.dirname(node.path);
       const parentNode = findFileNodeByPath(fileTree, parentPath);
-      if (!parentNode) return;
+
+      if (!parentNode) {
+        if (fileTree.disorgainzed.has(node.path)) {
+          if (filesToShow.findIndex((f) => f.path === node.path) === -1) {
+            const files = fileTree.disorgainzed.values();
+            const au = files.map((f) => {
+              return {
+                path: f.path,
+                hash: f.hash,
+              };
+            });
+
+            const audioFiles = au.filter((f) => f.hash !== undefined);
+            setFilesToShow([...audioFiles]);
+          }
+          if (metaKeyDown) {
+            if (selected.includes(node.path)) {
+              setSelected((prev) => prev.filter((v) => v !== node.path));
+            } else {
+              setSelected((prev) => [...prev, node.path]);
+            }
+          } else {
+            setSelected([node.path]);
+          }
+
+          setFileTreeFolderSelected([":/fake2"]);
+          return;
+        }
+      } else {
+        if (!metaKeyDown) {
+          if (fileTreeFolderSelected.includes(parentNode.path)) {
+            setFileTreeFolderSelected((prev) => prev.filter((v) => v !== parentNode.path));
+          } else {
+            setFileTreeFolderSelected([parentNode.path]);
+          }
+        } else {
+          if (fileTreeFolderSelected.includes(parentNode.path)) {
+            setFileTreeFolderSelected((prev) => prev.filter((v) => v !== parentNode.path));
+          } else {
+            setFileTreeFolderSelected((prev) => [...prev, parentNode.path]);
+          }
+        }
+      }
+
       if (metaKeyDown) {
         if (selected.includes(node.path)) {
           setSelected((prev) => prev.filter((v) => v !== node.path));
@@ -231,8 +302,11 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
       } else {
         if (selected.includes(node.path)) {
           setSelected((prev) => prev.filter((v) => v !== node.path));
+          setFilesToShow((prev) => prev.filter((v) => v.path !== node.path));
         } else {
           setSelected([node.path]);
+          if (!node.hash) return;
+          setFilesToShow([{ path: node.path, hash: node.hash }]);
         }
       }
     }
@@ -267,7 +341,9 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
       contextMenuContent={
         <FileContextMenu
           checked={showFiles}
+          showSubDirectories={showSubDirectories}
           setChecked={setShowFiles}
+          setShowSubDirectories={setShowSubDirectories}
           setIsRenaming={setisRenaming}
           file={node}
         />
@@ -339,7 +415,7 @@ function FileTreeItem({ node, depth }: FileTreeItemProps): ReactNode {
         </div>
 
         <AnimatePresence initial={false}>
-          {isDir && node.children && (
+          {isDir && node.children && showSubDirectories && (
             <motion.div
               className="relative flex flex-col w-full"
               initial={{ height: 0, opacity: 1, y: -10 }}

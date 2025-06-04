@@ -2,7 +2,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { Cell, flexRender } from "@tanstack/react-table";
 import { CSSProperties, ReactNode } from "react";
 import { CSS as CSSUtil } from "@dnd-kit/utilities";
-import { AudioFile } from "../../../types";
 
 export default function DragCell({ cell }: Props): ReactNode {
   const { isDragging, setNodeRef, transform } = useSortable({
@@ -34,5 +33,9 @@ export default function DragCell({ cell }: Props): ReactNode {
 }
 
 interface Props {
-  cell: Cell<AudioFile, unknown>;
+  cell: Cell<FileIdentifier, unknown>;
+}
+interface FileIdentifier {
+  hash: string;
+  path: string;
 }

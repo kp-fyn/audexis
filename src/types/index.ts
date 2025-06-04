@@ -1,33 +1,51 @@
-import { UserConfig as UCon } from "../main/db/config";
+import { UserConfig as UCon, Album as Alb } from "../main/db/config";
+import path from "path-browserify";
 
 export interface UserConfig extends UCon {
-  _nothing?: never;
+  __typename?: "UserConfig";
+}
+export interface UpdatedPath {
+  newPath: string;
+  oldPath: string;
+}
+export interface FileIdentifier {
+  hash: string;
+  path: string;
+}
+export interface Album extends Alb {
+  attachedPicture: ImgData | null;
 }
 export interface Watcher {
   unsubscribe: () => Promise<void>;
   isFile: boolean;
+}
+export interface TagOption {
+  label: string;
+  value: string;
 }
 export interface WorkspaceAction {
   action: "rename" | "new-directory" | "move";
   str: string;
   path: string;
 }
+export interface Extended extends AudioFile {
+  hash: string;
+}
 
 export interface ElectronAPI {
-  minimize: (props: Base) => void;
-  maximize: (props: Base) => void;
-  unmaximize: (props: Base) => void;
   reloadFiles: () => void;
   close: (props: Base) => void;
   save: (changes: Partial<Changes>) => void;
   test: () => Promise<void>;
   workspaceAction: (action: WorkspaceAction) => void;
-  isMaximized: (props: Base) => Promise<boolean>;
+  getFilePath: (file: any) => string;
   setWindowPosition: ({ x, y, windowName }: SetWindowPosition) => void;
   openDialog: () => Promise<AudioFile[]>;
   onBlur: (listener: () => void) => void;
   onUserConfigUpdate: (listener: (_event: unknown, updatedConfig: UserConfig) => void) => void;
-  onUpdate: (listener: (_event: unknown, fileTree: RootFileTree) => void) => void;
+  onUpdate: (
+    listener: (_event: unknown, fileTree: RootFileTree, updatedFiles?: UpdatedPath[]) => void
+  ) => void;
   onOpenDialog: (listener: () => void) => void;
   onFocus: (listener: () => void) => void;
   getWindowPosition: (props: Base) => Promise<{ x: number; y: number }>;
@@ -36,11 +54,17 @@ export interface ElectronAPI {
   onRedo: (listener: () => void) => void;
   offUndo: (listener: () => void) => void;
   offRedo: (listener: () => void) => void;
-  onSelectAll: (listener: () => void) => void;
+  saveAlbum: (changes: Partial<Tags>) => void;
+  editAlbum: ({ albumId, changes }: { albumId: string; changes: Partial<Changes> }) => void;
+  removeFromAlbum: (conf: { albumId: string; fileHash: string }) => void;
+  deleteAlbum: (conf: { albumId: string }) => void;
+  addFolderToAlbum: (conf: { albumId: string; folderPath: string }) => void;
+  removeFolderFromAlbum: (conf: { albumId: string; folderPath: string }) => void;
   showInFinder(path: string): void;
   openSettings(): void;
   openOnboarding(): void;
   updateConfig(config: Partial<UserConfig>): void;
+  addToAlbum(conf: { albumId: string; filePath: string }): void;
   closeOnboarding(): void;
 }
 export interface SetWindowPosition extends Base {
@@ -85,6 +109,7 @@ export interface FileNode {
   type: "file" | "directory";
   children?: Map<string, FileNode>;
   audioFile?: AudioFile;
+  hash?: string;
 }
 export interface RootFileTree {
   organized: Map<string, FileNode>;
@@ -95,6 +120,7 @@ export interface ImgData {
   type?: { id: number; name?: string };
   description?: string;
   buffer: Buffer;
+  url?: string;
 }
 export type Frames = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,6 +159,7 @@ export interface Tags {
   userDefinedText: string; // TXXX
   synchronizedLyrics: string; // SYLT
   tempoCodes: string; // SYTC
+  copyright: string; // TCOP
   musicCDIdentifier: string; // MCDI
   eventTimingCodes: string; // ETCO
   sequence: string; // SEQU

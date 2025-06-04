@@ -20,7 +20,6 @@ export default function useKeyDown(key: string): boolean {
       if (key === "Meta" || key === "Ctrl") {
         if (event.ctrlKey || event.metaKey) {
           setKeyDown(false);
-          console.log("Key");
         } else {
           if (event.key === key) {
             setKeyDown(false);

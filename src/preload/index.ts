@@ -1,7 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { ipcRenderer, contextBridge } from "electron";
-import Constants from "./Constants";
-import { Changes, Base, SetWindowPosition, UserConfig, WorkspaceAction } from "../types";
+import { ipcRenderer, contextBridge, webUtils } from "electron";
+import Constants from "../shared/Constants";
+import { Changes, UserConfig, WorkspaceAction, Tags } from "../types";
 
 const registeredListeners: Record<string, () => void> = {};
 
@@ -41,17 +41,6 @@ try {
   });
 
   contextBridge.exposeInMainWorld("app", {
-    //  Window Controls
-    minimize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MINIMIZE, props),
-    maximize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_MAXIMIZE, props),
-    unmaximize: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_UNMAXIMIZE, props),
-    close: (props: Base) => ipcRenderer.send(Constants.channels.WINDOW_CLOSE, props),
-    isMaximized: (props: Base) => ipcRenderer.invoke(Constants.channels.WINDOW_IS_MAXIMIZED, props),
-    setWindowPosition: (pos: SetWindowPosition) =>
-      ipcRenderer.send(Constants.channels.SET_WINDOW_POSITION, pos),
-    getWindowPosition: (props: Base) =>
-      ipcRenderer.invoke(Constants.channels.GET_WINDOW_POSITION, props),
-
     //  File / Workspace
     workspaceAction: (wa: WorkspaceAction) =>
       ipcRenderer.send(Constants.channels.WORKSPACE_ACTION, wa),
@@ -59,7 +48,19 @@ try {
     save: (changes: Partial<Changes>) => ipcRenderer.send(Constants.channels.SAVE, changes),
     showInFinder: (path: string) => ipcRenderer.send(Constants.channels.SHOW_IN_FINDER, path),
     uploadImage: () => ipcRenderer.invoke(Constants.channels.IMAGE_UPLOAD),
-
+    saveAlbum: (changes: Partial<Tags>) => ipcRenderer.send(Constants.channels.SAVE_ALBUM, changes),
+    addToAlbum: (conf: { albumId: string; filePath: string }) =>
+      ipcRenderer.send(Constants.channels.ADD_TO_ALBUM, conf),
+    removeFromAlbum: (conf: { albumId: string; fileHash: string }) =>
+      ipcRenderer.send(Constants.channels.REMOVE_FROM_ALBUM, conf),
+    deleteAlbum: (conf: { albumId: string }) =>
+      ipcRenderer.send(Constants.channels.DELETE_ALBUM, conf),
+    addFolderToAlbum: (conf: { albumId: string; folderPath: string }) =>
+      ipcRenderer.send(Constants.channels.ADD_FOLDER_TO_ALBUM, conf),
+    removeFolderFromAlbum: (conf: { albumId: string; folderPath: string }) =>
+      ipcRenderer.send(Constants.channels.REMOVE_FOLDER_FROM_ALBUM, conf),
+    editAlbum: (conf: { albumId: string; changes: Partial<Changes> }) =>
+      ipcRenderer.send(Constants.channels.EDIT_ALBUM, conf),
     //  Configuration
     updateConfig: (config: Partial<UserConfig>) =>
       ipcRenderer.send(Constants.channels.UPDATE_CONFIG, config),
@@ -94,9 +95,7 @@ try {
     onOpenDialog: (listener: () => void) =>
       setIpcListener(Constants.channels.OPEN_DIALOG, listener),
     offOpenDialog: () => removeIpcListener(Constants.channels.OPEN_DIALOG),
-
-    onSelectAll: (listener: () => void) => setIpcListener(Constants.channels.SELECT_ALL, listener),
-    offSelectAll: () => removeIpcListener(Constants.channels.SELECT_ALL),
+    getFilePath: (file) => console.log(webUtils.getPathForFile(file)),
   });
 } catch (error) {
   console.error(error);

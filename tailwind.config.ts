@@ -31,6 +31,7 @@ export default {
         },
         muted: {
           DEFAULT: "var(--muted)",
+          hover: "var(--muted-hover)",
           foreground: "var(--muted-foreground)",
         },
         accent: {

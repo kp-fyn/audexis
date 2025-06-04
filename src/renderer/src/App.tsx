@@ -6,6 +6,8 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import AlbumDialog from "./components/AlbumDialog";
+
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 
 import {
@@ -36,6 +38,11 @@ import Bottombar from "./components/Bottombar";
 
 const columnHelper = createColumnHelper<AudioFile>();
 
+type FileIdentifier = {
+  hash: string;
+  path: string;
+};
+
 export default function App(): ReactNode {
   const [previous, setPrevious] = useState<number>(0);
   const { config, setColumns } = useUserConfig();
@@ -44,6 +51,8 @@ export default function App(): ReactNode {
     useChanges();
 
   const [lastSelected, setLastSelected] = useState<number>(-1);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const { sidebarWidth } = useSidebarWidth();
   const { bottombarHeight } = useBottombarHeight();
 
@@ -75,34 +84,117 @@ export default function App(): ReactNode {
     setColumnOrder(columns.map((c) => c.id ?? ""));
   }, [config.columns]);
 
-  const table = useReactTable({
+  const table = useReactTable<FileIdentifier>({
     data: filesToShow,
     state: {
       columnOrder,
     },
     onColumnOrderChange: setColumnOrder,
-    columns,
+    columns: columns.map((col) => ({
+      ...col,
+      accessorFn: (row: FileIdentifier) => {
+        const file = files.find((f) => f.hash === row.hash && f.path === row.path);
+        return file ? (file.audioFile ? file.audioFile[col.id as keyof AudioFile] : "") : "";
+      },
+    })) as ColumnDef<FileIdentifier, any>[],
     defaultColumn: { minSize: 50 },
     columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
   });
-
   useEffect(() => {
     window.app.reloadFiles();
-
-    window.app.onUpdate((_e, ft) => {
-      //  updatedFiles.map((file) => {
-      //     if (file.corrupted) return file;
-      //   });
-      const updatedFiles = [...getAudioFiles(ft.disorgainzed), ...getAudioFiles(ft.organized)];
-      setFiles(updatedFiles);
-      setFileTree(ft);
-      if (config.view === "simple") setFilesToShow(updatedFiles);
-    });
   }, []);
+
   useEffect(() => {
-    console.log({ filesToShow });
-  }, [filesToShow]);
+    window.app.onUpdate((_e, ft, updatedFilePaths) => {
+      setLoading(true);
+
+      const updatedFiles = [...getAudioFiles(ft.disorgainzed), ...getAudioFiles(ft.organized)];
+
+      if (config.view === "folder") {
+        if (updatedFilePaths && updatedFilePaths.length > 0) {
+          const oldFilePaths = updatedFilePaths.map((fp) => fp.oldPath);
+          const newFilesToShow: FileIdentifier[] = [];
+          setFilesToShow((prevFilesToShow) => {
+            for (const filesTS of prevFilesToShow) {
+              if (oldFilePaths.includes(filesTS.path)) {
+                console.log("match");
+                const updatedFilePath = updatedFilePaths.find((fp) => fp.oldPath === filesTS.path);
+
+                if (!updatedFilePath) continue;
+                const updatedFile = updatedFiles.find(
+                  (file) => file.path === updatedFilePath.newPath
+                );
+
+                if (updatedFile && updatedFile.hash) {
+                  newFilesToShow.push({
+                    hash: updatedFile.hash,
+                    path: updatedFile.path,
+                  });
+                }
+              } else {
+                if (
+                  updatedFiles.find(
+                    (file) => file.path === filesTS.path && file.hash === filesTS.hash
+                  )
+                ) {
+                  console.log("Adding existing file to newFilesToShow:");
+                  newFilesToShow.push(filesTS);
+                }
+              }
+            }
+
+            return newFilesToShow;
+          });
+          const newSelectedFiles: string[] = [];
+          setSelected((prevSelected) => {
+            for (const file of prevSelected) {
+              if (oldFilePaths.includes(file)) {
+                const updatedFilePath = updatedFilePaths.find((fp) => fp.oldPath === file);
+                if (updatedFilePath) {
+                  const newPath = updatedFilePath.newPath;
+                  const newFile = updatedFiles.find((f) => f.path === newPath);
+                  if (newFile && newFile.hash) {
+                    newSelectedFiles.push(newFile.path);
+                  }
+                }
+              } else {
+                const existingFile = updatedFiles.find(
+                  (f) =>
+                    f.path === file && f.hash === filesToShow.find((f) => f.path === file)?.hash
+                );
+                if (existingFile) {
+                  newSelectedFiles.push(existingFile.path);
+                }
+              }
+            }
+            return newSelectedFiles;
+          });
+        } else {
+          const updatedFilesToShow = filesToShow.filter((file) => {
+            return updatedFiles.some((f) => f.hash === file.hash);
+          });
+          console.log({ updatedFilesToShow });
+          setFilesToShow(updatedFilesToShow);
+        }
+      } else {
+        const updatedFilesToShow = updatedFiles
+          .filter((file) => file.hash)
+          .map((file) => ({
+            hash: file.hash,
+            path: file.path,
+          }));
+        console.log("New filesToShow:", updatedFilesToShow);
+        setFilesToShow(updatedFilesToShow as FileIdentifier[]);
+      }
+
+      setFileTree(ft);
+      setFiles(updatedFiles);
+
+      setLoading(false);
+    });
+  }, [config.view]);
+
   useEffect(() => {
     setLastSelected(-1);
   }, [files]);
@@ -239,7 +331,7 @@ export default function App(): ReactNode {
     const minWidth = 150;
     const maxWidth = window.innerWidth - 200;
     if (newWidth < minWidth || newWidth > maxWidth) return;
-    const columnsCopy = config.columns.map((col) => ({ ...col })); // deep enough for shallow objects
+    const columnsCopy = config.columns.map((col) => ({ ...col }));
 
     const columnIndex = columnsCopy.findIndex((c) => c.value === columnId);
     if (columnIndex === -1) return;
@@ -270,14 +362,42 @@ export default function App(): ReactNode {
   } else {
     styles.paddingBottom = undefined;
   }
-  return (
+
+  const handleDrop = useCallback((event): void => {
+    event.preventDefault();
+    setIsDragging(false);
+    const files = event.dataTransfer.files;
+    console.log(window.app.getFilePath(files[0]));
+    for (let i = 0; i < files.length; i++) {
+      console.log("Dropped file:", files[i].path);
+    }
+  }, []);
+
+  const handleDragOver = (event): void => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragEndFile = (event): void => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+  return loading ? (
+    <div>Loading</div>
+  ) : (
     <DndContext
       collisionDetection={closestCenter}
       modifiers={[restrictToHorizontalAxis]}
       onDragEnd={handleDragEnd}
       sensors={sensors}
     >
-      <div className="overflow-hidden flex flex-col h-full">
+      <AlbumDialog />
+      <div
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEndFile}
+        onDragLeave={handleDragEndFile}
+        onDragExit={handleDragEndFile}
+        className={`overflow-hidden  flex flex-col h-full dropzone ${isDragging ? "cursor-grabbing bg-primary border border-dashed" : "cursor-default"}`}
+      >
         <Sidebar></Sidebar>
         <div
           className="flex flex-col w-full h-full overflow-x-hidden"
@@ -292,7 +412,7 @@ export default function App(): ReactNode {
             id="App"
             tabIndex={0}
           >
-            <div className="w-full h-full  flex">
+            <div className={`w-full h-full flex dropzone `} onDrop={handleDrop}>
               <div className="min-h-full block select-none relative" ref={tableRef} id="table">
                 <ContextMenuHandler contextMenuContent={<ColumnContextMenu selected={"__nun"} />}>
                   <div className="sticky z-50 top-0   h-[40px]    bg-background text-foreground border-b border-border p-0 ">
@@ -344,12 +464,17 @@ export default function App(): ReactNode {
                     </div>
                   )}
                   {table.getRowModel().rows.map((row) => {
-                    const isSelected = selected.includes(row.original.path);
-                    const currentFile = row.original as AudioFile;
+                    const currentFile = files.find(
+                      (f) => f.hash === row.original.hash && f.path === row.original.path
+                    );
+
+                    if (!currentFile) return null;
+                    const isSelected = selected.includes(currentFile.path);
+                    if (!currentFile.audioFile) return null;
 
                     return (
                       <ContextMenuHandler
-                        contextMenuContent={<TrackContextMenu file={currentFile} />}
+                        contextMenuContent={<TrackContextMenu file={currentFile.audioFile} />}
                         key={row.id}
                       >
                         <div
@@ -361,17 +486,20 @@ export default function App(): ReactNode {
                             //   ? "bg-neutral-900"
                             //   : "bg-neutral-950"
                           } }`}
-                          onClick={(e) => handleSelection(row.index, row.original.path, e)}
+                          onClick={(e) => handleSelection(row.index, currentFile.path, e)}
                         >
                           <div className="w-12 h-12 rounded ">
-                            {row.original.attachedPicture &&
-                              typeof row.original.attachedPicture !== "string" && (
+                            {currentFile.audioFile?.attachedPicture &&
+                              typeof currentFile.audioFile?.attachedPicture !== "string" && (
                                 <img
                                   className=" h-full"
                                   src={URL.createObjectURL(
-                                    new Blob([row.original.attachedPicture.buffer], {
-                                      type: row.original.attachedPicture.mime,
-                                    })
+                                    new Blob(
+                                      [currentFile.audioFile?.attachedPicture.buffer as BlobPart],
+                                      {
+                                        type: currentFile.audioFile?.attachedPicture.mime,
+                                      }
+                                    )
                                   )}
                                 />
                               )}

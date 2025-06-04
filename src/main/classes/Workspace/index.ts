@@ -1,32 +1,345 @@
-import { RootFileTree, FileNode, Watcher, WorkspaceAction } from "../../../types";
+import type {
+  RootFileTree,
+  FileNode,
+  Watcher,
+  WorkspaceAction,
+  Tags,
+  Changes,
+  UpdatedPath,
+} from "../../../types";
 import { subscribe, Event } from "@parcel/watcher";
-import { tagManager, mainWindowId } from "../..";
+import { tagManager, mainWindowId, windows } from "../..";
 import fs from "fs-extra";
+import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import { BrowserWindow } from "electron";
-import Constants from "../../utils/Constants";
+import Constants from "../../../shared/Constants";
 
 import { findFileNodeByPath } from "../../utils/findNodeByPath";
 import { isDescendant } from "../../utils/isDescendant";
+import { Album, loadConfig, saveConfig, UserConfig } from "../../db/config";
+import { isValidFileName } from "../../utils/isValidFileName";
 
 export default class Workspace {
   public fileTree: RootFileTree;
+  private lastUpdated: number = 0;
+  private cachedDb: UserConfig;
 
   private watchers: Map<string, Watcher>;
+  private updatedPathsArray: UpdatedPath[] = [];
 
-  constructor() {
+  constructor(initConfig: UserConfig) {
     this.fileTree = {
       organized: new Map<string, FileNode>(),
       disorgainzed: new Map<string, FileNode>(),
     };
+    this.cachedDb = initConfig;
 
     this.watchers = new Map<string, Watcher>();
+    this.updatedPathsArray = [];
   }
-  public resetTree(): void {
+  private async getCachedDb(): Promise<UserConfig> {
+    if (this.cachedDb && Date.now() - this.lastUpdated < 5000) return this.cachedDb;
+    this.cachedDb = await loadConfig();
+    this.lastUpdated = Date.now();
+    return this.cachedDb;
+  }
+  public async resetTree(): Promise<void> {
     this.fileTree = {
       organized: new Map<string, FileNode>(),
       disorgainzed: new Map<string, FileNode>(),
     };
+    await this.stopWatching();
+  }
+  public async editAlbum({
+    albumId,
+    changes,
+  }: {
+    albumId: string;
+    changes: Partial<Album>;
+  }): Promise<void> {
+    if (!albumId || !changes) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+    const newAlbum: Album = {
+      ...album,
+      id: album.id,
+      album: changes.album ?? album.album,
+      albumArtist: changes.albumArtist ?? album.albumArtist,
+      copyright: changes.copyright ?? album.copyright,
+      genre: changes.genre ?? album.genre,
+      year: changes.year ?? album.year,
+      fileFormatPath: changes.fileFormatPath ?? album.fileFormatPath,
+      fileFormatPathEnabled: changes.fileFormatPathEnabled ?? album.fileFormatPathEnabled,
+      attachedPicture:
+        changes.attachedPicture && changes.attachedPicture.buffer
+          ? {
+              buffer: Buffer.from(changes.attachedPicture.buffer).toString("base64"),
+              mime: changes.attachedPicture.mime,
+            }
+          : album.attachedPicture
+            ? album.attachedPicture
+            : undefined,
+    };
+
+    const fya = albums.filter((a) => a.id !== albumId);
+    fya.push(newAlbum);
+
+    await saveConfig(
+      {
+        albums: fya,
+      },
+      windows
+    );
+
+    if (changes.fileFormatPath && newAlbum.fileFormatPathEnabled) {
+      this.albumRenameFiles(newAlbum);
+    }
+  }
+  public async addToAlbum({
+    albumId,
+    filePath,
+  }: {
+    albumId: string;
+    filePath: string;
+  }): Promise<void> {
+    if (!albumId || !filePath) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+
+    const fileNode = findFileNodeByPath(this.fileTree, filePath);
+    if (!fileNode) return;
+    const file = fileNode.audioFile;
+    if (!file) return;
+    const release = tagManager.detectTagFormat(file.path);
+    if (!release) return;
+    const releaseClass = tagManager.getReleaseClass(release);
+    if (!releaseClass) return;
+    const tags = releaseClass.getTags(file.path);
+    if (!tags) return;
+
+    let hash: string | null | undefined = fileNode.hash;
+
+    if (!hash) {
+      hash = releaseClass.hashAudioStream(file.path);
+    }
+    if (!hash) return;
+    const newAlbum = {
+      ...album,
+      hashes: [...album.hashes],
+    };
+    if (!newAlbum.hashes.includes(hash)) {
+      newAlbum.hashes.push(hash);
+    }
+    const newAlb: UserConfig["albums"] = [];
+    db.albums.forEach((a) => {
+      const copy = { ...a };
+      if (copy.hashes.includes(hash)) {
+        copy.hashes = copy.hashes.filter((h) => h !== hash);
+      }
+      newAlb.push(copy);
+    });
+    releaseClass.writeTags(
+      {
+        ...tags,
+        attachedPicture: album.attachedPicture && {
+          buffer: Buffer.from(album.attachedPicture.buffer, "base64"),
+          mime: album.attachedPicture.mime,
+        },
+        album: album.album,
+        albumArtist: album.albumArtist,
+        year: album.year,
+        genre: album.genre,
+        copyright: album.copyright,
+      },
+      file.path
+    );
+    const newAlbums = newAlb.map((a) => (a.id === albumId ? newAlbum : a));
+    await saveConfig(
+      {
+        albums: newAlbums,
+      },
+      windows
+    );
+    this.sendUpdate(true);
+  }
+  public async removeFromAlbum({
+    albumId,
+    fileHash,
+  }: {
+    albumId: string;
+    fileHash: string;
+  }): Promise<void> {
+    if (!albumId || !fileHash) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+
+    const newAlbum = {
+      ...album,
+      hashes: [...album.hashes],
+    };
+    newAlbum.hashes = newAlbum.hashes.filter((h) => h !== fileHash);
+
+    const newAlbums = albums.filter((a) => a.id !== albumId);
+    newAlbums.push(newAlbum);
+    await saveConfig(
+      {
+        albums: newAlbums,
+      },
+      windows
+    );
+  }
+  public async addFolderToAlbum({
+    albumId,
+    folderPath,
+  }: {
+    albumId: string;
+    folderPath: string;
+  }): Promise<void> {
+    if (!albumId || !folderPath) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+
+    const fileNode = findFileNodeByPath(this.fileTree, folderPath);
+    if (!fileNode) return;
+    if (fileNode.type !== "directory") return;
+
+    const newAlbum = {
+      ...album,
+      folder: folderPath,
+    };
+
+    const newAlb: UserConfig["albums"] = [];
+    db.albums.forEach((a) => {
+      const copy = { ...a };
+      if (copy.folder && copy.folder === folderPath) {
+        copy.folder = undefined;
+      }
+
+      newAlb.push(copy);
+    });
+    const newAlbums = newAlb.map((a) => (a.id === albumId ? newAlbum : a));
+    await saveConfig(
+      {
+        albums: newAlbums,
+      },
+      windows
+    );
+
+    fileNode.children?.forEach((child) => {
+      if (child.type === "file") {
+        const release = tagManager.detectTagFormat(child.path);
+        if (!release) return;
+        const releaseClass = tagManager.getReleaseClass(release);
+        if (!releaseClass) return;
+        const tags = releaseClass.getTags(child.path);
+        if (!tags) return;
+
+        let hash: string | null | undefined = child.hash;
+
+        if (!hash) {
+          hash = releaseClass.hashAudioStream(child.path);
+        }
+        if (!hash) return;
+        releaseClass.writeTags(
+          {
+            ...tags,
+            attachedPicture: album.attachedPicture && {
+              buffer: Buffer.from(album.attachedPicture.buffer, "base64"),
+              mime: album.attachedPicture.mime,
+            },
+            album: album.album,
+            albumArtist: album.albumArtist,
+            year: album.year,
+            genre: album.genre,
+          },
+          child.path
+        );
+      }
+    });
+  }
+  public async removeFolderFromAlbum({
+    albumId,
+    folderPath,
+  }: {
+    albumId: string;
+    folderPath: string;
+  }): Promise<void> {
+    if (!albumId || !folderPath) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+
+    const newAlbum = {
+      ...album,
+      folder: undefined,
+    };
+
+    const newAlbums = albums.filter((a) => a.id !== albumId);
+    newAlbums.push(newAlbum);
+    await saveConfig(
+      {
+        albums: newAlbums,
+      },
+      windows
+    );
+  }
+  public async deleteAlbum({ albumId }: { albumId: string }): Promise<void> {
+    if (!albumId) return;
+    const db = await loadConfig();
+    const albums = db.albums || [];
+    const album = albums.find((a) => a.id === albumId);
+    if (!album) return;
+
+    const newAlbums = albums.filter((a) => a.id !== albumId);
+    await saveConfig(
+      {
+        albums: newAlbums,
+      },
+      windows
+    );
+  }
+  public async saveAlbum(album: Partial<Album>): Promise<void> {
+    if (!album.album) return;
+    const db = await loadConfig();
+    const albums: Album[] = db.albums || [];
+    let imgBuffer: Buffer | undefined = undefined;
+    if (album.attachedPicture) {
+      imgBuffer = Buffer.from(album.attachedPicture.buffer);
+    }
+    albums.push({
+      album: album.album,
+      albumArtist: album.albumArtist ?? "",
+      hashes: [],
+      fileFormatPathEnabled: album.fileFormatPathEnabled ?? false,
+      fileFormatPath: album.fileFormatPath ?? "",
+      copyright: album.copyright ?? "",
+      year: album.year ?? "",
+      genre: album.genre ?? "",
+      id: uuidv4(),
+      attachedPicture:
+        album.attachedPicture && imgBuffer
+          ? {
+              buffer: imgBuffer.toString("base64"),
+              mime: album.attachedPicture.mime,
+            }
+          : undefined,
+    });
+    await saveConfig(
+      {
+        albums: albums,
+      },
+      windows
+    );
   }
   public async move(conf: WorkspaceAction): Promise<void> {
     try {
@@ -48,18 +361,6 @@ export default class Workspace {
         const relative = path.relative(oldBase, node.path);
         const updatedPath = path.join(newBase, relative);
         const updatedName = path.basename(updatedPath);
-
-        // if (node.type === "file") {
-        //   if (this.audioFiles.has(node.path)) {
-        //     const oldMeta = this.audioFiles.get(node.path)!;
-        //     this.audioFiles.delete(node.path);
-        //     this.audioFiles.set(updatedPath, {
-        //       ...oldMeta,
-        //       path: updatedPath,
-        //       fileName: updatedName,
-        //     });
-        //   }
-        // }
 
         let updatedChildren: Map<string, FileNode> | undefined = undefined;
 
@@ -97,16 +398,6 @@ export default class Workspace {
                   name: path.basename(newPath),
                 };
 
-          // if (node.type === "file" && this.audioFiles.has(oldPath)) {
-          //   const oldMeta = this.audioFiles.get(oldPath)!;
-          //   this.audioFiles.delete(oldPath);
-          //   this.audioFiles.set(newPath, {
-          //     ...oldMeta,
-          //     path: newPath,
-          //     fileName: path.basename(newPath),
-          //   });
-          // }
-
           tree.delete(oldPath);
           tree.set(newPath, updatedNode);
 
@@ -122,7 +413,7 @@ export default class Workspace {
   }
   public async import(importPath: string, recursion: boolean = false): Promise<string[]> {
     const ft = await this.checkFileType(importPath);
-    // if (this.audioFiles.get(importPath)) return [];
+
     if (!ft) return [];
     const files: string[] = [];
 
@@ -151,39 +442,57 @@ export default class Workspace {
           const subFiles = await this.import(fullPath, true);
           files.push(...subFiles);
         }
-        // else if (this.isSupportedFile(fullPath)) {
-        //   const file = path.join(entry.parentPath, entry.name);
-
-        //   const release = tagManager.detectTagFormat(file);
-        //   if (!release) continue;
-        //   const releaseClass = tagManager.getReleaseClass(release);
-        //   if (!releaseClass) continue;
-        //   const tags = releaseClass.getTags(file);
-        //   if (!tags) continue;
-
-        //   this.audioFiles.set(file, { ...tags, release, path: file, fileName: entry.name });
-        // }
       }
     } else if (ft === "file") {
       if (this.isSupportedFile(importPath)) {
         const file = importPath;
+        const config = await this.getCachedDb();
 
         const release = tagManager.detectTagFormat(file);
         if (!release) return [];
         const releaseClass = tagManager.getReleaseClass(release);
         if (!releaseClass) return [];
-        const tags = releaseClass.getTags(file);
-        if (!tags) return [];
+        let tags = releaseClass.getTags(file);
 
+        const hash = releaseClass.hashAudioStream(file);
+        if (!hash) return [];
+        if (!tags) return [];
+        let newPath = file;
+
+        for (const album of config.albums) {
+          if (album.hashes.includes(hash)) {
+            releaseClass.writeTags(
+              {
+                ...tags,
+                attachedPicture: album.attachedPicture && {
+                  buffer: Buffer.from(album.attachedPicture.buffer, "base64"),
+                  mime: album.attachedPicture.mime,
+                },
+                album: album.album,
+                albumArtist: album.albumArtist,
+                year: album.year,
+                genre: album.genre,
+                copyright: album.copyright,
+              },
+              file
+            );
+            const newTags = releaseClass.getTags(file);
+            if (!newTags) return [];
+            tags = newTags;
+
+            newPath = await this.renameAlbumFile(album, file, newTags);
+          }
+        }
         if (!recursion)
           this.fileTree.disorgainzed.set(importPath, {
             name: path.basename(importPath),
-            path: importPath,
+            path: newPath,
             type: "file",
+            hash,
             audioFile: {
               ...tags,
               release,
-              path: file,
+              path: newPath,
               fileName: path.basename(importPath),
             },
           });
@@ -224,14 +533,41 @@ export default class Workspace {
           if (!release) continue;
           const releaseClass = tagManager.getReleaseClass(release);
           if (!releaseClass) continue;
-          const tags = releaseClass.getTags(file);
+          let tags = releaseClass.getTags(file);
+          const hash = releaseClass.hashAudioStream(file);
+          if (!hash) continue;
           if (!tags) continue;
+          let newPath = file;
+          const config = await this.getCachedDb();
+          for (const album of config.albums) {
+            if (album.hashes.includes(hash) || album.folder === dirPath) {
+              releaseClass.writeTags(
+                {
+                  ...tags,
+                  attachedPicture: album.attachedPicture && {
+                    buffer: Buffer.from(album.attachedPicture.buffer, "base64"),
+                    mime: album.attachedPicture.mime,
+                  },
+                  album: album.album,
+                  albumArtist: album.albumArtist,
+                  year: album.year,
+                  genre: album.genre,
+                  copyright: album.copyright,
+                },
+                file
+              );
+              const newTags = releaseClass.getTags(file);
+              if (!newTags) break;
+              tags = newTags;
+            }
+          }
 
           item.children.set(fullPath, {
             name: entry.name,
-            path: fullPath,
+            path: newPath,
+            hash,
             type: "file",
-            audioFile: { ...tags, release, path: file, fileName: entry.name },
+            audioFile: { ...tags, release, path: newPath, fileName: entry.name },
           });
         }
       }
@@ -295,46 +631,30 @@ export default class Workspace {
       this.sendUpdate();
     }
   }
-  private async processNode(node: FileNode): Promise<void> {
-    if (node.type === "file" && node.audioFile) {
-      const release = tagManager.detectTagFormat(node.path);
-      if (!release) return;
-      const releaseClass = tagManager.getReleaseClass(release);
-      if (!releaseClass) return;
-      const tags = await releaseClass.getTags(node.path);
-      if (!tags) return;
 
-      node.audioFile = {
-        ...node.audioFile,
-        ...tags,
-        release,
-        fileName: path.basename(node.path),
-        path: node.path,
-      };
-    }
-
-    if (node.children) {
-      for (const child of node.children.values()) {
-        await this.processNode(child);
-      }
-    }
-  }
   public async sendUpdate(reloadFiles: boolean = false): Promise<void> {
     if (reloadFiles) {
-      for (const tree of [this.fileTree.organized, this.fileTree.disorgainzed]) {
-        for (const node of tree.values()) {
-          await this.processNode(node);
+      const treeCopy = {
+        organized: new Map(this.fileTree.organized),
+        disorgainzed: new Map(this.fileTree.disorgainzed),
+      };
+      this.resetTree();
+      for (const tree of [treeCopy.organized, treeCopy.disorgainzed]) {
+        const fileNodes = Array.from(tree.values());
+        for (const fileNode of fileNodes) {
+          await this.import(fileNode.path);
         }
       }
     }
     const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 
-    mainWindow?.webContents.send(Constants.channels.UPDATE, this.fileTree);
+    mainWindow?.webContents.send(Constants.channels.UPDATE, this.fileTree, this.updatedPathsArray);
+    this.updatedPathsArray = [];
   }
   public async startWatching(opts?: { path: string; isDir: boolean }): Promise<void> {
     if (!opts) {
       for (const [pathName] of this.fileTree.organized) {
-        if (!this.watchers.get(pathName)) {
+        if (!this.watchers.get(pathName) && !this.watchers.has(path.dirname(pathName))) {
           const subscription = await subscribe(pathName, (err, events) => {
             this.handleWatcherEvents(err, events, pathName);
           });
@@ -345,7 +665,7 @@ export default class Workspace {
         }
       }
       for (const [filePath] of this.fileTree.disorgainzed) {
-        if (!this.watchers.get(filePath)) {
+        if (!this.watchers.get(filePath) && !this.watchers.has(path.dirname(filePath))) {
           const subscription = await subscribe(path.dirname(filePath), (err, events) => {
             const matching = events.filter((e) => e.path === filePath);
             if (matching.length > 0) {
@@ -361,7 +681,7 @@ export default class Workspace {
       }
     } else {
       const str = opts.path;
-      if (!this.watchers.get(opts.path)) {
+      if (!this.watchers.get(opts.path) && !this.watchers.has(path.dirname(str))) {
         const subscription = await subscribe(path.dirname(str), (err, events) => {
           const matching = events.filter((e) => e.path === str);
           if (matching.length > 0) {
@@ -389,11 +709,84 @@ export default class Workspace {
       this.watchers.clear();
     }
   }
+  private parseVariables(str: string, tags: Tags): string {
+    return str.replace(/\{(\w+)\}/g, (_, key) => {
+      if (key === "attachedPicture") return `{${key}}`;
+      return tags[key] ?? `{${key}}`;
+    });
+  }
+  private async getAvailabeFileName(filePath: string): Promise<string> {
+    const dir = path.dirname(filePath);
+    const ext = path.extname(filePath);
+    const baseName = path.basename(filePath, ext);
+
+    let attempt = 0;
+    let candidate = filePath;
+
+    while (await fs.pathExists(candidate)) {
+      attempt += 1;
+      candidate = path.join(dir, `${baseName} (${attempt})${ext}`);
+    }
+
+    return candidate;
+  }
+  private async renameAlbumFile(album: Album, filePath: string, tags: Tags): Promise<string> {
+    try {
+      if (!album.fileFormatPathEnabled || !album.fileFormatPath) return filePath;
+
+      const fileExtension = path.extname(filePath);
+
+      if (!tags) return filePath;
+
+      const newFileName = this.parseVariables(album.fileFormatPath, tags);
+      const newFP = path.join(path.dirname(filePath), `${newFileName}${fileExtension}`);
+
+      if (newFP === filePath) return filePath;
+      let newFilePath = await this.getAvailabeFileName(newFP);
+      if (!isValidFileName(path.basename(newFilePath))) {
+        newFilePath = await this.getAvailabeFileName(
+          path.join(path.dirname(newFilePath), `invalid_config${fileExtension}`)
+        );
+        if (!isValidFileName(path.basename(newFilePath))) return filePath;
+      }
+
+      if (!(await fs.pathExists(filePath))) {
+        return filePath;
+      }
+
+      await fs.rename(filePath, newFilePath);
+
+      return newFilePath;
+    } catch (error) {
+      console.error("Error renaming file:", error);
+      return filePath;
+    }
+  }
+  private async albumRenameFiles(album: Album): Promise<void> {
+    if (!album.fileFormatPathEnabled || !album.fileFormatPath) return;
+
+    if (album.folder) {
+      const folderNode = findFileNodeByPath(this.fileTree, album.folder);
+      if (!folderNode || folderNode.type !== "directory") return;
+      if (!folderNode.children) return;
+      for (const child of folderNode.children.values()) {
+        if (child.type !== "file") continue;
+        await this.renameAlbumFile(album, child.path, child.audioFile!);
+      }
+    }
+    for (const hash of album.hashes) {
+      const fileNode = findFileNodeByPath(this.fileTree, hash);
+      if (!fileNode || fileNode.type !== "file") continue;
+      if (path.dirname(fileNode.path) === album.folder) continue;
+      await this.renameAlbumFile(album, fileNode.path, fileNode.audioFile!);
+    }
+    this.sendUpdate(true);
+  }
   public async rename(conf: WorkspaceAction): Promise<void> {
     try {
       const oldPath = conf.path;
       const newPath = path.join(path.dirname(oldPath), conf.str);
-
+      if (!isValidFileName(newPath)) return;
       await fs.rename(oldPath, newPath);
 
       const isDir = (await this.checkFileType(newPath)) === "directory";
@@ -452,6 +845,118 @@ export default class Workspace {
       this.sendUpdate();
     }
   }
+
+  private updateFileTreeNode(oldPath: string, newPath: string, updatedNode: FileNode): void {
+    const updateInTree = (tree: Map<string, FileNode>): boolean => {
+      if (tree.has(oldPath)) {
+        tree.delete(oldPath);
+        tree.set(newPath, updatedNode);
+        return true;
+      }
+
+      for (const node of tree.values()) {
+        if (node.type === "directory" && node.children) {
+          if (updateInTree(node.children)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    const hasUpdated = updateInTree(this.fileTree.disorgainzed);
+    if (hasUpdated) return;
+
+    updateInTree(this.fileTree.organized);
+  }
+  public async saveChanges(ch: Partial<Changes>): Promise<void> {
+    if (!ch.paths || ch.paths.length === 0) return;
+
+    const updatedPaths = new Map<string, { node: FileNode; newPath: string }>();
+
+    for (const targetPath of ch.paths) {
+      const node = findFileNodeByPath(this.fileTree, targetPath);
+
+      if (!node || node.type !== "file" || !node.audioFile || !node.hash) continue;
+      const hash = node.hash;
+
+      const releaseClass = tagManager.getReleaseClass(node.audioFile.release);
+      if (!releaseClass) continue;
+
+      let tags = releaseClass.getTags(targetPath);
+      if (!tags) continue;
+
+      tags = {
+        ...tags,
+        ...ch,
+      };
+
+      let currentPath = targetPath;
+      let isInAlbum = false;
+
+      const config = await this.getCachedDb();
+      for (const album of config.albums) {
+        if (album.hashes.includes(hash) || album.folder === path.dirname(targetPath)) {
+          isInAlbum = true;
+
+          releaseClass.writeTags(
+            {
+              ...tags,
+              attachedPicture: album.attachedPicture && {
+                buffer: Buffer.from(album.attachedPicture.buffer, "base64"),
+                mime: album.attachedPicture.mime,
+              },
+              album: album.album,
+              albumArtist: album.albumArtist,
+              year: album.year,
+              genre: album.genre,
+              copyright: album.copyright,
+            },
+            currentPath
+          );
+
+          const newTags = releaseClass.getTags(currentPath);
+          if (!newTags) break;
+
+          const newPath = await this.renameAlbumFile(album, currentPath, newTags);
+          tags = newTags;
+          if (newPath !== currentPath) {
+            currentPath = newPath;
+          }
+          break;
+        }
+      }
+
+      if (!isInAlbum) {
+        releaseClass.writeTags({ ...tags }, currentPath);
+      }
+
+      updatedPaths.set(targetPath, {
+        node,
+        newPath: currentPath,
+      });
+    }
+
+    for (const [oldPath, update] of updatedPaths.entries()) {
+      this.updatedPathsArray.push({ oldPath, newPath: update.newPath });
+      await this.stopWatching(oldPath);
+
+      this.updateFileTreeNode(oldPath, update.newPath, {
+        ...update.node,
+        path: update.newPath,
+        name: path.basename(update.newPath),
+        audioFile: {
+          ...update.node.audioFile!,
+          path: update.newPath,
+          fileName: path.basename(update.newPath),
+        },
+      });
+
+      await this.startWatching();
+    }
+
+    await this.sendUpdate();
+  }
   private async checkFileType(filePath: string): Promise<"directory" | "file" | null> {
     try {
       const stat = await fs.stat(filePath);
@@ -465,6 +970,6 @@ export default class Workspace {
   }
   private isSupportedFile(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
-    return [".mp3", ".m4a"].includes(ext);
+    return [".mp3", ".m4a", "mp4"].includes(ext);
   }
 }

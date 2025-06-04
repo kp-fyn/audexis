@@ -9,6 +9,7 @@ const UserConfigContext = createContext<Config>({
     onboarding: false,
     view: "folder",
     columns: [],
+    albums: [],
   },
   setTheme: () => {},
   setView: () => {},
@@ -44,26 +45,12 @@ export function UserConfigProvider({
     onboarding: false,
     view: "folder",
     columns: [],
+    albums: [],
   });
   useEffect(() => {
-    window.app.test();
-    const cachedTheme = localStorage.getItem("theme");
-    if (cachedTheme) {
-      if (cachedTheme !== "light" && cachedTheme !== "dark") {
-        localStorage.setItem("theme", "light");
-      }
-
-      setUserConfig({ ...userConfig, theme: cachedTheme as "light" | "dark" });
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.remove("light");
-      document.documentElement.classList.add(cachedTheme as "light" | "dark");
-    }
     window.app.onUserConfigUpdate((_e, config) => {
-      setUserConfig((prev) => {
-        const hasChanged = JSON.stringify(prev) !== JSON.stringify(config);
-        if (!hasChanged) return prev;
-        return config;
-      });
+      console.log(config);
+      setUserConfig(config);
       localStorage.setItem("theme", config.theme);
       if (config.onboarding === true) {
         setHasOpened(true);
@@ -71,17 +58,12 @@ export function UserConfigProvider({
         window.app.openOnboarding();
       }
 
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.remove("light");
-      document.documentElement.classList.add(config.theme);
+      document.documentElement.setAttribute("class", config.theme ?? "dark");
     });
+    window.app.test();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    document.documentElement.classList.remove("dark");
-    document.documentElement.classList.remove("light");
-    document.documentElement.classList.add(userConfig.theme);
-  }, [userConfig]);
 
   return (
     <UserConfigContext.Provider

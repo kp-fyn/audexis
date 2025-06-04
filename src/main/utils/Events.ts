@@ -1,9 +1,8 @@
 import { ipcMain, dialog, BrowserWindow, shell } from "electron";
 
-import Constants from "./Constants";
+import Constants from "../../shared/Constants";
 import {
   mainWindowId,
-  tagManager,
   createSettingsWindow,
   windows,
   createOnboardingWindow,
@@ -13,11 +12,9 @@ import { Changes, WorkspaceAction } from "../../types";
 import fs from "node:fs";
 import mime from "mime";
 
-import { loadConfig, saveConfig, UserConfig } from "../db/config";
-import { Low } from "lowdb/lib";
+import { Album, loadConfig, saveConfig, UserConfig } from "../db/config";
 
-import { findFileNodeByPath } from "./findNodeByPath";
-let cachedDb: Low<UserConfig>;
+let cachedDb: UserConfig;
 ipcMain.on(Constants.channels.WORKSPACE_ACTION, async (_event, conf: WorkspaceAction) => {
   switch (conf.action) {
     case "rename": {
@@ -34,22 +31,19 @@ ipcMain.on(Constants.channels.UPDATE_CONFIG, async (_event, config) => {
 });
 
 ipcMain.on(Constants.channels.TEST, async () => {
-  if (!cachedDb) cachedDb = await loadConfig();
-
+  cachedDb = await loadConfig();
+  const base64 = cachedDb.albums[0].attachedPicture?.buffer;
+  if (!base64) return;
+  const buffer = Buffer.from(base64, "base64");
+  fs.writeFileSync("test.jpg", buffer);
   windows.forEach(async (window) => {
     const win = BrowserWindow.fromId(window);
     if (win) {
-      win.webContents.send(Constants.channels.USER_CONFIG_UPDATE, cachedDb.data);
+      win.webContents.send(Constants.channels.USER_CONFIG_UPDATE, cachedDb);
     }
   });
 });
-ipcMain.on(Constants.channels.SET_WINDOW_POSITION, (_event, { x, y, windowName }) => {
-  const windowId = windows.get(windowName);
-  if (!windowId) return;
-  const window = BrowserWindow.fromId(windowId);
-  if (!window) return;
-  window.setPosition(x, y);
-});
+
 ipcMain.on(Constants.channels.OPEN_SETTINGS, () => {
   createSettingsWindow();
 });
@@ -69,50 +63,6 @@ ipcMain.on(Constants.channels.CLOSE_ONBOARDING, async () => {
   }
 });
 
-ipcMain.handle(
-  Constants.channels.GET_WINDOW_POSITION,
-  (_e, { windowName }): { x: number; y: number } => {
-    const windowId = windows.get(windowName);
-    if (!windowId) return { x: 0, y: 0 };
-    const window = BrowserWindow.fromId(windowId);
-    if (!window) return { x: 0, y: 0 };
-
-    const [x, y] = window.getPosition();
-    return { x, y };
-  }
-);
-
-ipcMain.on(Constants.channels.WINDOW_MINIMIZE, (_e, { windowName }) => {
-  const windowId = windows.get(windowName);
-  if (!windowId) return;
-  const window = BrowserWindow.fromId(windowId);
-  if (window && window.isMinimizable()) {
-    window.minimize();
-  }
-});
-ipcMain.on(Constants.channels.WINDOW_MAXIMIZE, (_e, { windowName }) => {
-  const windowId = windows.get(windowName);
-  if (!windowId) return;
-  const window = BrowserWindow.fromId(windowId);
-  if (window && window.maximizable && !window.isMaximized()) {
-    window.maximize();
-  }
-});
-ipcMain.on(Constants.channels.WINDOW_UNMAXIMIZE, (_e, { windowName }) => {
-  const windowId = windows.get(windowName);
-  if (!windowId) return;
-  const window = BrowserWindow.fromId(windowId);
-  if (window && window.isMaximized()) window.unmaximize();
-});
-ipcMain.handle(Constants.channels.WINDOW_IS_MAXIMIZED, (_e, { windowName }): boolean => {
-  const windowId = windows.get(windowName);
-  if (!windowId) return false;
-  const window = BrowserWindow.fromId(windowId);
-  if (window) {
-    return window.isMaximized();
-  }
-  return false;
-});
 ipcMain.on(Constants.channels.OPEN_DIALOG, async (): Promise<void> => {
   const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
 
@@ -129,6 +79,24 @@ ipcMain.on(Constants.channels.OPEN_DIALOG, async (): Promise<void> => {
   }
   return;
 });
+ipcMain.on(
+  Constants.channels.EDIT_ALBUM,
+  async (_event, conf: { albumId: string; changes: Partial<Album> }) => {
+    workspace.editAlbum(conf);
+  }
+);
+ipcMain.on(Constants.channels.SAVE_ALBUM, async (_event, album: Partial<Album>) => {
+  if (!album) return;
+  if (!album.album) return;
+
+  workspace.saveAlbum(album);
+});
+ipcMain.on(
+  Constants.channels.ADD_TO_ALBUM,
+  async (_event, conf: { albumId: string; filePath: string }) => {
+    workspace.addToAlbum(conf);
+  }
+);
 ipcMain.handle(
   Constants.channels.IMAGE_UPLOAD,
   async (): Promise<null | { mime: string; buffer: Buffer }> => {
@@ -169,27 +137,30 @@ ipcMain.handle(
 ipcMain.on(Constants.channels.RELOAD_FILES, () => {
   workspace.sendUpdate();
 });
+ipcMain.on(
+  Constants.channels.REMOVE_FROM_ALBUM,
+  (_event, conf: { albumId: string; fileHash: string }) => {
+    workspace.removeFromAlbum(conf);
+  }
+);
+ipcMain.on(Constants.channels.DELETE_ALBUM, (_event, conf: { albumId: string }) => {
+  workspace.deleteAlbum(conf);
+});
+ipcMain.on(
+  Constants.channels.ADD_FOLDER_TO_ALBUM,
+  (_event, conf: { albumId: string; folderPath: string }) => {
+    workspace.addFolderToAlbum(conf);
+  }
+);
+ipcMain.on(
+  Constants.channels.REMOVE_FOLDER_FROM_ALBUM,
+  (_event, conf: { albumId: string; folderPath: string }) => {
+    workspace.removeFolderFromAlbum(conf);
+  }
+);
 
 ipcMain.on(Constants.channels.SAVE, (_e, ch: Partial<Changes>) => {
-  if (!ch.paths || ch.paths.length === 0) return;
-
-  for (const targetPath of ch.paths) {
-    const node = findFileNodeByPath(workspace.fileTree, targetPath);
-
-    if (!node || node.type !== "file" || !node.audioFile) continue;
-
-    const release = tagManager.getReleaseClass(node.audioFile.release);
-    if (!release) continue;
-
-    release.writeTags(ch, targetPath);
-
-    node.audioFile = {
-      ...node.audioFile,
-      ...ch,
-    };
-  }
-
-  workspace.sendUpdate(true);
+  workspace.saveChanges(ch);
 });
 ipcMain.on(Constants.channels.SHOW_IN_FINDER, (_e, path): void => {
   shell.showItemInFolder(path);

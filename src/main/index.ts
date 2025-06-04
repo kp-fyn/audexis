@@ -8,12 +8,11 @@ import TagManager from "./classes/TagManager";
 import "./utils/Events";
 import { loadConfig } from "./db/config";
 import { defaultWindowOptions } from "./utils/defaultWindowOptions";
-import Constants from "./utils/Constants";
+import Constants from "../shared/Constants";
 import Workspace from "./classes/Workspace";
 
 const tagManager = new TagManager();
-
-const workspace = new Workspace();
+let workspace: Workspace;
 const windows = new Map<string, number>();
 
 const menu = getMenu();
@@ -21,17 +20,64 @@ const menu = getMenu();
 let mainWindowId: number = 0;
 let settingsWindowId: number = 0;
 let onboardingWindowId: number = 0;
+async function init(): Promise<void> {
+  const initConfig = await loadConfig();
+  workspace = new Workspace(initConfig);
+  app.whenReady().then(async () => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId("com.electron");
+
+    // IPC test
+
+    createWindow();
+
+    app.on("activate", function () {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        windows.clear();
+        mainWindowId = 0;
+        settingsWindowId = 0;
+        onboardingWindowId = 0;
+        createWindow();
+      }
+    });
+  });
+
+  app.on("browser-window-created", async (_, window) => {
+    const db = await loadConfig();
+
+    window.webContents.send(Constants.channels.USER_CONFIG_UPDATE, db);
+  });
+  // Quit when all windows are closed, except on macOS. There, it's common
+  // for applications and their menu bar to stay active until the user quits
+  // explicitly with Cmd + Q.
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+  app.on("open-file", (event, filePath) => {
+    event.preventDefault();
+    if (filePath) {
+      workspace.import(filePath);
+    }
+  });
+}
 
 async function createWindow(): Promise<void> {
   if (BrowserWindow.getAllWindows().length > 0) return;
 
   const db = await loadConfig();
-  // workspace.init(db.data.view);
-  const backgroundColor = db.data.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
+
+  const backgroundColor = db.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
   const mainWindow = new BrowserWindow({
     ...defaultWindowOptions,
     width: 900,
     height: 670,
+
+    webPreferences: {
+      ...defaultWindowOptions.webPreferences,
+      nodeIntegration: true,
+    },
     backgroundColor,
   });
   if (is.dev) mainWindow.webContents.openDevTools({ mode: "right" });
@@ -57,55 +103,17 @@ async function createWindow(): Promise<void> {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
-    mainWindow.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}?query=app&theme=${db.data.theme}`);
+    mainWindow.loadURL(`${process.env["ELECTRON_RENDERER_URL"]}?query=app&theme=${db.theme}`);
   } else {
     mainWindow.loadFile(join(__dirname, "../renderer/index.html"), {
       query: {
         query: "app",
-        theme: db.data.theme,
+        theme: db.theme,
       },
     });
   }
 }
 
-app.whenReady().then(async () => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId("com.electron");
-
-  // IPC test
-
-  createWindow();
-
-  app.on("activate", function () {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      windows.clear();
-      mainWindowId = 0;
-      settingsWindowId = 0;
-      onboardingWindowId = 0;
-      createWindow();
-    }
-  });
-});
-
-app.on("browser-window-created", async (_, window) => {
-  const db = await loadConfig();
-
-  window.webContents.send(Constants.channels.USER_CONFIG_UPDATE, db.data);
-});
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
-app.on("open-file", (event, filePath) => {
-  event.preventDefault();
-  if (filePath) {
-    workspace.import(filePath);
-  }
-});
 async function createSettingsWindow(): Promise<void> {
   const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
   if (settingsWindowId !== 0) {
@@ -118,7 +126,7 @@ async function createSettingsWindow(): Promise<void> {
   }
   if (!mainWindow) return;
   const db = await loadConfig();
-  const backgroundColor = db.data.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
+  const backgroundColor = db.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
   const settingsWindow = new BrowserWindow({
     ...defaultWindowOptions,
     width: 650,
@@ -138,13 +146,13 @@ async function createSettingsWindow(): Promise<void> {
 
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     settingsWindow.loadURL(
-      `${process.env["ELECTRON_RENDERER_URL"]}?query=settings&theme=${db.data.theme}`
+      `${process.env["ELECTRON_RENDERER_URL"]}?query=settings&theme=${db.theme}`
     );
   } else {
     settingsWindow.loadFile(join(__dirname, "../renderer/index.html"), {
       query: {
         query: "settings",
-        theme: db.data.theme,
+        theme: db.theme,
       },
     });
   }
@@ -166,7 +174,7 @@ async function createOnboardingWindow(): Promise<void> {
   if (!mainWindow) return;
   isCreatingOnboarding = true;
   const db = await loadConfig();
-  const backgroundColor = db.data.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
+  const backgroundColor = db.theme === "dark" ? "#0a0a0a" : "#f1f1f1";
   const onboardingWindow = new BrowserWindow({
     ...defaultWindowOptions,
     parent: mainWindow,
@@ -193,18 +201,20 @@ async function createOnboardingWindow(): Promise<void> {
 
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     onboardingWindow.loadURL(
-      `${process.env["ELECTRON_RENDERER_URL"]}?query=onboarding&theme=${db.data.theme}`
+      `${process.env["ELECTRON_RENDERER_URL"]}?query=onboarding&theme=${db.theme}`
     );
   } else {
     onboardingWindow.loadFile(join(__dirname, "../renderer/index.html"), {
       query: {
         query: "onboarding",
-        theme: db.data.theme,
+        theme: db.theme,
       },
     });
   }
 }
-
+init().catch((err) => {
+  console.error("Failed to initialize app:", err);
+});
 export {
   mainWindowId,
   tagManager,

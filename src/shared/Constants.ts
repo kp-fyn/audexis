@@ -1,13 +1,5 @@
 const Constants = {
   channels: {
-    WINDOW_POSITION: "window-position",
-    SET_WINDOW_POSITION: "set-window-position",
-    GET_WINDOW_POSITION: "get-window-position",
-    WINDOW_MINIMIZE: "window-minimize",
-    WINDOW_MAXIMIZE: "window-maximize",
-    WINDOW_UNMAXIMIZE: "window-unmaximize",
-    WINDOW_CLOSE: "window-close",
-    WINDOW_IS_MAXIMIZED: "window-is-maximized",
     OPEN_DIALOG: "open-dialog",
     WINDOW_BLUR: "window-blur",
     UPDATE: "update",
@@ -16,7 +8,6 @@ const Constants = {
     RELOAD_FILES: "reload-files",
     UNDO: "undo",
     REDO: "redo",
-    SELECT_ALL: "select-all",
     SHOW_IN_FINDER: "show-in-finder",
     OPEN_SETTINGS: "open-settings",
     USER_CONFIG_UPDATE: "user-config-update",
@@ -25,6 +16,13 @@ const Constants = {
     UPDATE_CONFIG: "update-config",
     CLOSE_ONBOARDING: "close-onboarding",
     WORKSPACE_ACTION: "workspace-action",
+    SAVE_ALBUM: "save-album",
+    ADD_TO_ALBUM: "add-to-album",
+    REMOVE_FROM_ALBUM: "remove-from-album",
+    EDIT_ALBUM: "edit-album",
+    DELETE_ALBUM: "delete-album",
+    ADD_FOLDER_TO_ALBUM: "add-folder-to-album",
+    REMOVE_FOLDER_FROM_ALBUM: "remove-folder-from-album",
   },
 };
 export default Constants;

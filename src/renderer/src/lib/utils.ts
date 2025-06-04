@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { AudioFile, FileNode } from "src/types";
 import { twMerge } from "tailwind-merge";
+import { Extended, TagOption } from "../../../types/index";
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
@@ -62,10 +63,21 @@ export function getAllColumns(): { value: string; label: string }[] {
     { value: "releaseDate", label: "Release Date" },
   ];
 }
+export function getAlbumTags(): { value: string; label: string; type: "input" | "img" }[] {
+  return [
+    { value: "album", label: "Album Name", type: "input" },
+    { value: "albumArtist", label: "Album Artist", type: "input" },
+    { value: "attachedPicture", label: "Album Cover", type: "img" },
+    { value: "copyright", label: "Copyright", type: "input" },
+    { value: "year", label: "Released", type: "input" },
+    { value: "genre", label: "Genre", type: "input" },
+  ];
+}
 export function findFileNodeByPath(
-  tree: { organized: Map<string, FileNode>; disorgainzed: Map<string, FileNode> },
+  fileTree: { organized: Map<string, FileNode>; disorgainzed: Map<string, FileNode> },
   id: string
 ): FileNode | null {
+  const tree = new Map([...fileTree.organized, ...fileTree.disorgainzed]);
   const search = (nodes: Map<string, FileNode>): FileNode | null => {
     for (const node of nodes.values()) {
       if (node.path === id) return node;
@@ -77,15 +89,39 @@ export function findFileNodeByPath(
     return null;
   };
 
-  return search(tree.organized) || search(tree.disorgainzed);
+  return search(tree);
 }
 
-export function getAudioFiles(tree: Map<string, FileNode>): AudioFile[] {
-  const audioFiles: AudioFile[] = [];
+export function findAudiofilebyHash(
+  fileTree: { organized: Map<string, FileNode>; disorgainzed: Map<string, FileNode> },
+  hash: string
+): Extended | null {
+  const tree = new Map([...fileTree.organized, ...fileTree.disorgainzed]);
+  const search = (nodes: Map<string, FileNode>): Extended | null => {
+    for (const node of nodes.values()) {
+      if (node.type === "file" && node.audioFile && node.hash === hash) {
+        return {
+          ...node.audioFile,
+          hash: node.hash,
+        };
+      }
+      if (node.type === "directory" && node.children) {
+        const found = search(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return search(tree);
+}
+
+export function getAudioFiles(tree: Map<string, FileNode>): FileNode[] {
+  const audioFiles: FileNode[] = [];
 
   const traverse = (node: FileNode): void => {
     if (node.type === "file" && node.audioFile) {
-      audioFiles.push(node.audioFile);
+      audioFiles.push(node);
     }
 
     if (node.type === "directory" && node.children) {
@@ -100,4 +136,95 @@ export function getAudioFiles(tree: Map<string, FileNode>): AudioFile[] {
   }
 
   return audioFiles;
+}
+
+const tagOptions: TagOption[] = [
+  { label: "Title", value: "title" },
+  { label: "Artist", value: "artist" },
+  { label: "Album", value: "album" },
+  { label: "Year", value: "year" },
+  { label: "Track Number", value: "trackNumber" },
+  { label: "Genre", value: "genre" },
+  { label: "Album Artist", value: "albumArtist" },
+  { label: "Content Group", value: "contentGroup" },
+  { label: "Composer", value: "composer" },
+  { label: "Encoded By", value: "encodedBy" },
+  { label: "Unsynced Lyrics", value: "unsyncedLyrics" },
+  { label: "Length", value: "length" },
+  { label: "Conductor", value: "conductor" },
+  { label: "User Defined URL", value: "userDefinedURL" },
+  { label: "Comments", value: "comments" },
+  { label: "Private", value: "private" },
+  { label: "Relative Volume Adjustment", value: "relativeVolumeAdjustment" },
+  { label: "Encryption Method", value: "encryptionMethod" },
+  { label: "Group ID Registration", value: "groupIdRegistration" },
+  { label: "General Object", value: "generalObject" },
+  { label: "Commercial URL", value: "commercialURL" },
+  { label: "Copyright URL", value: "copyrightURL" },
+  { label: "Audio File URL", value: "audioFileURL" },
+  { label: "Artist URL", value: "artistURL" },
+  { label: "Radio Station URL", value: "radioStationURL" },
+  { label: "Payment URL", value: "paymentURL" },
+  { label: "Bitmap Image URL", value: "bitmapImageURL" },
+  { label: "User Defined Text", value: "userDefinedText" },
+  { label: "Synchronized Lyrics", value: "synchronizedLyrics" },
+  { label: "Tempo Codes", value: "tempoCodes" },
+  { label: "Copyright", value: "copyright" },
+  { label: "Music CD Identifier", value: "musicCDIdentifier" },
+  { label: "Event Timing Codes", value: "eventTimingCodes" },
+  { label: "Sequence", value: "sequence" },
+  { label: "Play Count", value: "playCount" },
+  { label: "Audio Seek Point Index", value: "audioSeekPointIndex" },
+  { label: "Media Type", value: "mediaType" },
+  { label: "Commercial Frame", value: "commercialFrame" },
+  { label: "Audio Encryption", value: "audioEncryption" },
+  { label: "Signature Frame", value: "signatureFrame" },
+  { label: "Software Encoder", value: "softwareEncoder" },
+  { label: "Audio Encoding Method", value: "audioEncodingMethod" },
+  { label: "Recommended Buffer Size", value: "recommendedBufferSize" },
+  { label: "Beats Per Minute", value: "beatsPerMinute" },
+  { label: "Language", value: "language" },
+  { label: "File Type", value: "fileType" },
+  { label: "Time", value: "time" },
+  { label: "Recording Date", value: "recordingDate" },
+  { label: "Release Date", value: "releaseDate" },
+];
+export { tagOptions };
+
+const illegalCharacters = /[\\/:*?"<>|]/;
+const reservedFileNames = [
+  "CON",
+  "PRN",
+  "AUX",
+  "NUL",
+  ...Array.from({ length: 9 }, (_, i) => `COM${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `LPT${i + 1}`),
+];
+
+export function isValidFileName(
+  name: string,
+  ignoreMaxChar: boolean
+): { err: boolean; message?: string } {
+  if (!name || name.trim().length === 0) {
+    return { err: true, message: "File name cannot be empty." };
+  }
+
+  if (illegalCharacters.test(name)) {
+    return { err: true, message: "File name contains illegal characters." };
+  }
+
+  if (name.endsWith(" ") || name.endsWith(".")) {
+    return { err: true, message: "File name cannot end with a space or period." };
+  }
+
+  const baseName = name.split(".")[0].toUpperCase();
+  if (reservedFileNames.includes(baseName)) {
+    return { err: true, message: `File name '${baseName}' is reserved by the system.` };
+  }
+
+  if (name.length > 255 && !ignoreMaxChar) {
+    return { err: true, message: "File name is too long (max 255 characters)." };
+  }
+
+  return { err: false };
 }

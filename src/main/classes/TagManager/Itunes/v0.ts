@@ -12,6 +12,7 @@ import { ImgData, Tags } from "../../../../types";
 
 import fs from "node:fs";
 import { TagFormatRelease } from "../abstractions";
+import crypto from "crypto";
 
 type ItunesFrames = {
   [key: string]: string | ImgData;
@@ -805,7 +806,20 @@ export default class Itunes extends TagFormatRelease {
 
     return tags as Tags;
   }
+  public hashAudioStream(filePath: string): string | null {
+    const fileBuffer = fs.readFileSync(filePath);
+    const atoms = this.parseAtoms(fileBuffer);
+    const mdatAtom = atoms.find((atom) => atom.type === "mdat");
+    if (!mdatAtom) return null;
+    const start = mdatAtom.position;
+    const end = start + mdatAtom.size;
 
+    const mdatBuffer = fileBuffer.subarray(start, end);
+
+    const hash = crypto.createHash("sha256");
+    hash.update(mdatBuffer);
+    return hash.digest("hex");
+  }
   private parseAtoms(buffer: Buffer, start = 0, size?: number): Atom[] {
     let position = start;
     const atoms: Atom[] = [];

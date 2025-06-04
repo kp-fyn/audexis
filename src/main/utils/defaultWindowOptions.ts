@@ -9,5 +9,7 @@ export const defaultWindowOptions: BrowserWindowConstructorOptions = {
     preload: join(__dirname, "../preload/index.js"),
     sandbox: false,
     backgroundThrottling: false,
+    contextIsolation: true,
+    nodeIntegration: false,
   },
 };

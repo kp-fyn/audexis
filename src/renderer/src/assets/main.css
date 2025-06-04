@@ -1,6 +1,7 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
 @font-face {
   font-family: "Reddit Sans";
   src: url("./Reddit_Sans/RedditSans-VariableFont_wght.ttf") format("truetype");
@@ -23,7 +24,8 @@
   --border: #010101;
   --foreground: #000;
   --hover: #cccccc;
-  --muted: #040505;
+  --muted: #d3d3d3;
+  --muted-hover: #cac8c8;
   --muted-foreground: #65676d;
 
   --popover: #e2e5f0;
@@ -53,7 +55,7 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #eb5757 #eb5757;
+  scrollbar-color: #eb5757 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -84,7 +86,8 @@
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
 
-  --muted: #1e293b;
+  --muted: #181e2e;
+  --muted-hover: #131a24;
   --muted-foreground: #94a3b8;
 
   --accent: #1e293b;
@@ -110,4 +113,79 @@ body,
   color: var(--foreground);
   border-color: #374151;
   outline-color: #eb5757 !important;
+}
+.infinite-scroll-component__outerdiv {
+  width: 100%;
+}
+@layer utilities {
+  .animate-slide-out-to-left {
+    animation: slide-out-to-left 300ms ease-in-out forwards;
+  }
+
+  .animate-slide-out-to-right {
+    animation: slide-out-to-right 300ms ease-in-out forwards;
+  }
+
+  .animate-slide-in-from-right {
+    animation: slide-in-from-right 300ms ease-in-out forwards;
+  }
+
+  .animate-slide-in-from-left {
+    animation: slide-in-from-left 300ms ease-in-out forwards;
+  }
+}
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-to-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+.dropzone {
+  border-image: repeating-linear-gradient(
+      to right,
+      #3b82f6 0,
+      #3b82f6 10px,
+      transparent 10px,
+      transparent 30px
+    )
+    1;
+}
+@keyframes slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-to-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+.testy {
+  background-color: #0e1622;
 }

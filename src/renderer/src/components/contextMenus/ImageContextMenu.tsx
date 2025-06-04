@@ -38,7 +38,7 @@ export default function ImageContextMenu(): ReactNode {
 
   const currentFile = files.find((file) => file.path === selected[0]);
   if (!currentFile) return null;
-  const noAttatchedImage = currentFile.attachedPicture === null && !changes.attachedPicture?.buffer;
+  const noAttatchedImage = !currentFile.attachedPicture && !changes.attachedPicture?.buffer;
   return (
     <>
       <ContextMenuItem
@@ -65,7 +65,7 @@ export default function ImageContextMenu(): ReactNode {
         onClick={() =>
           setChanges({
             ...changes,
-            attachedPicture: { buffer: null, mime: "null" },
+            attachedPicture: { buffer: undefined, mime: "null" },
           })
         }
       >

@@ -47,6 +47,10 @@ export default function DraggableHeader({ header, children }: Props): ReactNode 
   );
 }
 interface Props {
-  header: Header<AudioFile, unknown>;
+  header: Header<FileIdentifier, unknown>;
   children: ReactNode;
+}
+interface FileIdentifier {
+  hash: string;
+  path: string;
 }

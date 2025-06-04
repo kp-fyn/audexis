@@ -105,6 +105,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
         <Check className="h-4 w-4" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
+
     {children}
   </ContextMenuPrimitive.CheckboxItem>
 ));

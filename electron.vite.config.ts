@@ -1,21 +1,22 @@
 import { resolve } from "path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
   },
   renderer: {
     resolve: {
       alias: {
         "@renderer": resolve("src/renderer/src"),
-        "@/ui": resolve("src/renderer/src")
-      }
+        "@/ui": resolve("src/renderer/src"),
+      },
     },
-    plugins: [react()]
-  }
+    plugins: [react(), nodePolyfills()],
+  },
 });

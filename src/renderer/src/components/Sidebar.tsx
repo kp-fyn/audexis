@@ -52,9 +52,9 @@ export default function Sidebar(): ReactNode {
       style={{
         width: `${sidebarWidth}`,
         // minWidth: "300px",
-        maxWidth: `${width - 200} px`,
+        maxWidth: `${width - 200}px`,
       }}
-      className="fixed pb-12 top-12 left-0 h-screen z-[9999] bg-background  text-foreground overflow-y-auto overflow-x-clip"
+      className="fixed pb-12 top-12 left-0 h-screen z-[50] bg-background  text-foreground overflow-y-auto overflow-x-clip"
     >
       {config.view === "simple" ? <EditMenu /> : <FileTree />}
       <div

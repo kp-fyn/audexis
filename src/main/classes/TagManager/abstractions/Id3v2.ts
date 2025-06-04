@@ -1,5 +1,6 @@
 import TagFormatRelease from "./TagFormatRelease";
 import fs from "node:fs";
+import crypto from "crypto";
 import { Frames, ImgData, Tags } from "../../../../types";
 type ID3V2Frames = {
   [key: string]: string | Buffer<ArrayBufferLike> | ImgData | null;
@@ -111,6 +112,28 @@ export default abstract class Id3V2 extends TagFormatRelease {
 
     return buffer.subarray(0, 3).toString() === "ID3" ? buffer : null;
   }
+  public hashAudioStream(filePath: string): string | null {
+    const fd = fs.openSync(filePath, "r");
+    const buffer = Buffer.alloc(10);
+
+    fs.readSync(fd, buffer, 0, 10, 0);
+    fs.closeSync(fd);
+
+    if (buffer.toString("utf8", 0, 3) !== "ID3") {
+      return null;
+    }
+
+    const size =
+      ((buffer[6] & 0x7f) << 21) |
+      ((buffer[7] & 0x7f) << 14) |
+      ((buffer[8] & 0x7f) << 7) |
+      (buffer[9] & 0x7f);
+    const audioStream = buffer.subarray(10 + size);
+    const hash = crypto.createHash("sha256");
+    hash.update(audioStream);
+    const hashBuffer = hash.digest("hex");
+    return hashBuffer;
+  }
   getTags(filePath: string): Tags {
     const buffer = fs.readFileSync(filePath);
 
@@ -147,7 +170,7 @@ export default abstract class Id3V2 extends TagFormatRelease {
         offset += 4 + 2;
       }
 
-      const frameData = buffer.slice(offset, offset + frameSize);
+      const frameData = buffer.subarray(offset, offset + frameSize);
       offset += frameSize;
 
       if (frameID.startsWith("T") || ["TT2", "TP1", "TP2", "TAL", "TYE"].includes(frameID)) {
@@ -189,7 +212,7 @@ export default abstract class Id3V2 extends TagFormatRelease {
           imageOffset = descriptionEnd + 1;
         }
 
-        const imageData = frameData.slice(imageOffset);
+        const imageData = frameData.subarray(imageOffset);
 
         frames[frameID] = {
           mime: mimeType,

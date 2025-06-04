@@ -1,7 +1,7 @@
 import { BrowserWindow, Menu, MenuItem, MenuItemConstructorOptions, app } from "electron";
 import { workspace, createSettingsWindow, mainWindowId } from "../index";
-import Constants from "./Constants";
-const mainWindow = BrowserWindow.getAllWindows().find((window) => window.id === mainWindowId);
+import Constants from "../../shared/Constants";
+
 const menuItems: MenuItemConstructorOptions[] = [
   {
     label: "File",
@@ -10,6 +10,10 @@ const menuItems: MenuItemConstructorOptions[] = [
         label: "Open...",
         accelerator: "CmdOrCtrl+O",
         click: (): void => {
+          const mainWindow = BrowserWindow.getAllWindows().find(
+            (window) => window.id === mainWindowId
+          );
+
           if (mainWindow) {
             mainWindow.webContents.send(Constants.channels.OPEN_DIALOG);
           }
@@ -18,16 +22,27 @@ const menuItems: MenuItemConstructorOptions[] = [
       { label: "Close Editor", role: "close" },
     ],
   },
+  { label: "Albums", submenu: [] },
   {
     label: "Edit",
     submenu: [
       {
         role: "undo",
-        click: () => mainWindow?.webContents.send(Constants.channels.UNDO),
+        click: (): void => {
+          const mainWindow = BrowserWindow.getAllWindows().find(
+            (window) => window.id === mainWindowId
+          );
+          mainWindow?.webContents.send(Constants.channels.UNDO);
+        },
       },
       {
         role: "redo",
-        click: () => mainWindow?.webContents.send(Constants.channels.REDO),
+        click: (): void => {
+          const mainWindow = BrowserWindow.getAllWindows().find(
+            (window) => window.id === mainWindowId
+          );
+          mainWindow?.webContents.send(Constants.channels.REDO);
+        },
       },
       { type: "separator" },
       { role: "cut" },

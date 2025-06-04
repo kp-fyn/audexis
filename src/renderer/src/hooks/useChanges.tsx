@@ -11,8 +11,11 @@ import {
 } from "react";
 import { useHistoryState } from "@uidotdev/usehooks";
 
-import { Changes, AudioFile, RootFileTree } from "./../../../types";
-
+import { Changes, AudioFile, RootFileTree, Tags, FileNode } from "./../../../types";
+type FileIdentifier = {
+  hash: string;
+  path: string;
+};
 interface ChangesContxt {
   changes: Partial<AudioFile>;
   neededItems: { value: string; label: string; maxLength?: number }[];
@@ -20,19 +23,37 @@ interface ChangesContxt {
   setSelected: Dispatch<SetStateAction<string[]>>;
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
   fileTreeFolderSelected: string[];
-  setFilesToShow: Dispatch<SetStateAction<AudioFile[]>>;
+  setFilesToShow: Dispatch<SetStateAction<FileIdentifier[]>>;
   setFileTree: Dispatch<SetStateAction<RootFileTree>>;
-  filesToShow: AudioFile[];
+  filesToShow: FileIdentifier[];
   selected: string[];
   fileTree: RootFileTree;
+  initialDialogPage: number;
   saveChanges: () => void;
+  albumId: string;
+  setAlbumId: Dispatch<SetStateAction<string>>;
+
+  showAlbumDialog: (page?: number) => void;
+  closeAlbumDialog: () => void;
   clearChanges: () => void;
-  files: AudioFile[];
-  setFiles: Dispatch<SetStateAction<AudioFile[]>>;
+  files: FileNode[];
+  setFiles: Dispatch<SetStateAction<FileNode[]>>;
+  albumDialogOpen: boolean;
+
+  albumDialogValues: Partial<Tags>;
+  setAlbumDialogValues: Dispatch<SetStateAction<Partial<Tags>>>;
 }
 
 const ChangesContext = createContext<ChangesContxt>({
   changes: {},
+  albumId: "",
+  setAlbumId: () => {
+    throw new Error("setAlbumId function must be overridden");
+  },
+  setAlbumDialogValues: () => {
+    throw new Error("setAlbumDialogValues function must be overridden");
+  },
+  albumDialogValues: {},
   setFileTreeFolderSelected: () => {
     throw new Error("setFileTreeFolderSelected function must be overridden");
   },
@@ -40,7 +61,9 @@ const ChangesContext = createContext<ChangesContxt>({
   setFilesToShow: () => {
     throw new Error("setFilesToShow function must be overridden");
   },
-
+  closeAlbumDialog: () => {
+    console.log("closeAlbumDialog function must be overridden");
+  },
   neededItems: [],
   clearChanges: () => {
     throw new Error("clearChanges function must be overridden");
@@ -49,10 +72,16 @@ const ChangesContext = createContext<ChangesContxt>({
     throw new Error("clearChanges function must be overridden");
   },
   filesToShow: [],
+  initialDialogPage: 0,
   fileTree: {
     disorgainzed: new Map(),
     organized: new Map(),
   },
+  albumDialogOpen: false,
+  showAlbumDialog: () => {
+    console.log("showAlbumDialog function must be overridden");
+  },
+
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
@@ -83,14 +112,36 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
     {}
   );
 
-  const [files, setFiles] = useState<AudioFile[]>([]);
-  const [filesToShow, setFilesToShow] = useState<AudioFile[]>([]);
+  const [files, setFiles] = useState<FileNode[]>([]);
+  const [filesToShow, setFilesToShow] = useState<FileIdentifier[]>([]);
+  const [albumId, setAlbumId] = useState<string>("");
+  const [initialDialogPage, setInitialDialogPage] = useState(0);
   const [fileTreeFolderSelected, setFileTreeFolderSelected] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
+  const [albumDialogValues, setAlbumDialogValues] = useState<Partial<Tags>>({
+    albumArtist: "",
+    album: "",
+    year: "",
+    genre: "",
+    copyright: "",
+    attachedPicture: undefined,
+  });
+
   const [fileTree, setFileTree] = useState<RootFileTree>({
     disorgainzed: new Map(),
     organized: new Map(),
   });
+  useEffect(() => {
+    setTimeout(() => {
+      document.body.style = "";
+    }, 0);
+    if (!albumDialogOpen) {
+      setAlbumDialogValues({});
+      setInitialDialogPage(0);
+      setAlbumId("");
+    }
+  }, [albumDialogOpen]);
 
   function handleUndo(): void {
     if (canUndo) {
@@ -156,7 +207,23 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, files]);
-
+  function showAlbumDialog(page?: number): void {
+    if (page) {
+      setInitialDialogPage(page);
+    } else {
+      setInitialDialogPage(0);
+    }
+    setAlbumDialogOpen(true);
+  }
+  function closeAlbumDialog(): void {
+    setAlbumDialogOpen(false);
+    setAlbumDialogValues({});
+    setInitialDialogPage(0);
+    setAlbumId("");
+    setTimeout(() => {
+      document.body.style = "";
+    }, 0);
+  }
   return (
     <ChangesContext.Provider
       value={{
@@ -175,6 +242,14 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
         setSelected,
         files,
         setFiles,
+        initialDialogPage,
+        albumDialogOpen,
+        albumId,
+        setAlbumId,
+        closeAlbumDialog,
+        setAlbumDialogValues,
+        showAlbumDialog,
+        albumDialogValues,
       }}
     >
       {children}
@@ -189,7 +264,7 @@ export function ChangesProvider({ children }: { children: ReactNode }): ReactNod
       ...changes,
       paths: selected,
     };
-
+    console.log("saved");
     window.app.save(parsedChanges);
     clear();
   }

@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
 import { Button } from "./button";
 import { Settings } from "lucide-react";
+import { useChanges } from "../hooks/useChanges";
 
 export default function Header({ windowName, headerShown }: Props): ReactNode {
+  const { showAlbumDialog } = useChanges();
   // const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // const [startMousePosition, setStartMousePosition] = useState<{
@@ -67,11 +69,15 @@ export default function Header({ windowName, headerShown }: Props): ReactNode {
       className={`z-[999999] bg-background border-b w-full  border-border fixed h-[48px] top-0 ${headerShown ? "flex" : "hidden"} `}
     >
       <div className="headhead w-full"></div>
-      <div className="ml-auto justify-center px-2 gap-2 flex items-center h-full">
+      <div className="z-[999999] ml-auto justify-center px-2 gap-2 flex items-center h-full">
         {windowName === "app" && (
           <>
             <Button id="import" size={"sm"} onClick={() => window.app.openDialog()}>
               Import FIle
+            </Button>
+            <Button onClick={() => showAlbumDialog(0)} variant={"link"}>
+              {" "}
+              Manage Albums
             </Button>
             <button
               className="hover:bg-hover px-2 py-1 rounded-md"

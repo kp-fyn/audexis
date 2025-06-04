@@ -14,6 +14,8 @@ import queryString from "query-string";
 import { UserConfigProvider } from "./hooks/useUserConfig";
 import Onboarding from "./Onboarding";
 import { BottomHeightProvider } from "./hooks/useBottombarHeight";
+import { Toaster } from "react-hot-toast";
+
 window.app.onOpenDialog(() => {
   window.app.openDialog();
 });
@@ -21,19 +23,20 @@ window.app.onOpenDialog(() => {
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
 const query = queryString.parse(window.location.search);
-let page = query.query;
+let page: string = query.query as string;
 const theme = query.theme;
 let content: ReactNode;
+if (!page || typeof page !== "string") {
+  page = "app";
+}
 
-document.documentElement.classList.remove("dark");
-document.documentElement.classList.remove("light");
-document.documentElement.classList.add(theme as string);
+if (theme) document.documentElement.setAttribute("class", theme as string);
 let headerShown = true;
 const url = new URL(window.location.href);
 url.search = `?query=${page}`;
 window.history.pushState({}, "", url);
 
-switch (page) {
+switch (page.toLowerCase()) {
   case "app":
     content = <App />;
     break;
@@ -51,17 +54,26 @@ switch (page) {
 }
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
-      <UserConfigProvider initialTheme={theme as string}>
+    <UserConfigProvider initialTheme={theme as string}>
+      <ChangesProvider>
         <Header headerShown={headerShown} windowName={page} />
-
-        <ChangesProvider>
+        <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
           <BottomHeightProvider>
-            <SidebarWidthProvider>{content}</SidebarWidthProvider>
+            <SidebarWidthProvider>
+              {content}
+              <Toaster
+                toastOptions={{
+                  className:
+                    "!bg-background !text-foreground !border-border !text-foreground !rounded !shadow-md !border",
+                }}
+                position="top-right"
+                containerClassName="!top-[64px]"
+              />
+            </SidebarWidthProvider>
           </BottomHeightProvider>
-        </ChangesProvider>
-      </UserConfigProvider>
-    </ErrorBoundary>
+        </ErrorBoundary>
+      </ChangesProvider>
+    </UserConfigProvider>
   </React.StrictMode>
 );
 // eslint-disable-next-line react-refresh/only-export-components
@@ -72,6 +84,7 @@ function ErrorFallback({
   error: Error;
   resetErrorBoundary: () => void;
 }): ReactNode {
+  console.error("ErrorBoundary caught an error:", error);
   return (
     <div className="mt-12 h-full">
       <h2>Something went wrong!</h2>
