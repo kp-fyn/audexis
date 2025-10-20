@@ -12,9 +12,12 @@ export function useAutoUpdater() {
       checkingForUpdates = true;
 
       try {
+        console.log("[Auto-Updater] Checking for updates...");
         const update = await check();
+        console.log("[Auto-Updater] Update check result:", update);
 
         if (update?.available) {
+          console.log("[Auto-Updater] Update available:", update.version);
           toast(
             (t) => (
               <div className="flex flex-col gap-2">
@@ -58,18 +61,28 @@ export function useAutoUpdater() {
               duration: Infinity,
             }
           );
+        } else {
+          console.log("[Auto-Updater] No update available");
         }
       } catch (error) {
-        console.error("Update check failed:", error);
+        console.error("[Auto-Updater] Update check failed:", error);
       } finally {
         checkingForUpdates = false;
       }
     }
 
+    // Check immediately on mount
     checkForUpdates();
 
-    const interval = setInterval(checkForUpdates, 30 * 60 * 1000);
+    // Check every 5 minutes for faster testing (change to 30 minutes for production)
+    const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    // Add global function for manual testing
+    (window as any).checkForUpdates = checkForUpdates;
+
+    return () => {
+      clearInterval(interval);
+      delete (window as any).checkForUpdates;
+    };
   }, []);
 }
