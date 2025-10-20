@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useUserConfig } from "@/ui/hooks/useUserConfig";
 import type { Column, Column as UserColumn } from "@/ui/types";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   SectionNavButton,
   AppearanceSection,
@@ -28,6 +29,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   const [closing, setClosing] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>("");
 
   const [activeSection, setActiveSection] = useState<
     "appearance" | "columns" | "behavior" | "advanced"
@@ -62,6 +64,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       document.body.appendChild(root);
     }
     setPortalNode(root);
+
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion("Unknown"));
   }, [open]);
 
   useEffect(() => {
@@ -211,8 +217,15 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               isActive={activeSection === "advanced"}
               onClick={() => setActiveSection("advanced")}
             />
-            <div className="mt-auto pt-4 text-[10px] text-foreground/40 leading-relaxed">
-              1-4 to switch sections. Esc to close.
+            <div className="mt-auto pt-4 space-y-2">
+              <div className="text-[10px] text-foreground/40 leading-relaxed">
+                1-4 to switch sections. Esc to close.
+              </div>
+              {appVersion && (
+                <div className="text-[10px] text-foreground/30 font-mono">
+                  v{appVersion}
+                </div>
+              )}
             </div>
           </nav>
 
