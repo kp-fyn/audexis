@@ -1,0 +1,8 @@
+{
+  "exclude": [
+    "target",
+    "node_modules",
+    "src-tauri/target",
+    "src-tauri/node_modules"
+  ]
+}
