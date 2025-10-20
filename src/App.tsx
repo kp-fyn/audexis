@@ -446,7 +446,6 @@ function App() {
         style={{ marginLeft: `${sidebarWidth}px` }}
         className="flex flex-col flex-1 h-full min-h-0 w-full select-none"
       >
-        {/* Top title / status bar (presentation only) */}
         <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
             Tag Editor
@@ -556,7 +555,6 @@ function App() {
           </div>
         </div>
 
-        {/* Bottom status bar purely visual, anchored at bottom via flex layout */}
         <div className="shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
           <span className="truncate">{files.length} files loaded</span>
         </div>

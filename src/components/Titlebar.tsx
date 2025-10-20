@@ -95,7 +95,6 @@ export default function Titlebar() {
               )}
             </button>
 
-            {/* Minimize Button */}
             <button
               aria-label="Minimize"
               onClick={minimizeWindow}

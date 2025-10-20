@@ -123,7 +123,6 @@ export default async function Home() {
           </div>
         </main>
 
-        {/* Footer */}
         <footer className="mt-16 pb-8 text-sm text-muted-foreground">
           <a
             href="https://github.com/kp-fyn/audexis"

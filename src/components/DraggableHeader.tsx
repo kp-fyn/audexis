@@ -50,7 +50,6 @@ export default function DraggableHeader({
         minWidth: `${header.column.columnDef.minSize}px`,
       }}
     >
-      {/* Drag handle (only area that initiates reorder) */}
       <button
         type="button"
         className="shrink-0 w-3 h-3 rounded-sm text-[10px] leading-none flex items-center justify-center cursor-grab active:cursor-grabbing text-foreground/40 hover:text-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/50"
@@ -61,7 +60,6 @@ export default function DraggableHeader({
         ⋮
       </button>
 
-      {/* Sortable clickable label area */}
       {header.isPlaceholder ? null : (
         <div
           className={`flex items-center gap-1 min-w-0 truncate font-semibold text-[11px] uppercase tracking-wide ${

@@ -30,7 +30,6 @@
   --radius: 0.5rem;
 }
 
-/* === LIGHT THEME === */
 [data-theme="light"] {
   --background: #f9fafb;
   --foreground: #0f172a;
@@ -66,7 +65,6 @@
   --scrollbar-thumb: #eb5757;
 }
 
-/* === DARK THEME === */
 [data-theme="dark"] {
   --background: #0a0a0a;
   --foreground: #f1f5f9;

@@ -141,7 +141,6 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
           closing ? "animate-out fade-out zoom-out-95" : "zoom-in-90"
         } duration-150`}
       >
-        {/* Header */}
         <div className="flex items-center gap-4 px-6 h-14 border-b border-border/60 bg-background/70 backdrop-blur-sm">
           <h2
             id="onboarding-modal-title"
@@ -167,7 +166,6 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
         </div>
 
         <div className="flex h-full max-h-[66vh]">
-          {/* Left Nav */}
           <nav className="hidden sm:flex flex-col w-40 p-3 border-r border-border/60 bg-background/40 gap-2 overflow-y-auto">
             <SectionNavButton
               label="Welcome"
@@ -199,7 +197,6 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
             </div>
           </nav>
 
-          {/* Content */}
           <div className="flex-1 overflow-auto p-6 space-y-6 custom-scrollbar">
             {activeSection === "welcome" && <WelcomeSection />}
             {activeSection === "theme" && (
@@ -227,7 +224,6 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 h-14 border-t border-border/60 bg-background/70 backdrop-blur-sm">
           <div className="mr-auto text-[10px] text-foreground/40 uppercase tracking-wide">
             1-5 to navigate • Esc to skip
