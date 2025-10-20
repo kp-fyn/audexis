@@ -19,6 +19,10 @@ src-tauri/.vscode/
 src-tauri/.cargo/
 src-tauri/debug.log
 
+# Next.js (Website)
+website/.next/
+website/out/
+website/.vercel
 
 .DS_Store
 
