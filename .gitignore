@@ -8,9 +8,9 @@ build/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+www/package-lock.json
 
-# Rust (Tauri)
+
 src-tauri/target/
 src-tauri/Cargo.lock
 src-tauri/.DS_Store
@@ -19,10 +19,10 @@ src-tauri/.vscode/
 src-tauri/.cargo/
 src-tauri/debug.log
 
-# Next.js (Website)
-website/.next/
-website/out/
-website/.vercel
+
+www/.next/
+www/out/
+www/.vercel
 
 .DS_Store
 
