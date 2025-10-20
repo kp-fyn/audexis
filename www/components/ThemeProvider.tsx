@@ -17,7 +17,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    // Load theme from localStorage on mount
     const savedTheme = localStorage.getItem("theme") as Theme | null;
     if (savedTheme) {
       setThemeState(savedTheme);
@@ -42,7 +41,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     updateTheme();
 
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       if (theme === "system") {
