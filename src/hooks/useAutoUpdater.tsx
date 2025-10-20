@@ -16,7 +16,7 @@ export function useAutoUpdater() {
         const update = await check();
         console.log("[Auto-Updater] Update check result:", update);
 
-        if (update?.available) {
+        if (update) {
           console.log("[Auto-Updater] Update available:", update.version);
           toast(
             (t) => (
