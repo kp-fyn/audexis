@@ -43,7 +43,7 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm install
 
       - name: Import signing certificate (macOS only)
         if: matrix.platform == 'macos-latest'
@@ -100,4 +100,7 @@ jobs:
       - name: Cleanup keychain (macOS only)
         if: always() && matrix.platform == 'macos-latest'
         run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
