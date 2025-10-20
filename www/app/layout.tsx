@@ -91,12 +91,17 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                const theme = localStorage.getItem('theme') || 'system';
-                let resolved = theme;
-                if (theme === 'system') {
-                  resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                }
-                document.documentElement.setAttribute('data-theme', resolved);
+                try {
+                  const theme = localStorage.getItem('theme') || 'system';
+                  let resolved = theme;
+                  
+                  if (theme === 'system') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  
+                  document.documentElement.setAttribute('data-theme', resolved);
+                  document.documentElement.style.colorScheme = resolved;
+                } catch (e) {}
               })();
             `,
           }}

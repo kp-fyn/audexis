@@ -15,7 +15,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
-
+  const [firstRun, setFirstRun] = useState(true);
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as Theme | null;
     if (savedTheme) {
@@ -25,8 +25,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const updateTheme = () => {
+      console.log("e");
       let resolved: "light" | "dark";
-
+      if (firstRun) {
+        setFirstRun(false);
+        const localTheme = localStorage.getItem("theme");
+        if (localTheme === "light" || localTheme === "dark") {
+          resolved = localTheme;
+          setResolvedTheme(resolved);
+          document.documentElement.setAttribute("data-theme", resolved);
+          return;
+        }
+      }
       if (theme === "system") {
         resolved = window.matchMedia("(prefers-color-scheme: dark)").matches
           ? "dark"
@@ -42,6 +52,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateTheme();
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
     const handleChange = () => {
       if (theme === "system") {
         updateTheme();
