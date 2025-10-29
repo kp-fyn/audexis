@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://audexis.app",
+    url: "https://www.audexis.app",
     siteName: "Audexis",
     title: "Audexis - Audio Metadata Editor for macOS",
     description:
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     creator: "@audexis",
   },
   alternates: {
-    canonical: "https://audexis.app",
+    canonical: "https://www.audexis.app",
   },
   other: {
     "apple-mobile-web-app-capable": "yes",

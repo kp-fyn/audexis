@@ -1,16 +1,19 @@
 mod config;
+mod file_watcher;
 mod tag_manager;
 mod workspace;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use base64::{engine::general_purpose, Engine as _};
 use rfd::FileDialog;
 use std::env;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 use workspace::Workspace;
 
+use crate::file_watcher::FileWatcher;
 use crate::tag_manager::utils::{
     Changes, FrameKey, SerializableFile, SerializableTagValue, TagValue,
 };
@@ -21,8 +24,9 @@ use crate::config::user::{
 };
 use config::user;
 
-struct AppState {
-    workspace: Mutex<Workspace>,
+pub struct AppState {
+    pub workspace: Mutex<Workspace>,
+    pub file_watcher: Mutex<FileWatcher>,
 }
 
 #[tauri::command]
@@ -64,7 +68,7 @@ fn save_changes(app_handle: AppHandle, changes: Changes, state: State<'_, AppSta
                 updates.insert(frame_key, TagValue::Text(t));
             }
             SerializableTagValue::Picture { mime, data_base64 } => {
-                if let Ok(data) = base64::decode(&data_base64) {
+                if let Ok(data) = general_purpose::STANDARD.decode(&data_base64) {
                     updates.insert(frame_key, TagValue::Picture { mime, data });
                 }
             }
@@ -105,7 +109,7 @@ fn import_image() -> Option<SerializableTagValue> {
             return None;
         }
         let img_data = img.unwrap();
-        let img_base64 = base64::encode(&img_data);
+        let img_base64 = general_purpose::STANDARD.encode(&img_data);
         let mime = if path_str.ends_with(".png") {
             "image/png"
         } else if path_str.ends_with(".jpg") || path_str.ends_with(".jpeg") {
@@ -230,50 +234,57 @@ fn get_workspace_files(app_handle: AppHandle, state: State<'_, AppState>) {
 
 #[tauri::command]
 fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppState>) {
-    let mut ws = state.workspace.lock().unwrap();
     let home_dir: String = match env::home_dir() {
         Some(fp) => String::from(fp.to_string_lossy()),
         None => ".".to_owned(),
     };
-    if file_type == "file" {
-        let maybe_files = FileDialog::new()
+    let selections: Vec<PathBuf> = if file_type == "file" {
+        FileDialog::new()
             .set_title("Select files or folders")
-            .set_directory(home_dir)
+            .set_directory(home_dir.clone())
             .add_filter("Audio Files", &["m4a", "mp4", "mp3"])
-            .pick_files();
-        if let Some(files) = maybe_files {
-            if files.is_empty() {
-                return;
-            }
-            for file in files {
-                ws.import(file)
-            }
-        }
+            .pick_files()
+            .unwrap_or_default()
+            .into_iter()
+            .map(Into::into)
+            .collect()
     } else {
-        let maybe_folders = FileDialog::new()
+        FileDialog::new()
             .set_title("Select files or folders")
             .set_directory(home_dir)
             .add_filter("Audio Files", &["m4a", "mp4", "mp3"])
-            .pick_folders();
-        if let Some(folders) = maybe_folders {
-            if folders.is_empty() {
-                return;
-            }
-            for folder in folders {
-                ws.import(folder)
-            }
+            .pick_folders()
+            .unwrap_or_default()
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    };
+    if selections.is_empty() {
+        return;
+    }
+
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        for path in &selections {
+            ws.import(path.clone());
         }
     }
 
-    let serializable_files: Vec<SerializableFile> = ws
-        .files
-        .clone()
-        .into_iter()
-        .map(SerializableFile::from)
-        .collect();
+    let serializable_files: Vec<SerializableFile> = {
+        let ws = state.workspace.lock().unwrap();
+        ws.files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect()
+    };
     app_handle
         .emit("workspace-updated", serializable_files)
         .unwrap();
+
+    if let Ok(mut watcher) = state.file_watcher.lock() {
+        let _ = watcher.watch_workspace();
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -292,6 +303,13 @@ pub fn run() {
                 Theme::Dark => "dark",
             };
             let onboarding = user_config.onboarding;
+            app.manage(AppState {
+                workspace: Mutex::new(Workspace::new(&app.handle())),
+                file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
+            });
+            if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
+                let _ = watcher.watch_workspace();
+            }
             println!("Onboarding status: {}", onboarding);
             print!("Theme: {}", theme);
 
@@ -318,9 +336,6 @@ pub fn run() {
             let _window = win_builder.build().unwrap();
 
             Ok(())
-        })
-        .manage(AppState {
-            workspace: Mutex::new(Workspace::new()),
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())

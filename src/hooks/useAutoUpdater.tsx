@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import toast from "react-hot-toast";
 
 export function useAutoUpdater() {
@@ -34,11 +33,9 @@ export function useAutoUpdater() {
                       try {
                         await update.downloadAndInstall();
                         toast.dismiss();
-                        toast.success("Update installed! Restarting...");
-
-                        setTimeout(async () => {
-                          await relaunch();
-                        }, 1000);
+                        toast.success(
+                          "Update installed! Close and reopen app to apply."
+                        );
                       } catch (error) {
                         toast.dismiss();
                         toast.error(`Update failed: ${error}`);
@@ -71,13 +68,10 @@ export function useAutoUpdater() {
       }
     }
 
-    // Check immediately on mount
     checkForUpdates();
 
-    // Check every 5 minutes for faster testing (change to 30 minutes for production)
     const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
 
-    // Add global function for manual testing
     (window as any).checkForUpdates = checkForUpdates;
 
     return () => {

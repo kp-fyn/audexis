@@ -147,6 +147,37 @@ export function ChangesProvider({
     disorgainzed: new Map(),
     organized: new Map(),
   });
+
+  // Sync selected paths when files change
+  useEffect(() => {
+    if (files.length === 0) {
+      setSelected([]);
+      return;
+    }
+
+    // Get current valid paths
+    const validPaths = new Set(files.map((f) => f.path));
+
+    // Filter selected to only include paths that still exist
+    setSelected((prevSelected) => {
+      const stillValid = prevSelected.filter((path) => validPaths.has(path));
+
+      // Only update if something changed
+      if (stillValid.length !== prevSelected.length) {
+        if (stillValid.length === 0) {
+          console.log("[useChanges] All selected files removed");
+        } else {
+          console.log(
+            `[useChanges] Selection updated: ${prevSelected.length} → ${stillValid.length} files`
+          );
+        }
+        return stillValid;
+      }
+
+      return prevSelected;
+    });
+  }, [files]);
+
   useEffect(() => {
     setTimeout(() => {
       if (document?.body?.style) document.body.style.cssText = "";
