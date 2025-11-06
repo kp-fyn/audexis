@@ -62,7 +62,7 @@ export default function DraggableHeader({
 
       {header.isPlaceholder ? null : (
         <div
-          className={`flex items-center gap-1 min-w-0 truncate font-semibold text-[11px] uppercase tracking-wide ${
+          className={`flex h-full justify-center items-center gap-1 min-w-0 truncate font-semibold text-[11px] uppercase tracking-wide ${
             canSort ? "cursor-pointer select-none" : ""
           }`}
           onClick={

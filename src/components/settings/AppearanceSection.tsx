@@ -34,7 +34,7 @@ export function AppearanceSection({
         </SettingsCard>
         <SettingsCard
           title="Density"
-          description="Applies visually to rows & sidebar (not persisted)."
+          description="Changes the spacing of various UI elements."
         >
           <div className="flex gap-2">
             {(["compact", "default", "comfort"] as const).map((value) => (

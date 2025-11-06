@@ -2,6 +2,7 @@ mod config;
 mod file_watcher;
 mod tag_manager;
 mod workspace;
+use tauri_plugin_opener::OpenerExt;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -10,6 +11,7 @@ use base64::{engine::general_purpose, Engine as _};
 use rfd::FileDialog;
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 use tauri::{AppHandle, Emitter, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 use workspace::Workspace;
 
@@ -231,6 +233,28 @@ fn get_workspace_files(app_handle: AppHandle, state: State<'_, AppState>) {
         .unwrap();
     app_handle.emit("user-config-updated", user_config).unwrap();
 }
+#[tauri::command]
+fn open(path: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("open").arg("-R").arg(path).spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("explorer").args(["/select,", path]).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let p = Path::new(path);
+        let dir = p.parent().unwrap_or_else(|| Path::new(path));
+        let _ = Command::new("xdg-open").arg(dir).spawn();
+    }
+}
+
+#[tauri::command]
+fn open_default(app_handle: AppHandle, path: &str) {
+    let _ = app_handle.opener().open_path(path, None::<&str>);
+}
 
 #[tauri::command]
 fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppState>) {
@@ -287,9 +311,61 @@ fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppStat
     }
 }
 
+#[derive(serde::Serialize)]
+struct RenameResultItem {
+    old: String,
+    new: String,
+    ok: bool,
+    error: Option<String>,
+}
+
+#[tauri::command]
+fn rename_files(
+    app_handle: AppHandle,
+    pattern: &str,
+    paths: Vec<String>,
+    state: State<'_, AppState>,
+) -> Vec<RenameResultItem> {
+    let results = {
+        let mut ws = state.workspace.lock().unwrap();
+        ws.rename_by_pattern(paths, pattern)
+    };
+
+    let serializable_files: Vec<SerializableFile> = {
+        let ws = state.workspace.lock().unwrap();
+        ws.files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect()
+    };
+    app_handle
+        .emit("workspace-updated", serializable_files)
+        .unwrap();
+
+    results
+        .into_iter()
+        .map(|(old, new, res)| match res {
+            Ok(()) => RenameResultItem {
+                old,
+                new,
+                ok: true,
+                error: None,
+            },
+            Err(e) => RenameResultItem {
+                old,
+                new,
+                ok: false,
+                error: Some(e),
+            },
+        })
+        .collect()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let path = app
@@ -328,7 +404,7 @@ pub fn run() {
             .title("Audexis")
             .min_inner_size(800.0, 600.0)
             .inner_size(800.0, 600.0);
-
+            let win_builder = win_builder.maximized(true);
             #[cfg(target_os = "macos")]
             let win_builder = win_builder.title_bar_style(TitleBarStyle::Transparent);
             let win_builder = win_builder.decorations(false);
@@ -347,7 +423,10 @@ pub fn run() {
             update_user_config,
             import_image,
             save_changes,
-            get_all_columns
+            get_all_columns,
+            open,
+            open_default,
+            rename_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

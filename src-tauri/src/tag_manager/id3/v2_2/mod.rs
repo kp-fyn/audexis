@@ -171,6 +171,7 @@ impl TagFormat for V2_2 {
                         raw.insert(k.to_string(), encoded);
                     }
                 }
+                // TODO: COme back
                 TagValue::Picture { .. } => { /* Skipping picture write for v2.2 to keep simple */ }
             }
         }

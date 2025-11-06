@@ -138,22 +138,18 @@ export default function Titlebar() {
               <DropdownMenuContent>
                 <DropdownMenuItem
                   onClick={() => {
-                    invoke("import_files", { fileType: "file" })
-                      .then(() => toast.success("Files imported successfully"))
-                      .catch((err) =>
-                        toast.error(`Failed to import files: ${err}`)
-                      );
+                    invoke("import_files", { fileType: "file" }).catch((err) =>
+                      toast.error(`Failed to import files: ${err}`)
+                    );
                   }}
                 >
                   Import Files
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    invoke("import_files", { fileType: "folder" })
-                      .then(() => toast.success("Folder imported successfully"))
-                      .catch((err) =>
-                        toast.error(`Failed to import folder: ${err}`)
-                      );
+                    invoke("import_files", { fileType: "folder" }).catch(
+                      (err) => toast.error(`Failed to import folder: ${err}`)
+                    );
                   }}
                 >
                   Import Folder

@@ -4,13 +4,21 @@ import App from "./App";
 import "./assets/main.css";
 import Titlebar from "./components/Titlebar";
 import queryString from "query-string";
-import { UserConfigProvider } from "@/ui/hooks/useUserConfig.tsx";
-import { SidebarWidthProvider } from "@/ui/hooks/useSidebarWidth.tsx";
-import { ChangesProvider } from "@/ui/hooks/useChanges.tsx";
+import { UserConfigProvider } from "@/ui/hooks/useUserConfig";
+import { SidebarWidthProvider } from "@/ui/hooks/useSidebarWidth";
+import { ChangesProvider } from "@/ui/hooks/useChanges";
 import { OnboardingModal } from "@/ui/components/OnboardingModal";
 import { Toaster } from "react-hot-toast";
 import { useAutoUpdater } from "@/ui/hooks/useAutoUpdater";
-
+import { invoke } from "@tauri-apps/api/core";
+import { ContextMenuArea, ContextMenuProvider } from "./components/ContextMenu";
+import { useHotkeys } from "@/ui/hooks/useHotkeys";
+import SaveBar from "@/ui/components/SaveBar";
+import { RenameProvider } from "@/ui/hooks/useRename";
+import RenameModal from "@/ui/components/RenameModal";
+import { FindReplaceProvider } from "@/ui/hooks/useFindReplace";
+import FindReplaceBar from "@/ui/components/FindReplaceBar";
+import { useChanges } from "@/ui/hooks/useChanges";
 const query = queryString.parse(window.location.search);
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
@@ -31,9 +39,67 @@ function Root() {
   const [showOnboarding, setShowOnboarding] = React.useState(
     query.onboarding === "true"
   );
+  const { undo, redo, canUndo, canRedo } = useChanges();
 
-  // Check for updates
   useAutoUpdater();
+
+  useHotkeys(
+    [
+      {
+        combo: "mod+i",
+        handler: () => invoke("import_files", { fileType: "file" }),
+      },
+      {
+        combo: "mod+shift+i",
+        handler: () => invoke("import_files", { fileType: "folder" }),
+      },
+      {
+        combo: "mod+r",
+        handler: () => window.location.reload(),
+      },
+      {
+        combo: ["mod+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } })
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", {
+              detail: { mode: "replace" },
+            })
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-next")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-prev")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-one")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-all")),
+        allowInInputs: true,
+      },
+    ],
+    []
+  );
 
   const handleCloseOnboarding = () => {
     setShowOnboarding(false);
@@ -49,47 +115,97 @@ function Root() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <Titlebar />
-      <div
-        style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
-        className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
-      >
-        <App />
+    <ContextMenuArea
+      className="flex flex-col h-screen overflow-hidden"
+      asChild
+      items={[
+        {
+          type: "item",
+          label: "Undo",
+          shortcut: "⌘Z",
+          disabled: !canUndo,
+          onSelect: () => undo(),
+        },
+        {
+          type: "item",
+          label: "Redo",
+          shortcut: "⌘⇧Z",
+          disabled: !canRedo,
+          onSelect: () => redo(),
+        },
+        { type: "separator" },
+        {
+          type: "item",
+          label: "Import Files…",
+          shortcut: "⌘I",
+          onSelect: () => invoke("import_files", { fileType: "file" }),
+        },
+        {
+          type: "item",
+          label: "Import Folder…",
+          shortcut: "⌘⇧I",
+          onSelect: () => invoke("import_files", { fileType: "folder" }),
+        },
+        { type: "separator" },
+        {
+          type: "item",
+          label: "Refresh",
+          shortcut: "⌘R",
+          onSelect: () => window.location.reload(),
+        },
+      ]}
+    >
+      <div className="flex flex-col h-screen overflow-hidden">
+        <Titlebar />
+        <div
+          style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
+          className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
+        >
+          <App />
+          <FindReplaceBar />
+          <SaveBar />
+          <RenameModal />
+        </div>
+        {showOnboarding && (
+          <OnboardingModal
+            open={showOnboarding}
+            onClose={handleCloseOnboarding}
+          />
+        )}
       </div>
-      {showOnboarding && (
-        <OnboardingModal
-          open={showOnboarding}
-          onClose={handleCloseOnboarding}
-        />
-      )}
-    </div>
+    </ContextMenuArea>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <UserConfigProvider initialTheme={theme}>
-      <ChangesProvider>
-        <SidebarWidthProvider>
-          <Root />
-          <Toaster
-            position="top-right"
-            containerStyle={{
-              marginTop: "64px",
-            }}
-            toastOptions={{
-              className:
-                "!bg-background !text-foreground !border !border-border",
-              style: {
-                background: "var(--background)",
-                color: "var(--foreground)",
-                border: "1px solid var(--border)",
-              },
-            }}
-          />
-        </SidebarWidthProvider>
-      </ChangesProvider>
-    </UserConfigProvider>
+    <ContextMenuProvider>
+      <UserConfigProvider initialTheme={theme}>
+        <RenameProvider>
+          <ChangesProvider>
+            <FindReplaceProvider>
+              <SidebarWidthProvider>
+                <Root />
+                <Toaster
+                  position="top-right"
+                  containerStyle={{
+                    marginTop: "64px",
+                  }}
+                  toastOptions={{
+                    className:
+                      "!bg-background !text-foreground !border !border-border",
+                    style: {
+                      background: "var(--background)",
+                      color: "var(--foreground)",
+                      border: "1px solid var(--border)",
+                    },
+                  }}
+                />
+              </SidebarWidthProvider>
+            </FindReplaceProvider>
+          </ChangesProvider>
+        </RenameProvider>
+      </UserConfigProvider>
+    </ContextMenuProvider>
   </React.StrictMode>
 );

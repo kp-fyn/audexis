@@ -31,9 +31,10 @@
 }
 
 [data-theme="light"] {
-  --background: #f9fafb;
+  --background: #f1f1f1;
   --foreground: #0f172a;
-  --hover: #e2e8f0;
+  --hover: #e5e5e5;
+  --hover-foreground: #0f172a;
 
   --card: #ffffff;
   --card-foreground: #1e293b;
@@ -48,7 +49,7 @@
   --secondary-foreground: #1e293b;
 
   --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted-foreground: black;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
@@ -68,7 +69,9 @@
 [data-theme="dark"] {
   --background: #0a0a0a;
   --foreground: #f1f5f9;
-  --hover: #1e293b;
+  --hover: #1f1f2e;
+  /*161621 */
+  --hover-foreground: #f1f5f9;
 
   --card: #1e293b;
   --card-foreground: #f8fafc;
@@ -151,14 +154,17 @@ body {
 
 [data-density="compact"] .tag-row {
   height: 34px;
+  min-height: 34px;
 }
 
 [data-density="default"] .tag-row {
   height: 46px;
+  min-height: 46px;
 }
 
 [data-density="comfort"] .tag-row {
   height: 56px;
+  min-height: 56px;
 }
 
 .table-scroll-fade {
@@ -184,4 +190,35 @@ body {
 .table-scroll-fade:after {
   right: 0;
   background: linear-gradient(to left, var(--background), rgba(0, 0, 0, 0));
+}
+
+@keyframes vibrate {
+  0% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-2px);
+  }
+  30% {
+    transform: translateX(2px);
+  }
+  45% {
+    transform: translateX(-2px);
+  }
+  60% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+  90% {
+    transform: translateX(1px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-vibrate {
+  animation: vibrate 0.28s ease-in-out;
 }

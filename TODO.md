@@ -4,12 +4,10 @@
 
 ### High Priority
 
-- [ ] Batch Operations
+- [ ] Finish with file support \(mp4,m4a etc\)
+- [x] Batch rename files based on metadata (e.g., `{artist} - {title}.mp3`)
 
-  - [ ] Batch rename files based on metadata (e.g., `{artist} - {title}.mp3`)
-  - [x] Batch apply changes to multiple files at once
-  - [ ] Auto-number tracks in selected files
-  - [ ] Find and replace text across multiple tags
+- [x] Find and replace text across multiple tags
 
 - [ ] Album Art Enhancements
 
@@ -18,18 +16,7 @@
   - [ ] Extract embedded artwork to save as file
   - [ ] Multiple images per file (front cover, back cover, artist photo)
 
-- [ ] Smart Auto-Tagging
-
-  - [ ] Use MusicBrainz/AcoustID fingerprinting to auto-identify songs
-  - [ ] Fetch complete metadata from online databases
-  - [ ] Fix common tagging issues automatically
-  - [ ] Genre suggestions based on similar artists
-
-- [ ] Built-in Audio Player
-  - [ ] Preview tracks without leaving the app
-  - [ ] Play/pause/skip controls
-  - [ ] Waveform visualization
-  - [ ] Audio seeking
+-
 
 ### Medium Priority
 
@@ -56,7 +43,21 @@
   - [ ] Tag validation - check for empty or malformed tags
   - [ ] Export/Import - save tag configurations as templates
 
-- [ ] Search & Filter
+[ ] Smart Auto-Tagging
+
+- [ ] Use MusicBrainz/AcoustID fingerprinting to auto-identify songs
+- [ ] Fetch complete metadata from online databases
+- [ ] Fix common tagging issues automatically
+- [ ] Genre suggestions based on similar artists
+
+- [ ] Built-in Audio Player
+
+  - [ ] Preview tracks without leaving the app
+  - [ ] Play/pause/skip controls
+  - [ ] Waveform visualization
+  - [ ] Audio seeking
+
+- [] Search & Filter
   - [ ] Powerful query builder
   - [ ] Advanced filtering options
   - [ ] Saved search presets
@@ -85,11 +86,11 @@
   - [ ] Change log - track what was modified
 
 - [ ] Quality of Life Improvements
-  - [ ] Column reordering by drag & drop
+  - [x] Column reordering by drag & drop
   - [ ] Save column layouts as presets
   - [ ] Enhanced keyboard shortcuts for common actions
-  - [ ] Multi-select with shift/cmd+click
-  - [ ] Context menu - right-click actions
+  - [x] Multi-select with shift/cmd+click
+  - [x] Context menu - right-click actions
   - [ ] Recent files - quick access to last edited
 
 ### Special Features

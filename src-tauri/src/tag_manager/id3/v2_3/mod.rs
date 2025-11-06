@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Read;
 
-use std::path::PathBuf;
 use crate::tag_manager::id3::v2_3::utils::{build_frame, create_header, encode_text_payload};
+use std::path::PathBuf;
 
 pub mod utils;
 
@@ -74,8 +74,7 @@ impl TagFormat for V2_3 {
 
             let content = &tag_data[pos + 10..pos + 10 + size];
 
-            if frame_id.starts_with('T') || frame_id.starts_with("W")
-            {
+            if frame_id.starts_with('T') || frame_id.starts_with("W") {
                 if !content.is_empty() {
                     let encoding = content[0];
                     let text = match encoding {
@@ -123,14 +122,16 @@ impl TagFormat for V2_3 {
             pos += 10 + size;
         }
 
-
         let tags = raw_to_tags(&tags);
 
         Ok(tags)
     }
 
-
-    fn write_tags(&self, file_path: &PathBuf, updated_tags: HashMap<FrameKey, TagValue>) -> Result<(), ()> {
+    fn write_tags(
+        &self,
+        file_path: &PathBuf,
+        updated_tags: HashMap<FrameKey, TagValue>,
+    ) -> Result<(), ()> {
         use std::io::{Read, Seek, SeekFrom, Write};
 
         let mut file = OpenOptions::new()
@@ -199,9 +200,15 @@ impl TagFormat for V2_3 {
                 }
             }
         }
-        println!("Updated raw tags: {:?}", raw_tags.keys().collect::<Vec<_>>());
+        println!(
+            "Updated raw tags: {:?}",
+            raw_tags.keys().collect::<Vec<_>>()
+        );
 
-        let frames = raw_tags.iter().map(|(id, content)| build_frame(id, content)).collect::<Vec<_>>();
+        let frames = raw_tags
+            .iter()
+            .map(|(id, content)| build_frame(id, content))
+            .collect::<Vec<_>>();
         let total_frame_size: usize = frames.iter().map(|f| f.len()).sum();
         let header = create_header(total_frame_size);
 

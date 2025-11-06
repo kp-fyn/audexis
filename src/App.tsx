@@ -15,11 +15,7 @@ import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
 import Sidebar from "@/ui/components/Sidebar.tsx";
 
 const columnHelper = createColumnHelper<File>();
-import {
-  arrayMove,
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 
 import {
   DndContext,
@@ -32,33 +28,24 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import DraggableHeader from "@/ui/components/DraggableHeader.tsx";
-import DragCell from "@/ui/components/DragCell.tsx";
 import { useChanges } from "@/ui/hooks/useChanges.tsx";
-
-function TagValueChip({ text }: { text: string }) {
-  return (
-    <span
-      title={text}
-      className="inline-flex max-w-full items-center rounded-sm bg-primary/10 px-2 py-0.5 text-[11px] leading-tight font-medium text-foreground/80 border border-border/60 shadow-sm hover:bg-primary/15 transition-colors truncate"
-    >
-      {text}
-    </span>
-  );
-}
+import TagValueChip from "@/ui/components/table/TagValueChip";
+import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
+import DataGrid from "@/ui/components/table/DataGrid";
+import { useHotkeys } from "@/ui/hooks/useHotkeys";
 
 function App() {
-  const { setSelected, selected, setFiles, files } = useChanges();
+  const {
+    setSelected,
+    selected,
+    setFiles,
+    files,
+    hasUnsavedChanges,
+    nudgeSaveBar,
+  } = useChanges();
   const [isLoading, setIsLoading] = useState(true);
-  const tableRef = useRef<HTMLDivElement | null>(null);
-  const resizingColumnIdRef = useRef<string | null>(null);
-  const initialResizeData = useRef<{
-    startX: number;
-    startWidth: number;
-  }>({ startX: 0, startWidth: 0 });
-  const isResizing = useRef(false);
 
-  const { config, setColumns, setAllColumns } = useUserConfig();
+  const { config, setColumns, setAllColumns, allColumns } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
 
   const helpers: ColumnDef<File, any>[] = config.columns.map((item) => {
@@ -159,126 +146,7 @@ function App() {
     ) as ColumnDef<File, any>;
   });
 
-  const gridRef = useRef<HTMLDivElement | null>(null);
   const lastInteractedIndexRef = useRef<number | null>(null);
-  const [focusedIndex, setFocusedIndex] = useState<number>(0);
-
-  const getIdAt = (index: number) => files[index]?.path;
-  const isSelectedAt = (index: number) => {
-    const id = getIdAt(index);
-    return !!id && selected.includes(id);
-  };
-  const setSelection = (ids: string[]) => setSelected(Array.from(new Set(ids)));
-
-  const selectSingle = (index: number) => {
-    const id = getIdAt(index);
-    if (!id) return;
-    if (selected.length === 1 && selected[0] === id) {
-      setSelected([]);
-      return;
-    }
-    setSelection([id]);
-  };
-
-  const toggleAt = (index: number) => {
-    const id = getIdAt(index);
-    if (!id) return;
-    if (selected.includes(id)) {
-      setSelection(selected.filter((x) => x !== id));
-    } else {
-      setSelection([...selected, id]);
-    }
-  };
-  const selectRange = (toIndex: number) => {
-    if (lastInteractedIndexRef.current == null) {
-      selectSingle(toIndex);
-      lastInteractedIndexRef.current = toIndex;
-      return;
-    }
-    const start = Math.min(lastInteractedIndexRef.current, toIndex);
-    const end = Math.max(lastInteractedIndexRef.current, toIndex);
-    const rangeIds = files.slice(start, end + 1).map((f) => f.path);
-    setSelection(rangeIds);
-  };
-
-  const handleRowClick = (e: React.MouseEvent, index: number) => {
-    if (!files.length) return;
-
-    const isToggle = e.metaKey || e.ctrlKey;
-    const isRange = e.shiftKey;
-
-    setFocusedIndex(index);
-
-    if (isRange) {
-      selectRange(index);
-    } else if (isToggle) {
-      toggleAt(index);
-      lastInteractedIndexRef.current = index;
-    } else {
-      selectSingle(index);
-      lastInteractedIndexRef.current = index;
-    }
-  };
-
-  const moveFocus = (nextIndex: number, withRange: boolean) => {
-    if (nextIndex < 0 || nextIndex >= files.length) return;
-    setFocusedIndex(nextIndex);
-    if (withRange) {
-      selectRange(nextIndex);
-    } else {
-      selectSingle(nextIndex);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!files.length) return;
-
-    switch (e.key) {
-      case "ArrowDown": {
-        e.preventDefault();
-        const next = Math.min(focusedIndex + 1, files.length - 1);
-        moveFocus(next, e.shiftKey);
-        break;
-      }
-      case "ArrowUp": {
-        e.preventDefault();
-        const next = Math.max(focusedIndex - 1, 0);
-        moveFocus(next, e.shiftKey);
-        break;
-      }
-      case "Home": {
-        e.preventDefault();
-        moveFocus(0, e.shiftKey);
-        break;
-      }
-      case "End": {
-        e.preventDefault();
-        moveFocus(files.length - 1, e.shiftKey);
-        break;
-      }
-      case " ":
-      case "Spacebar": {
-        e.preventDefault();
-        toggleAt(focusedIndex);
-        lastInteractedIndexRef.current = focusedIndex;
-        break;
-      }
-      case "Escape": {
-        e.preventDefault();
-        setSelection([]);
-        lastInteractedIndexRef.current = null;
-        break;
-      }
-      case "a":
-      case "A": {
-        if (e.metaKey || e.ctrlKey) {
-          e.preventDefault();
-          setSelection(files.map((f) => f.path));
-        }
-        break;
-      }
-    }
-  };
 
   const columns: ColumnDef<File>[] = [...helpers];
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
@@ -289,10 +157,6 @@ function App() {
     setColumnOrder(config.columns.map((c) => c.value));
   }, [config.columns]);
   useEffect(() => {
-    setFocusedIndex((idx) =>
-      Math.min(Math.max(idx, 0), Math.max(files.length - 1, 0))
-    );
-
     if (
       lastInteractedIndexRef.current != null &&
       lastInteractedIndexRef.current >= files.length
@@ -342,56 +206,32 @@ function App() {
     }, 500);
   }, []);
 
-  const startResizing = (
-    columnId: string,
-    event: React.MouseEvent<HTMLDivElement>
-  ): void => {
-    if (!tableRef.current) return;
-
-    const column = config.columns.find((c) => c.value === columnId);
-    if (!column) return;
-    if (columnId === "attachedPicture") return;
-
-    resizingColumnIdRef.current = columnId;
-    isResizing.current = true;
-    document.body.style.userSelect = "none";
-
-    initialResizeData.current = {
-      startX: event.clientX,
-      startWidth: column.size ?? 200,
-    };
-
-    document.addEventListener("mousemove", resize);
-    document.addEventListener("mouseup", stopResizing);
-  };
-
-  const resize = (event: MouseEvent): void => {
-    if (!isResizing.current) return;
-    const columnId = resizingColumnIdRef.current;
-    if (!columnId) return;
-
-    const deltaX = event.clientX - initialResizeData.current.startX;
-    const newWidth = initialResizeData.current.startWidth + deltaX;
-
-    const minWidth = 50;
-    const maxWidth = window.innerWidth - 200;
-    if (newWidth < minWidth || newWidth > maxWidth) return;
-    const columnsCopy = config.columns.map((col) => ({ ...col }));
-
-    const columnIndex = columnsCopy.findIndex((c) => c.value === columnId);
-    if (columnIndex === -1) return;
-
-    columnsCopy[columnIndex].size = newWidth;
-    setColumns(columnsCopy);
-  };
-  const stopResizing = (): void => {
-    resizingColumnIdRef.current = null;
-    isResizing.current = false;
-    document.body.style.userSelect = "";
-
-    document.removeEventListener("mousemove", resize);
-    document.removeEventListener("mouseup", stopResizing);
-  };
+  useHotkeys(
+    [
+      {
+        combo: "escape",
+        handler: () => {
+          if (hasUnsavedChanges) {
+            nudgeSaveBar();
+            return;
+          }
+          setSelected([]);
+          lastInteractedIndexRef.current = null;
+        },
+      },
+      {
+        combo: "mod+a",
+        handler: () => {
+          if (hasUnsavedChanges) {
+            nudgeSaveBar();
+            return;
+          }
+          setSelected(files.map((f) => f.path));
+        },
+      },
+    ],
+    [files]
+  );
 
   function handleDragEnd(event: DragEndEvent): void {
     const { active, over } = event;
@@ -442,9 +282,13 @@ function App() {
       sensors={sensors}
     >
       <Sidebar />
+
       <main
-        style={{ marginLeft: `${sidebarWidth}px` }}
-        className="flex flex-col flex-1 h-full min-h-0 w-full select-none"
+        style={{
+          marginLeft: `${sidebarWidth}px`,
+          height: `calc(100% - calc(var(--spacing) * 6))`,
+        }}
+        className="flex flex-col flex-1  w-full select-none"
       >
         <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
@@ -458,9 +302,18 @@ function App() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto" id="app-scroll">
-          <div className="h-full" ref={tableRef}>
+          <div
+            className="h-full"
+            onClick={() => {
+              if (hasUnsavedChanges) {
+                nudgeSaveBar();
+                return;
+              }
+              setSelected([]);
+            }}
+          >
             <div
-              className="relative"
+              className="relative outline-none"
               style={{
                 width: Math.max(
                   config.columns.reduce(
@@ -476,86 +329,25 @@ function App() {
                 minWidth: "100%",
               }}
             >
-              <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border h-[36px] shadow-sm">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <div className="flex gap-4 h-full" key={headerGroup.id}>
-                    <SortableContext
-                      items={columnOrder}
-                      strategy={horizontalListSortingStrategy}
-                      key={headerGroup.id}
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <DraggableHeader header={header} key={header.id}>
-                          <div
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              startResizing(header.id, e);
-                            }}
-                            className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-transparent hover:bg-primary/40 transition"
-                          >
-                            <div className="border-r border-border h-full" />
-                          </div>
-                        </DraggableHeader>
-                      ))}
-                    </SortableContext>
-                  </div>
-                ))}
-              </div>
-              <div
-                role="grid"
-                tabIndex={0}
-                ref={gridRef}
-                onKeyDown={handleKeyDown}
-                aria-multiselectable
-                aria-activedescendant={
-                  files[focusedIndex] ? `row-${focusedIndex}` : undefined
-                }
-                className="pb-2"
-              >
-                {table.getRowModel().rows.map((row, i) => {
-                  const selectedNow = isSelectedAt(i);
-                  return (
-                    <div
-                      id={`row-${i}`}
-                      key={row.id}
-                      role="row"
-                      aria-selected={selectedNow || undefined}
-                      className={`tag-row flex gap-4 items-center px-1.5 border-b border-border/40 text-[12px] transition-colors
-                                                 ${
-                                                   i % 2 === 0
-                                                     ? "bg-muted/10"
-                                                     : "bg-background"
-                                                 }
-                                                 ${
-                                                   selectedNow
-                                                     ? "bg-primary/15 ring-1 ring-primary/40"
-                                                     : "hover:bg-muted/30"
-                                                 }
-                                                 ${
-                                                   i === focusedIndex
-                                                     ? "outline outline-primary/60"
-                                                     : "outline-none"
-                                                 }`}
-                      onClick={(e) => handleRowClick(e, i)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <SortableContext
-                          key={cell.id}
-                          items={columnOrder}
-                          strategy={horizontalListSortingStrategy}
-                        >
-                          <DragCell cell={cell} />
-                        </SortableContext>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
+              <TableHeaderRow
+                headerGroups={table.getHeaderGroups() as any}
+                columnOrder={columnOrder}
+                config={config as any}
+                setColumns={setColumns as any}
+                allColumns={allColumns as any}
+              />
+              <DataGrid
+                table={table as any}
+                files={files}
+                selected={selected}
+                setSelected={setSelected}
+                columnOrder={columnOrder}
+              />
             </div>
           </div>
         </div>
 
-        <div className="shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
+        <div className="fixed bottom-0 w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
           <span className="truncate">{files.length} files loaded</span>
         </div>
       </main>

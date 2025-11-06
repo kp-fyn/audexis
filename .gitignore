@@ -10,7 +10,6 @@ yarn-debug.log*
 yarn-error.log*
 www/package-lock.json
 
-
 src-tauri/target/
 src-tauri/Cargo.lock
 src-tauri/.DS_Store
@@ -38,3 +37,7 @@ logs/
 *.swp
 
 out/
+src-tauri/Cargo.toml
+target/analyzer/
+target/analyzer
+target/

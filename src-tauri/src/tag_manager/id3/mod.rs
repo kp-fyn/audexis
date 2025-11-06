@@ -2,8 +2,8 @@ use crate::tag_manager::traits;
 use crate::tag_manager::traits::{Formats, TagFormat};
 
 pub mod utils;
-mod v2_3;
 mod v2_2;
+mod v2_3;
 mod v2_4;
 
 #[derive(Debug, Clone)]

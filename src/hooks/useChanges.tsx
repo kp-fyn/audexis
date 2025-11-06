@@ -1,9 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
+// TODO: Make better undo/redo system
 "use client";
 import {
   createContext,
   useContext,
   useState,
+  useRef,
   Dispatch,
   SetStateAction,
   ReactNode,
@@ -31,6 +33,11 @@ interface ChangesContext {
   changes: Partial<AllTags>;
   neededItems: { value: string; label: string; maxLength?: number }[];
   setChanges: (newPresent: Partial<AllTags>) => void;
+
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   setSelected: Dispatch<SetStateAction<string[]>>;
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
   fileTreeFolderSelected: string[];
@@ -53,6 +60,10 @@ interface ChangesContext {
 
   albumDialogValues: Partial<Tags>;
   setAlbumDialogValues: Dispatch<SetStateAction<Partial<Tags>>>;
+
+  hasUnsavedChanges: boolean;
+  nudgeSaveBar: () => void;
+  saveBarNudge: number;
 }
 
 const ChangesContext = createContext<ChangesContext>({
@@ -96,6 +107,14 @@ const ChangesContext = createContext<ChangesContext>({
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
+  undo: () => {
+    throw new Error("undo function must be overridden");
+  },
+  redo: () => {
+    throw new Error("redo function must be overridden");
+  },
+  canUndo: false,
+  canRedo: false,
   saveChanges: () => {
     throw new Error("saveChanges function must be overridden");
   },
@@ -107,6 +126,11 @@ const ChangesContext = createContext<ChangesContext>({
   setFiles: () => {
     throw new Error("setFiles function must be overridden");
   },
+  hasUnsavedChanges: false,
+  nudgeSaveBar: () => {
+    throw new Error("nudgeSaveBar function must be overridden");
+  },
+  saveBarNudge: 0,
 });
 
 export function useChanges(): ChangesContext {
@@ -124,6 +148,10 @@ export function ChangesProvider({
   children: ReactNode;
 }): ReactNode {
   const { state, set, clear } = useHistoryState<Partial<AllTags>>({});
+  const [history, setHistory] = useState<{
+    past: Partial<AllTags>[];
+    future: Partial<AllTags>[];
+  }>({ past: [], future: [] });
 
   const [files, setFiles] = useState<File[]>([]);
   const [filesToShow, setFilesToShow] = useState<FileIdentifier[]>([]);
@@ -148,21 +176,69 @@ export function ChangesProvider({
     organized: new Map(),
   });
 
-  // Sync selected paths when files change
+  const [saveBarNudge, setSaveBarNudge] = useState(0);
+  const nudgeSaveBar = () => setSaveBarNudge((n) => n + 1);
+
+  const isEqualChanges = (a: Partial<AllTags>, b: Partial<AllTags>) => {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  };
+
+  const hasUnsavedChanges =
+    Object.keys(state || {}).length > 0 && selected.length > 0;
+
+  const debounceTime = 250;
+  const lastPushRef = useRef(0);
+
+  const setChanges = (newPresent: Partial<AllTags>) => {
+    const now = Date.now();
+    setHistory((h) => {
+      const shouldPush = now - lastPushRef.current > debounceTime;
+      if (shouldPush) {
+        lastPushRef.current = now;
+        return { past: [...h.past, state || {}], future: [] };
+      }
+      return h;
+    });
+    set(newPresent);
+  };
+
+  const undo = () => {
+    setHistory((h) => {
+      if (h.past.length === 0) return h;
+      const previous = h.past[h.past.length - 1];
+      const newPast = h.past.slice(0, -1);
+      const curr = state || {};
+      set(previous);
+      return { past: newPast, future: [curr, ...h.future] };
+    });
+  };
+
+  const redo = () => {
+    setHistory((h) => {
+      if (h.future.length === 0) return h;
+      const next = h.future[0];
+      const newFuture = h.future.slice(1);
+      const curr = state || {};
+      set(next);
+      return { past: [...h.past, curr], future: newFuture };
+    });
+  };
+
   useEffect(() => {
     if (files.length === 0) {
       setSelected([]);
       return;
     }
 
-    // Get current valid paths
     const validPaths = new Set(files.map((f) => f.path));
 
-    // Filter selected to only include paths that still exist
     setSelected((prevSelected) => {
       const stillValid = prevSelected.filter((path) => validPaths.has(path));
 
-      // Only update if something changed
       if (stillValid.length !== prevSelected.length) {
         if (stillValid.length === 0) {
           console.log("[useChanges] All selected files removed");
@@ -192,19 +268,41 @@ export function ChangesProvider({
   useEffect(() => {
     const handleClick = (event: MouseEvent): void => {
       const targets = ["App", "table"];
-      if (!event.target) setSelected([]);
+      if (!event.target) {
+        if (hasUnsavedChanges) {
+          nudgeSaveBar();
+          return;
+        }
+        setSelected([]);
+      }
       if (event.target instanceof HTMLElement) {
-        if (targets.includes(event.target.id)) setSelected([]);
+        if (targets.includes(event.target.id)) {
+          if (hasUnsavedChanges) {
+            nudgeSaveBar();
+            return;
+          }
+          setSelected([]);
+        }
       }
     };
     document.addEventListener("click", handleClick);
     return (): void => document.removeEventListener("click", handleClick);
-  }, []);
+  }, [hasUnsavedChanges]);
   useEffect(() => {
     const isEditable = (el: Element | null): boolean =>
       el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 
     const handleKeyDown = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        if (isEditable(document.activeElement)) return;
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
         if (!document.activeElement) return;
         if (isEditable(document.activeElement)) {
@@ -214,6 +312,10 @@ export function ChangesProvider({
           if (document.activeElement.id !== "App") return;
 
           event.preventDefault();
+          if (hasUnsavedChanges) {
+            nudgeSaveBar();
+            return;
+          }
           if (selected.length >= files.length) {
             setSelected([]);
           } else {
@@ -223,12 +325,15 @@ export function ChangesProvider({
       }
     };
     document.addEventListener("keydown", handleKeyDown);
-    clear();
     return (): void => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, files]);
+  }, [selected, files, hasUnsavedChanges]);
+
+  const clearAllChanges = () => {
+    clear();
+    setHistory({ past: [], future: [] });
+  };
 
   function showAlbumDialog(page?: number): void {
     if (page) {
@@ -254,9 +359,13 @@ export function ChangesProvider({
       value={{
         changes: state,
         neededItems: getNeededItems(),
-        setChanges: set,
+        setChanges,
+        undo,
+        redo,
+        canUndo: history.past.length > 0,
+        canRedo: history.future.length > 0,
         saveChanges,
-        clearChanges: clear,
+        clearChanges: clearAllChanges,
         selected,
         fileTree,
         setFilesToShow,
@@ -275,6 +384,9 @@ export function ChangesProvider({
         setAlbumDialogValues,
         showAlbumDialog,
         albumDialogValues,
+        hasUnsavedChanges,
+        nudgeSaveBar,
+        saveBarNudge,
       }}
     >
       {children}
@@ -309,15 +421,18 @@ export function ChangesProvider({
     const tags = toSerializableTags(changes);
 
     try {
+      const prev = state || {};
       await invoke("save_changes", { changes: { tags, paths: selected } });
-      clear();
+      setHistory((h) => {
+        const last = h.past[h.past.length - 1];
+        const dedup = last && isEqualChanges(last, prev);
+        return { past: dedup ? h.past : [...h.past, prev], future: [] };
+      });
+      set({});
       toast.success("Changes saved successfully");
-    } catch (err) {
-      toast.error(
-        `Failed to save changes: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Failed to save changes: ${message}`);
     }
   }
 }

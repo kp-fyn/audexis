@@ -3,7 +3,6 @@ import { Input } from "./Input";
 import { AllTags, TagPicture, UserConfig } from "@/ui/types";
 import Img from "../assets/images/unknown.jpg";
 import { ReactNode, useEffect, useState } from "react";
-import { Button } from "./Button";
 
 import { ChevronDown } from "lucide-react";
 
@@ -19,8 +18,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     UserConfig["albums"]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { files, changes, saveChanges, setChanges, selected, neededItems } =
-    useChanges();
+  const { files, changes, setChanges, selected, neededItems } = useChanges();
   const [defaultValues, setDefaultValues] = useState<
     Record<
       string,
@@ -243,6 +241,11 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                       disabled={disabled}
                       maxLength={item.maxLength}
                       minLength={item.maxLength}
+                      onFocus={(e) => {
+                        if (e.target.value === "...") {
+                          e.target.select();
+                        }
+                      }}
                       value={
                         selected.length > 0
                           ? (changes[item.value as keyof AllTags]?.value ===
@@ -291,7 +294,12 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                       disabled={disabled}
                       maxLength={item.maxLength}
                       minLength={item.maxLength}
-                      onFocus={() => setShowSuggestions(true)}
+                      onFocus={(e) => {
+                        if (e.target.value === "...") {
+                          e.target.select();
+                        }
+                        setShowSuggestions(true);
+                      }}
                       onBlur={() =>
                         setTimeout(() => setShowSuggestions(false), 100)
                       }
@@ -388,7 +396,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                 },
               });
               setImage(image);
-              toast.success("Image imported successfully");
             } catch (err) {
               toast.error(
                 `Failed to import image: ${
@@ -401,9 +408,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         ></img>
         // </ContextMenuHandler>
       )}
-      <Button className="mt-4" onClick={() => saveChanges()}>
-        Save
-      </Button>
+      {/* Save button moved to global SaveBar */}
     </div>
   );
 }

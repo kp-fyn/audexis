@@ -1,7 +1,7 @@
 {
   "name": "audexis",
   "private": true,
-  "version": "0.2.1-alpha",
+  "version": "0.2.3-alpha",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,8 +18,9 @@
     "@tailwindcss/vite": "^4.1.8",
     "@tanstack/react-table": "^8.21.3",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-dialog": "^2.2.2",
-    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-opener": "^2.5.2",
     "@tauri-apps/plugin-os": "^2.2.1",
     "@tauri-apps/plugin-process": "^2.3.0",
     "@tauri-apps/plugin-updater": "^2.9.0",
@@ -27,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
+    "is-hotkey": "^0.2.0",
     "lucide-react": "^0.513.0",
     "motion": "^12.23.22",
     "query-string": "^9.2.0",

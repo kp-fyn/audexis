@@ -16,7 +16,7 @@ export function SectionNavButton({
       className={`w-full text-left px-3 py-2 rounded-md text-[11px] font-medium tracking-wide transition-colors ${
         isActive
           ? "bg-primary/15 text-foreground border border-primary/40"
-          : "text-foreground/60 hover:bg-muted/30 border border-transparent"
+          : "text-foreground/60 hover:bg-hover border border-transparent"
       }`}
     >
       {label}

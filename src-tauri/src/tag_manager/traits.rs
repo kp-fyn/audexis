@@ -42,7 +42,11 @@ pub trait TagFormat: Debug {
         Self: Sized;
 
     fn get_tags(&self, file_path: &PathBuf) -> Result<HashMap<FrameKey, TagValue>, std::io::Error>;
-    fn write_tags(&self, file_path: &PathBuf, updated_tags: HashMap<FrameKey, TagValue>) -> Result<(), ()>;
+    fn write_tags(
+        &self,
+        file_path: &PathBuf,
+        updated_tags: HashMap<FrameKey, TagValue>,
+    ) -> Result<(), ()>;
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
