@@ -32,6 +32,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -40,10 +45,10 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: "./apps/desktop/src-tauri -> target"
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Import signing certificate (macOS only)
         if: matrix.platform == 'macos-latest'
@@ -88,6 +93,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+          projectPath: "./apps/desktop"
 
       - name: Cleanup keychain (macOS only)
         if: always() && matrix.platform == 'macos-latest'

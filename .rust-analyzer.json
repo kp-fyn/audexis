@@ -1,8 +1,9 @@
 {
+  "linkedProjects": ["./apps/desktop/src-tauri/Cargo.toml"],
   "exclude": [
     "target",
     "node_modules",
-    "src-tauri/target",
-    "src-tauri/node_modules"
+    "apps/desktop/src-tauri/target",
+    "apps/desktop/node_modules"
   ]
 }

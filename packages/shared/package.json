@@ -1,0 +1,18 @@
+{
+  "name": "@audexis/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.css",
+  "exports": {
+    "./styles": "./src/styles/index.css",
+    "./theme": "./src/styles/theme.css",
+    "./animations": "./src/styles/animations.css"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "tailwindcss": "^4"
+  }
+}

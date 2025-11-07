@@ -1,0 +1,251 @@
+export const metadata = {
+  title: "Updates",
+  description:
+    "Learn how Audexis handles updates. Understand automatic updates, update notifications, and how to keep your audio metadata editor current.",
+  keywords:
+    "audexis updates, app updates, automatic updates, software updates, update notifications",
+};
+
+<h1 className="text-4xl font-bold tracking-tight my-6">{metadata.title}</h1>
+
+Audexis checks for updates automatically.
+
+## How It Works
+
+- Checks on app launch
+- Checks every 5 minutes while running
+- Shows a notification when updates are available
+
+## Installing Updates
+
+When an update is available:
+
+1. Click **Install Now** in the notification
+2. Update downloads in the background
+3. Close and reopen Audexis to complete
+
+## Manual Update
+
+If auto-update doesn't work:
+
+1. Visit [GitHub Releases](https://github.com/kp-fyn/audexis/releases/latest)
+2. Download the latest `.dmg`
+3. Drag to Applications (replace existing)
+
+## Check Your Version
+
+Open Settings (⌘+,) and check the bottom of the sidebar.
+
+## What Gets Updated
+
+- Bug fixes
+- New features
+- Performance improvements
+
+Your settings and files are not affected.
+
+<h1 className="text-4xl font-bold tracking-tight my-6">{metadata.title}</h1>
+
+Audexis includes built-in auto-update functionality to keep you on the latest version.
+
+## How Auto-Updates Work
+
+Audexis automatically checks for updates:
+
+- **On app launch** — Checks once when you open the app
+- **Every 5 minutes** — While the app is running
+- **Manual trigger** — You can manually check anytime
+
+When an update is available, you'll see a notification with options to:
+
+- **Install Now** — Download and install immediately
+- **Later** — Dismiss the notification and update later
+
+## Update Process
+
+### Automatic Check
+
+1. Audexis queries the GitHub releases API
+2. Compares the latest version with your installed version
+3. If a newer version exists, shows an update notification
+
+### Installation Steps
+
+When you click "Install Now":
+
+1. **Download** — The update downloads in the background
+2. **Install** — The update is installed automatically
+3. **Restart Required** — Close and reopen Audexis to complete the update
+
+A toast notification shows the download progress.
+
+### Update Endpoints
+
+Audexis checks for updates at:
+
+```
+https://github.com/kp-fyn/audexis/releases/latest/download/latest.json
+```
+
+This JSON file contains version information and download URLs for each platform.
+
+## Update Notifications
+
+### Update Available
+
+When a new version is detected:
+
+- A persistent toast notification appears
+- Shows the new version number (e.g., "Version 0.2.3 is ready to install")
+- Offers "Install Now" and "Later" buttons
+
+### Download Progress
+
+While downloading:
+
+- Shows "Downloading update..." loading indicator
+- Notification can't be dismissed during download
+
+### Installation Complete
+
+After successful installation:
+
+- Shows "Update installed! Close and reopen app to apply."
+- You must restart Audexis to use the new version
+
+### Update Failed
+
+If something goes wrong:
+
+- Shows "Update failed: [error message]"
+- You can try again or download manually from GitHub
+
+## Manual Update Check
+
+To manually check for updates:
+
+1. Open the browser console (if running in dev mode)
+2. Run: `window.checkForUpdates()`
+
+**Note**: Manual triggers are primarily for development and testing.
+
+## Viewing Current Version
+
+To see your current Audexis version:
+
+1. Open **Settings** (⌘+,)
+2. Scroll to the bottom of the sidebar
+3. Your version is displayed as `v0.2.x`
+
+Or check the About section (planned feature).
+
+## Update Frequency
+
+| Event            | Frequency       |
+| ---------------- | --------------- |
+| On Launch        | Once            |
+| Background Check | Every 5 minutes |
+| Manual           | On demand       |
+
+## Disabling Auto-Updates
+
+Currently, auto-updates cannot be disabled in the UI. If needed, you can:
+
+1. **Build from source** without the updater plugin
+2. **Use firewall rules** to block update endpoints
+3. **Request a setting** via GitHub Issues
+
+**Note**: We recommend keeping auto-updates enabled for security and bug fixes.
+
+## Update Channels
+
+### Stable Channel (Current)
+
+- Updates come from GitHub Releases
+- Only stable versions are published
+- Recommended for all users
+
+### Alpha/Beta Releases
+
+Alpha and beta versions are tagged on GitHub but don't trigger auto-updates. To use them:
+
+1. Visit the [releases page](https://github.com/kp-fyn/audexis/releases)
+2. Find the alpha/beta release
+3. Download and install manually
+
+## Update Security
+
+### Code Signing
+
+All Audexis releases are:
+
+- **Signed** with a valid developer certificate
+- **Notarized** by Apple (macOS)
+- **Verified** by Tauri's updater plugin
+
+### Public Key Verification
+
+The updater uses a public key to verify update authenticity:
+
+```
+dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwREMzQTVFODUwNTA0ODIKUldTQ0JBV0ZYanJjWU1YdDhncEFJNGtGZEwrV2o1eVVmTUIzNXRXbllKOHVWOHJZQVFyUEh6UG8K=
+```
+
+This ensures updates come from the official Audexis repository.
+
+## Troubleshooting
+
+### Updates Not Detected
+
+**Symptoms**: No update notification despite new release
+
+**Solutions**:
+
+1. Check your internet connection
+2. Verify you're running an older version
+3. Wait 5 minutes for the next automatic check
+4. Restart the app to trigger an immediate check
+
+### Update Download Fails
+
+**Symptoms**: "Update failed" message during download
+
+**Solutions**:
+
+1. Check network stability
+2. Ensure sufficient disk space
+3. Try downloading manually from GitHub
+4. Check firewall settings
+
+### Update Won't Install
+
+**Symptoms**: Download succeeds but installation fails
+
+**Solutions**:
+
+1. Close Audexis completely
+2. Check for file permission issues
+3. Move Audexis to `/Applications` if not already there
+4. Reinstall from the latest `.dmg`
+
+### No Permission to Update
+
+**Symptoms**: macOS asks for admin password
+
+**Solution**: Provide your password. Audexis needs elevated permissions to install updates.
+
+## Manual Installation
+
+If auto-update fails, you can manually update:
+
+1. Visit [GitHub Releases](https://github.com/kp-fyn/audexis/releases/latest)
+2. Download the latest `.dmg` file
+3. Open the `.dmg`
+4. Drag Audexis to Applications (replace existing)
+5. Launch the updated app
+
+## Related Documentation
+
+- [Getting Started](/docs/getting-started) — Installation instructions
+- [Troubleshooting](/docs/troubleshooting/common-issues) — Common problems
+- [User Configuration](/docs/reference/user-config) — Settings persistence

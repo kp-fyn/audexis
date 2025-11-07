@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@plugin "@tailwindcss/typography";
+
+@import "@audexis/shared/styles";
+
+@font-face {
+  font-family: "Reddit Sans";
+  src: url("/fonts/Reddit_Sans/RedditSans-VariableFont_wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+main.docs h1,
+main.docs h2,
+main.docs h3,
+main.docs h4,
+main.docs h5,
+main.docs h6 {
+  color: var(--color-foreground);
+}
+
+main.docs p,
+main.docs li,
+main.docs span,
+main.docs div {
+  color: var(--color-muted-foreground);
+}

@@ -1,43 +1,50 @@
+# Dependencies
 node_modules/
-.env
-.env.local
-dist/
-build/
-.vite/
 .pnpm-store/
+.pnpm-debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-www/package-lock.json
+pnpm-lock.yaml
 
-src-tauri/target/
-src-tauri/Cargo.lock
-src-tauri/.DS_Store
-src-tauri/.idea/
-src-tauri/.vscode/
-src-tauri/.cargo/
-src-tauri/debug.log
+# Environment
+.env
+.env.local
 
+# Build outputs
+dist/
+build/
+.vite/
+out/
 
-www/.next/
-www/out/
-www/.vercel
+# Tauri
+**/src-tauri/target/
+**/src-tauri/Cargo.lock
+**/src-tauri/.DS_Store
+**/src-tauri/.idea/
+**/src-tauri/.vscode/
+**/src-tauri/.cargo/
+**/src-tauri/debug.log
 
-.DS_Store
+target/
 
+# Next.js
+**/.next/
+**/out/
+**/.vercel
 
-.vscode/
-
-
+# Logs
 logs/
 *.log
 
+# OS
+.DS_Store
 
+# IDEs
+.vscode/
 .idea/
 *.swp
 
-out/
-src-tauri/Cargo.toml
-target/analyzer/
-target/analyzer
-target/
+# Lock files (using pnpm)
+package-lock.json
+yarn.lock
