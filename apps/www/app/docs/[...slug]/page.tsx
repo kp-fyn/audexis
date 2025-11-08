@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { pages, slugs } from "../registry";
 
-type Props = { params: { slug: string[] } };
+type Props = { params: Promise<{ slug: string[] }> };
 
 export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug: slug.split("/") }));

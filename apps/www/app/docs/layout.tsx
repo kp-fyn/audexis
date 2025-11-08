@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
 import DocsSidebar from "../../components/DocsSidebar";
 import TableOfContents from "../../components/TableOfContents";
 import { EditOnGitHub } from "../../components/EditOnGitHub";
 
-export default function DocsLayout({ children }: { children: ReactNode }) {
+export default function DocsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-background mx-auto max-w-7xl">
       <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-4 py-8 md:py-12">
