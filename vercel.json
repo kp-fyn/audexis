@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd apps/www && pnpm build",
-  "installCommand": "npm install -g pnpm@9.15.0 && pnpm install --no-frozen-lockfile",
+  "buildCommand": "cd apps/www && npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs"
 }
