@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.2.3-alpha",
   "type": "module",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm --filter desktop tauri dev",
     "dev:www": "pnpm --filter www dev",
