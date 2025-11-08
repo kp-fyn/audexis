@@ -2,7 +2,7 @@
 
 @plugin "@tailwindcss/typography";
 
-@import "@audexis/shared/styles";
+@import "./shared.css";
 
 @font-face {
   font-family: "Reddit Sans";
