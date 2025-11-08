@@ -120,13 +120,6 @@ impl Workspace {
 
                             match tags {
                                 Ok(tags) => {
-                                    if let Err(e) = tag_format.write_tags(&file, tags.clone()) {
-                                        eprintln!(
-                                            "Error writing tags back during import for {}: {:?}",
-                                            file.display(),
-                                            e
-                                        );
-                                    }
                                     let audio_file = File {
                                         path: file.clone(),
                                         tag_format: tag_format_str,

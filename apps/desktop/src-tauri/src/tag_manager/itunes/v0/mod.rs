@@ -1,0 +1,827 @@
+use crate::tag_manager::itunes::utils::{get_atom_flag, raw_to_tags, tags_to_raw};
+use crate::tag_manager::traits::TagFormat;
+use crate::tag_manager::utils::TagValue;
+use std::collections::HashMap;
+use std::fs;
+use std::io::Error;
+
+// to do: Add support for ---- (freeforms) atoms
+
+#[derive(Debug, Clone)]
+pub struct V0 {}
+#[derive(Debug, Clone)]
+struct Atom {
+    atom_type: String,
+    size: u64,
+    position: u64,
+    buffer: Vec<u8>,
+}
+
+impl V0 {
+    fn parse_atoms(buffer: &Vec<u8>, start: u64, size: u64) -> Vec<Atom> {
+        let mut position = start;
+        let mut atoms: Vec<Atom> = Vec::new();
+
+        let end = size;
+        while position < end {
+            if position + 8 > end {
+                break;
+            }
+            let atom_size = u32::from_be_bytes([
+                buffer[position as usize],
+                buffer[position as usize + 1],
+                buffer[position as usize + 2],
+                buffer[position as usize + 3],
+            ]) as u64;
+
+            if atom_size < 8 {
+                break;
+            }
+
+            let first_byte = buffer[position as usize + 4];
+            let atom_type = if first_byte == 0xa9 {
+                format!(
+                    "©{}",
+                    String::from_utf8_lossy(&buffer[position as usize + 5..position as usize + 8])
+                )
+            } else {
+                String::from_utf8_lossy(&buffer[position as usize + 4..position as usize + 8])
+                    .to_string()
+            };
+
+            let atom_buffer =
+                buffer[position as usize..(position + atom_size).min(end) as usize].to_vec();
+            atoms.push(Atom {
+                atom_type,
+                size: atom_size,
+                position,
+                buffer: atom_buffer,
+            });
+            position += atom_size;
+        }
+        atoms
+    }
+    fn ensure_ilst_atom(buffer: &Vec<u8>) -> Result<Atom, ()> {
+        let atoms = V0::parse_atoms(&buffer, 0, buffer.len() as u64);
+
+        let moov_atom = atoms.iter().find(|atom| atom.atom_type == "moov");
+        if moov_atom.is_none() {
+            return Err(());
+        }
+
+        let moov_atom = moov_atom.unwrap();
+
+        let moov_sub_atoms = V0::parse_atoms(&moov_atom.buffer, 8, moov_atom.size);
+
+        let udta_atom = moov_sub_atoms.iter().find(|atom| atom.atom_type == "udta");
+        let mut meta_atom: Option<Atom> = None;
+        let mut ilst_atom: Option<Atom> = None;
+        if udta_atom.is_some() {
+            let udta_atom = udta_atom.unwrap();
+            let udta_sub_atoms = V0::parse_atoms(&udta_atom.buffer, 8, udta_atom.size);
+
+            meta_atom = udta_sub_atoms
+                .iter()
+                .find(|atom| atom.atom_type == "meta")
+                .cloned();
+        }
+        if meta_atom.is_some() {
+            let meta_atom = meta_atom.unwrap();
+            let meta_sub_atoms = V0::parse_atoms(&meta_atom.buffer, 12, meta_atom.size);
+            ilst_atom = meta_sub_atoms
+                .iter()
+                .find(|atom| atom.atom_type == "ilst")
+                .cloned();
+        }
+
+        if ilst_atom.is_some() {
+            let ilst_atom = ilst_atom.unwrap();
+            return Ok(ilst_atom);
+        }
+
+        Err(())
+    }
+    fn encode_ilst(
+        raw_tags: HashMap<&'static str, TagValue>,
+        old_ilst_atoms: Vec<Atom>,
+    ) -> Vec<u8> {
+        let mut ilst_entries: Vec<u8> = Vec::new();
+        let mut encoded_keys: Vec<String> = Vec::new();
+
+        for (key, value) in &raw_tags {
+            if key == &"covr" {
+                match value {
+                    TagValue::Picture { mime, data } => {
+                        let mut mime_buff: Vec<u8> = vec![0x00, 0x00, 0x00, 0x0d];
+                        if mime == "image/png" {
+                            mime_buff = vec![0x00, 0x00, 0x00, 0x0e];
+                        }
+                        let reserved = vec![0u8; 4];
+                        let mut data_buff = Vec::new();
+                        data_buff.extend_from_slice(&mime_buff);
+                        data_buff.extend_from_slice(&reserved);
+                        data_buff.extend_from_slice(&data);
+                        let data_atom_size = 8 + data_buff.len();
+                        let data_size_buffer = (data_atom_size as u32).to_be_bytes().to_vec();
+                        let mut data_atom = Vec::new();
+                        data_atom.extend_from_slice(&data_size_buffer);
+                        data_atom.extend_from_slice(b"data");
+                        data_atom.extend_from_slice(&data_buff);
+                        let key_atom_size = 8 + data_atom.len();
+                        let key_size_buffer = (key_atom_size as u32).to_be_bytes().to_vec();
+                        let mut key_atom = Vec::new();
+                        let key_bytes = V0::parse_key("covr");
+                        key_atom.extend_from_slice(&key_size_buffer);
+                        key_atom.extend_from_slice(&key_bytes);
+                        key_atom.extend_from_slice(&data_atom);
+                        ilst_entries.extend_from_slice(&key_atom);
+                        encoded_keys.push("covr".to_string());
+                    }
+                    _ => {}
+                }
+            } else {
+                if let Some(data_buffer) = V0::data_to_buffer(&key, &value) {
+                    let data_atom_size = 8 + data_buffer.len();
+                    let data_size_buffer = (data_atom_size as u32).to_be_bytes().to_vec();
+                    let mut data_atom = Vec::new();
+                    data_atom.extend_from_slice(&data_size_buffer);
+                    data_atom.extend_from_slice(b"data");
+                    data_atom.extend_from_slice(&data_buffer);
+                    let key_atom_size = 8 + data_atom.len();
+                    let key_size_buffer = (key_atom_size as u32).to_be_bytes().to_vec();
+                    let mut key_atom = Vec::new();
+                    let key_bytes = V0::parse_key(&key);
+                    key_atom.extend_from_slice(&key_size_buffer);
+                    key_atom.extend_from_slice(&key_bytes);
+                    key_atom.extend_from_slice(&data_atom);
+                    ilst_entries.extend_from_slice(&key_atom);
+                    encoded_keys.push(key.to_string());
+                }
+            }
+        }
+
+        for atom in old_ilst_atoms {
+            if !encoded_keys.iter().any(|k| k == &atom.atom_type) {
+                ilst_entries.extend_from_slice(&atom.buffer);
+            }
+        }
+
+        let ilst_size = 8 + ilst_entries.len();
+        let ilst_size_buffer = (ilst_size as u32).to_be_bytes().to_vec();
+        let mut ilst_atom = Vec::new();
+        ilst_atom.extend_from_slice(&ilst_size_buffer);
+        ilst_atom.extend_from_slice(b"ilst");
+        ilst_atom.extend_from_slice(&ilst_entries);
+        ilst_atom
+    }
+    fn parse_key(key: &str) -> Vec<u8> {
+        if key.starts_with('©') {
+            let mut buff = vec![0u8; 4];
+
+            buff[0] = 0xa9;
+
+            let rest = key.chars().skip(1).collect::<String>();
+            let bytes = rest.as_bytes();
+            for (i, &b) in bytes.iter().take(3).enumerate() {
+                buff[i + 1] = b;
+            }
+
+            buff
+        } else {
+            key.as_bytes().to_vec()
+        }
+    }
+    fn data_to_buffer(key: &str, value: &TagValue) -> Option<Vec<u8>> {
+        let item = get_atom_flag(key);
+        if item.is_none() {
+            return None;
+        } else {
+            let item = item.unwrap();
+            if item.flag[3] == 0x01 {
+                match value {
+                    TagValue::Text(text) => {
+                        let prefix = "\x00\x00\x00\x00".as_bytes();
+                        let vale_buffer = text.as_bytes();
+                        let allowed_bytes = 255 - prefix.len();
+                        let trimmed_value = if vale_buffer.len() > allowed_bytes {
+                            &vale_buffer[0..allowed_bytes]
+                        } else {
+                            vale_buffer
+                        };
+                        let mut data_buffer = Vec::new();
+                        data_buffer.extend_from_slice(&item.flag);
+                        data_buffer.extend_from_slice(prefix);
+                        data_buffer.extend_from_slice(trimmed_value);
+
+                        Some(data_buffer)
+                    }
+                    _ => {
+                        return None;
+                    }
+                }
+            } else if item.flag[3] == 0x15 || item.flag[3] == 0x00 {
+                match value {
+                    TagValue::Text(text) => {
+                        let mut data_buffer = Vec::new();
+                        data_buffer.extend_from_slice(&item.flag);
+
+                        let int_value: u32 = text.parse().unwrap_or(0);
+
+                        if item.size.is_some() {
+                            let mut value_buffer = vec![0u8; 8];
+                            let int_bytes = int_value.to_be_bytes();
+                            value_buffer[4..].copy_from_slice(&int_bytes);
+                            data_buffer.extend_from_slice(&value_buffer);
+                        } else {
+                            let mut value_buffer = vec![0u8; 5];
+                            value_buffer[4] = if int_value == 1 { 1 } else { 0 };
+                            data_buffer.extend_from_slice(&value_buffer);
+                        }
+
+                        Some(data_buffer)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+    }
+
+    fn rebuild_file(ilst_buffer: Vec<u8>, file_buffer: &Vec<u8>) -> Option<Vec<u8>> {
+        let top_level_atoms = V0::parse_atoms(file_buffer, 0, file_buffer.len() as u64);
+
+        let moov_atom = top_level_atoms
+            .iter()
+            .find(|atom| atom.atom_type == "moov")?;
+        println!(
+            "Found moov atom at position {} size {}",
+            moov_atom.position, moov_atom.size
+        );
+
+        let moov_sub_atoms = V0::parse_atoms(&moov_atom.buffer, 8, moov_atom.size);
+
+        let udta_atom = moov_sub_atoms
+            .iter()
+            .find(|atom| atom.atom_type == "udta")?;
+        println!(
+            "Found udta at relative position {} size {}",
+            udta_atom.position, udta_atom.size
+        );
+
+        let udta_sub_atoms = V0::parse_atoms(&udta_atom.buffer, 8, udta_atom.size);
+        let meta_atom = udta_sub_atoms
+            .iter()
+            .find(|atom| atom.atom_type == "meta")?;
+        println!(
+            "Found meta at relative position {} size {}",
+            meta_atom.position, meta_atom.size
+        );
+
+        let meta_sub_atoms = V0::parse_atoms(&meta_atom.buffer, 12, meta_atom.size);
+        let ilst_atom = meta_sub_atoms
+            .iter()
+            .find(|atom| atom.atom_type == "ilst")?;
+        println!(
+            "Found ilst at relative position {} size {}",
+            ilst_atom.position, ilst_atom.size
+        );
+
+        println!("New ilst size: {}", ilst_buffer.len());
+
+        let new_meta_buffer = {
+            let mut buffer = Vec::new();
+            let new_meta_size = (meta_atom.size - ilst_atom.size + ilst_buffer.len() as u64) as u32;
+            buffer.extend_from_slice(&new_meta_size.to_be_bytes());
+
+            let ilst_offset_in_meta = (ilst_atom.position) as usize;
+            buffer.extend_from_slice(&meta_atom.buffer[4..ilst_offset_in_meta]);
+            buffer.extend_from_slice(&ilst_buffer);
+            buffer.extend_from_slice(
+                &meta_atom.buffer[(ilst_offset_in_meta + ilst_atom.size as usize)..],
+            );
+            buffer
+        };
+
+        let new_udta_buffer = {
+            let mut buffer = Vec::new();
+            let new_udta_size =
+                (udta_atom.size - meta_atom.size + new_meta_buffer.len() as u64) as u32;
+            buffer.extend_from_slice(&new_udta_size.to_be_bytes());
+
+            let meta_offset_in_udta = (meta_atom.position) as usize;
+            buffer.extend_from_slice(&udta_atom.buffer[4..meta_offset_in_udta]);
+            buffer.extend_from_slice(&new_meta_buffer);
+            buffer.extend_from_slice(
+                &udta_atom.buffer[(meta_offset_in_udta + meta_atom.size as usize)..],
+            );
+            buffer
+        };
+
+        let new_moov_buffer = {
+            let mut buffer = Vec::new();
+            let new_moov_size =
+                (moov_atom.size - udta_atom.size + new_udta_buffer.len() as u64) as u32;
+            buffer.extend_from_slice(&new_moov_size.to_be_bytes());
+
+            let udta_offset_in_moov = (udta_atom.position) as usize;
+            buffer.extend_from_slice(&moov_atom.buffer[4..udta_offset_in_moov]);
+            buffer.extend_from_slice(&new_udta_buffer);
+            buffer.extend_from_slice(
+                &moov_atom.buffer[(udta_offset_in_moov + udta_atom.size as usize)..],
+            );
+            buffer
+        };
+        let almost_done_file = {
+            let mut buffer = Vec::new();
+            buffer.extend_from_slice(&file_buffer[0..moov_atom.position as usize]);
+            buffer.extend_from_slice(&new_moov_buffer);
+            buffer
+                .extend_from_slice(&file_buffer[(moov_atom.position + moov_atom.size) as usize..]);
+            buffer
+        };
+
+        let new_top_level_atoms =
+            V0::parse_atoms(&almost_done_file, 0, almost_done_file.len() as u64);
+        let new_moov_atom = new_top_level_atoms
+            .iter()
+            .find(|atom| atom.atom_type == "moov")?;
+        let mdat_atom = new_top_level_atoms.iter().find(|a| a.atom_type == "mdat");
+        let should_update_offsets = mdat_atom
+            .map(|mdat| new_moov_atom.position < mdat.position)
+            .unwrap_or(false);
+        if !should_update_offsets {
+            return Some(almost_done_file);
+        }
+
+        let shift = ilst_buffer.len() as i64 - ilst_atom.size as i64;
+        if let Some(co64_atoms) = V0::find_co64_atom(&almost_done_file, &new_moov_atom) {
+            Some(V0::update_co64_offsets(
+                &almost_done_file,
+                shift,
+                &co64_atoms,
+            ))
+        } else if let Some(stco_atoms) = V0::find_stco_atom(&almost_done_file, &new_moov_atom) {
+            Some(V0::update_stco_offsets(
+                &almost_done_file,
+                shift,
+                &stco_atoms,
+            ))
+        } else {
+            Some(almost_done_file)
+        }
+    }
+
+    fn rebuild_file_insert_ilst(
+        ilst_atom_buffer: Vec<u8>,
+        file_buffer: &Vec<u8>,
+    ) -> Option<Vec<u8>> {
+        let top_level_atoms = V0::parse_atoms(file_buffer, 0, file_buffer.len() as u64);
+
+        let moov_atom = top_level_atoms.iter().find(|a| a.atom_type == "moov")?;
+
+        let moov_sub_atoms = V0::parse_atoms(&moov_atom.buffer, 8, moov_atom.size);
+        let udta_opt = moov_sub_atoms.iter().find(|a| a.atom_type == "udta");
+
+        let (new_moov_buffer, moov_size_delta): (Vec<u8>, i64) = if let Some(udta_atom) = udta_opt {
+            let udta_sub_atoms = V0::parse_atoms(&udta_atom.buffer, 8, udta_atom.size);
+            if let Some(meta_atom) = udta_sub_atoms.iter().find(|a| a.atom_type == "meta") {
+                let new_meta_buffer = {
+                    let mut buf = Vec::new();
+                    let new_size = (meta_atom.size + ilst_atom_buffer.len() as u64) as u32;
+                    buf.extend_from_slice(&new_size.to_be_bytes());
+                    buf.extend_from_slice(&meta_atom.buffer[4..]);
+                    buf.extend_from_slice(&ilst_atom_buffer);
+                    buf
+                };
+
+                let new_udta_buffer = {
+                    let mut buf = Vec::new();
+                    let new_size =
+                        (udta_atom.size - meta_atom.size + new_meta_buffer.len() as u64) as u32;
+                    buf.extend_from_slice(&new_size.to_be_bytes());
+                    let meta_off = meta_atom.position as usize;
+                    buf.extend_from_slice(&udta_atom.buffer[4..meta_off]);
+                    buf.extend_from_slice(&new_meta_buffer);
+                    buf.extend_from_slice(
+                        &udta_atom.buffer[(meta_off + meta_atom.size as usize)..],
+                    );
+                    buf
+                };
+
+                let new_moov_buffer = {
+                    let mut buf = Vec::new();
+                    let new_size =
+                        (moov_atom.size - udta_atom.size + new_udta_buffer.len() as u64) as u32;
+                    buf.extend_from_slice(&new_size.to_be_bytes());
+                    let udta_off = udta_atom.position as usize;
+                    buf.extend_from_slice(&moov_atom.buffer[4..udta_off]);
+                    buf.extend_from_slice(&new_udta_buffer);
+                    buf.extend_from_slice(
+                        &moov_atom.buffer[(udta_off + udta_atom.size as usize)..],
+                    );
+                    buf
+                };
+                let moov_delta = (new_moov_buffer.len() as i64) - (moov_atom.size as i64);
+                (new_moov_buffer, moov_delta)
+            } else {
+                let meta_buffer = {
+                    let mut buf = Vec::new();
+                    let size = (12 + ilst_atom_buffer.len()) as u32;
+                    buf.extend_from_slice(&size.to_be_bytes());
+                    buf.extend_from_slice(b"meta");
+                    buf.extend_from_slice(&[0u8; 4]);
+                    buf.extend_from_slice(&ilst_atom_buffer);
+                    buf
+                };
+                let new_udta_buffer = {
+                    let mut buf = Vec::new();
+                    let new_size = (udta_atom.size + meta_buffer.len() as u64) as u32;
+                    buf.extend_from_slice(&new_size.to_be_bytes());
+                    buf.extend_from_slice(&udta_atom.buffer[4..]);
+                    buf.extend_from_slice(&meta_buffer);
+                    buf
+                };
+                let new_moov_buffer = {
+                    let mut buf = Vec::new();
+                    let new_size =
+                        (moov_atom.size - udta_atom.size + new_udta_buffer.len() as u64) as u32;
+                    buf.extend_from_slice(&new_size.to_be_bytes());
+                    let udta_off = udta_atom.position as usize;
+                    buf.extend_from_slice(&moov_atom.buffer[4..udta_off]);
+                    buf.extend_from_slice(&new_udta_buffer);
+                    buf.extend_from_slice(
+                        &moov_atom.buffer[(udta_off + udta_atom.size as usize)..],
+                    );
+                    buf
+                };
+                let moov_delta = (new_moov_buffer.len() as i64) - (moov_atom.size as i64);
+                (new_moov_buffer, moov_delta)
+            }
+        } else {
+            let meta_buffer = {
+                let mut buf = Vec::new();
+                let size = (12 + ilst_atom_buffer.len()) as u32;
+                buf.extend_from_slice(&size.to_be_bytes());
+                buf.extend_from_slice(b"meta");
+                buf.extend_from_slice(&[0u8; 4]);
+                buf.extend_from_slice(&ilst_atom_buffer);
+                buf
+            };
+            let udta_buffer = {
+                let mut buf = Vec::new();
+                let size = (8 + meta_buffer.len()) as u32;
+                buf.extend_from_slice(&size.to_be_bytes());
+                buf.extend_from_slice(b"udta");
+                buf.extend_from_slice(&meta_buffer);
+                buf
+            };
+            let new_moov_buffer = {
+                let mut buf = Vec::new();
+                let new_size = (moov_atom.size + udta_buffer.len() as u64) as u32;
+                buf.extend_from_slice(&new_size.to_be_bytes());
+                buf.extend_from_slice(&moov_atom.buffer[4..]);
+                buf.extend_from_slice(&udta_buffer);
+                buf
+            };
+            (new_moov_buffer, (udta_buffer.len() as i64))
+        };
+
+        let almost_done_file = {
+            let mut buffer = Vec::new();
+            buffer.extend_from_slice(&file_buffer[0..moov_atom.position as usize]);
+            buffer.extend_from_slice(&new_moov_buffer);
+            buffer
+                .extend_from_slice(&file_buffer[(moov_atom.position + moov_atom.size) as usize..]);
+            buffer
+        };
+
+        let new_top_level_atoms =
+            V0::parse_atoms(&almost_done_file, 0, almost_done_file.len() as u64);
+        let new_moov_atom = new_top_level_atoms.iter().find(|a| a.atom_type == "moov")?;
+        let mdat_atom = new_top_level_atoms.iter().find(|a| a.atom_type == "mdat");
+        let should_update_offsets = mdat_atom
+            .map(|mdat| new_moov_atom.position < mdat.position)
+            .unwrap_or(false);
+        if !should_update_offsets {
+            return Some(almost_done_file);
+        }
+
+        let shift = moov_size_delta;
+        if let Some(co64_atoms) = V0::find_co64_atom(&almost_done_file, &new_moov_atom) {
+            Some(V0::update_co64_offsets(
+                &almost_done_file,
+                shift,
+                &co64_atoms,
+            ))
+        } else if let Some(stco_atoms) = V0::find_stco_atom(&almost_done_file, &new_moov_atom) {
+            Some(V0::update_stco_offsets(
+                &almost_done_file,
+                shift,
+                &stco_atoms,
+            ))
+        } else {
+            Some(almost_done_file)
+        }
+    }
+
+    fn find_co64_atom(buffer: &Vec<u8>, moov_atom: &Atom) -> Option<Vec<Atom>> {
+        let moov_end = moov_atom.position + moov_atom.size;
+        let trak_atoms: Vec<Atom> = V0::parse_atoms(buffer, moov_atom.position + 8, moov_end)
+            .into_iter()
+            .filter(|a| a.atom_type == "trak")
+            .collect();
+
+        let mut co64_atoms: Vec<Atom> = Vec::new();
+
+        for trak in trak_atoms {
+            let trak_end = trak.position + trak.size;
+            let mdia = V0::parse_atoms(buffer, trak.position + 8, trak_end)
+                .into_iter()
+                .find(|a| a.atom_type == "mdia");
+            let Some(mdia) = mdia else { continue };
+            let mdia_end = mdia.position + mdia.size;
+
+            let minf = V0::parse_atoms(buffer, mdia.position + 8, mdia_end)
+                .into_iter()
+                .find(|a| a.atom_type == "minf");
+            let Some(minf) = minf else { continue };
+            let minf_end = minf.position + minf.size;
+
+            let stbl = V0::parse_atoms(buffer, minf.position + 8, minf_end)
+                .into_iter()
+                .find(|a| a.atom_type == "stbl");
+            let Some(stbl) = stbl else { continue };
+            let stbl_end = stbl.position + stbl.size;
+
+            let co64 = V0::parse_atoms(buffer, stbl.position + 8, stbl_end)
+                .into_iter()
+                .find(|a| a.atom_type == "co64");
+
+            if let Some(co64) = co64 {
+                co64_atoms.push(co64);
+            }
+        }
+
+        if co64_atoms.is_empty() {
+            None
+        } else {
+            Some(co64_atoms)
+        }
+    }
+    fn find_stco_atom(buffer: &Vec<u8>, moov_atom: &Atom) -> Option<Vec<Atom>> {
+        let moov_end = moov_atom.position + moov_atom.size;
+        let trak_atoms: Vec<Atom> = V0::parse_atoms(buffer, moov_atom.position + 8, moov_end)
+            .into_iter()
+            .filter(|a| a.atom_type == "trak")
+            .collect();
+
+        let mut stco_atoms: Vec<Atom> = Vec::new();
+
+        for trak in trak_atoms {
+            let trak_end = trak.position + trak.size;
+            let mdia = V0::parse_atoms(buffer, trak.position + 8, trak_end)
+                .into_iter()
+                .find(|a| a.atom_type == "mdia");
+            let Some(mdia) = mdia else { continue };
+            let mdia_end = mdia.position + mdia.size;
+
+            let minf = V0::parse_atoms(buffer, mdia.position + 8, mdia_end)
+                .into_iter()
+                .find(|a| a.atom_type == "minf");
+            let Some(minf) = minf else { continue };
+            let minf_end = minf.position + minf.size;
+
+            let stbl = V0::parse_atoms(buffer, minf.position + 8, minf_end)
+                .into_iter()
+                .find(|a| a.atom_type == "stbl");
+            let Some(stbl) = stbl else { continue };
+            let stbl_end = stbl.position + stbl.size;
+
+            let stco = V0::parse_atoms(buffer, stbl.position + 8, stbl_end)
+                .into_iter()
+                .find(|a| a.atom_type == "stco");
+
+            if let Some(stco) = stco {
+                stco_atoms.push(stco);
+            }
+        }
+
+        if stco_atoms.is_empty() {
+            None
+        } else {
+            Some(stco_atoms)
+        }
+    }
+    fn update_co64_offsets(
+        file_buffer: &Vec<u8>,
+        shift: i64,
+        co64_sub_atoms: &Vec<Atom>,
+    ) -> Vec<u8> {
+        let mut buff = file_buffer.clone();
+
+        for atom in co64_sub_atoms {
+            if atom.size == 0 {
+                continue;
+            }
+
+            let start = atom.position as usize;
+            let end = start + atom.size as usize;
+            if end > buff.len() {
+                continue;
+            }
+
+            let mut co64_buffer = buff[start..end].to_vec();
+
+            if co64_buffer.len() < 16 {
+                continue;
+            }
+            let entry_count_bytes: [u8; 4] = co64_buffer[12..16].try_into().unwrap();
+            let entry_count = u32::from_be_bytes(entry_count_bytes);
+
+            for i in 0..entry_count {
+                let pos = 16 + (i as usize) * 8;
+                if pos + 8 > co64_buffer.len() {
+                    break;
+                }
+
+                let old_offset_bytes: [u8; 8] = co64_buffer[pos..pos + 8].try_into().unwrap();
+                let old_offset = u64::from_be_bytes(old_offset_bytes);
+
+                let new_offset = (old_offset as i128 + shift as i128) as u64;
+                let new_bytes = new_offset.to_be_bytes();
+                co64_buffer[pos..pos + 8].copy_from_slice(&new_bytes);
+            }
+
+            buff.splice(start..end, co64_buffer);
+        }
+
+        buff
+    }
+    fn update_stco_offsets(
+        file_buffer: &Vec<u8>,
+        shift: i64,
+        stco_sub_atoms: &Vec<Atom>,
+    ) -> Vec<u8> {
+        let mut buff = file_buffer.clone();
+
+        for atom in stco_sub_atoms {
+            if atom.size == 0 {
+                continue;
+            }
+
+            let start = atom.position as usize;
+            let end = start + atom.size as usize;
+            if end > buff.len() {
+                continue;
+            }
+
+            let mut stco_buffer = buff[start..end].to_vec();
+
+            if stco_buffer.len() < 16 {
+                continue;
+            }
+            let entry_count_bytes: [u8; 4] = stco_buffer[12..16].try_into().unwrap();
+            let entry_count = u32::from_be_bytes(entry_count_bytes);
+
+            for i in 0..entry_count {
+                let pos = 16 + (i as usize) * 4;
+                if pos + 4 > stco_buffer.len() {
+                    break;
+                }
+
+                let old_offset_bytes: [u8; 4] = stco_buffer[pos..pos + 4].try_into().unwrap();
+                let old_offset = u32::from_be_bytes(old_offset_bytes);
+
+                let new_offset = old_offset as i64 + shift;
+                let new_bytes = (new_offset as u32).to_be_bytes();
+                stco_buffer[pos..pos + 4].copy_from_slice(&new_bytes);
+            }
+
+            buff.splice(start..end, stco_buffer);
+        }
+
+        buff
+    }
+}
+
+impl TagFormat for V0 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn get_tags(
+        &self,
+        file_path: &std::path::PathBuf,
+    ) -> Result<
+        std::collections::HashMap<
+            crate::tag_manager::utils::FrameKey,
+            crate::tag_manager::utils::TagValue,
+        >,
+        std::io::Error,
+    > {
+        let buffer = fs::read(file_path)?;
+        let ilst_atom = V0::ensure_ilst_atom(&buffer);
+        if ilst_atom.is_err() {
+            return Err(Error::new(
+                std::io::ErrorKind::InvalidData,
+                "File is messed up dud",
+            ));
+        }
+        let ilst_atom = ilst_atom.unwrap();
+        let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
+        let mut raw_tags: HashMap<String, TagValue> = HashMap::new();
+        for atom in &ilst_sub_atoms {
+            let data_start = atom.position + 16;
+            let data_size = atom.size - 16;
+
+            if atom.atom_type == "covr" {
+                let mut mime_type = "image/jpeg";
+                let magic_number =
+                    &ilst_atom.buffer[(data_start + 8) as usize..(data_start + 24) as usize];
+
+                if magic_number.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+                    mime_type = "image/png";
+                } else if magic_number.starts_with(&[0xFF, 0xD8, 0xFF]) {
+                    mime_type = "image/jpeg";
+                } else {
+                }
+                raw_tags.insert(
+                    atom.atom_type.clone(),
+                    TagValue::Picture {
+                        mime: mime_type.to_string(),
+                        data: ilst_atom.buffer
+                            [(data_start + 8) as usize..(data_start + data_size) as usize]
+                            .to_vec(),
+                    },
+                );
+            } else if atom.atom_type == "----" {
+                let text = String::from_utf8_lossy(
+                    &ilst_atom.buffer[(data_start - 8) as usize..(data_start + data_size) as usize],
+                )
+                .to_string();
+                raw_tags.insert(atom.atom_type.clone(), TagValue::Text(text));
+            } else {
+                let item = get_atom_flag(&atom.atom_type);
+                if let Some(item) = item {
+                    if item.flag[3] == 0x15 {
+                        let value = if item.size.is_some() {
+                            u32::from_be_bytes([
+                                ilst_atom.buffer[(data_start + 8) as usize],
+                                ilst_atom.buffer[(data_start + 8) as usize + 1],
+                                ilst_atom.buffer[(data_start + 8) as usize + 2],
+                                ilst_atom.buffer[(data_start + 8) as usize + 3],
+                            ])
+                        } else {
+                            ilst_atom.buffer[(data_start + 8) as usize] as u32
+                        };
+                        raw_tags.insert(atom.atom_type.clone(), TagValue::Text(value.to_string()));
+                        continue;
+                    }
+                }
+
+                let text = String::from_utf8_lossy(
+                    &ilst_atom.buffer[data_start as usize..(data_start + data_size) as usize],
+                )
+                .to_string()
+                .chars()
+                .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+                .collect::<String>();
+                raw_tags.insert(atom.atom_type.clone(), TagValue::Text(text));
+            }
+        }
+
+        return Ok(raw_to_tags(&raw_tags));
+    }
+    fn write_tags(
+        &self,
+        file_path: &std::path::PathBuf,
+        updated_tags: std::collections::HashMap<
+            crate::tag_manager::utils::FrameKey,
+            crate::tag_manager::utils::TagValue,
+        >,
+    ) -> Result<(), ()> {
+        let mut raw_updated_tags = tags_to_raw(&updated_tags);
+        let old_tags = self.get_tags(file_path).map_err(|_| ())?;
+        let mut raw_old_tags = tags_to_raw(&old_tags);
+
+        raw_old_tags.extend(raw_updated_tags);
+        raw_updated_tags = raw_old_tags;
+
+        let buffer = fs::read(file_path).map_err(|_| ())?;
+        let ilst_atom = V0::ensure_ilst_atom(&buffer);
+
+        let rebuilt_file = if let Ok(ilst_atom) = ilst_atom {
+            let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
+            let updated_ilst_buffer = V0::encode_ilst(raw_updated_tags, ilst_sub_atoms);
+            V0::rebuild_file(updated_ilst_buffer, &buffer).ok_or(())?
+        } else {
+            let updated_ilst_buffer = V0::encode_ilst(raw_updated_tags, Vec::new());
+            V0::rebuild_file_insert_ilst(updated_ilst_buffer, &buffer).ok_or(())?
+        };
+
+        fs::write(file_path, &rebuilt_file).map_err(|_| ())?;
+
+        Ok(())
+    }
+}

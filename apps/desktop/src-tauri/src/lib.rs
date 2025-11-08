@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose, Engine as _};
+
 use rfd::FileDialog;
 use std::env;
 use std::path::PathBuf;

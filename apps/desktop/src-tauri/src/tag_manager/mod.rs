@@ -2,18 +2,21 @@ use crate::tag_manager::traits::{Formats, TagFamily};
 use std::path::PathBuf;
 
 mod id3;
+mod itunes;
 pub mod traits;
 pub mod utils;
 
 #[derive(Debug, Clone)]
 pub struct TagManager {
     id3: id3::Id3,
+    itunes: itunes::Itunes,
 }
 
 impl TagManager {
     pub fn new() -> Self {
         Self {
             id3: id3::Id3::new(),
+            itunes: itunes::Itunes::new(),
         }
     }
 
@@ -22,6 +25,8 @@ impl TagManager {
             Formats::Id3v22 => self.id3.get_release_class(&Formats::Id3v22),
             Formats::Id3v23 => self.id3.get_release_class(&Formats::Id3v23),
             Formats::Id3v24 => self.id3.get_release_class(&Formats::Id3v24),
+            Formats::Itunes => self.itunes.get_release_class(&Formats::Itunes),
+
             _ => None,
         }
     }

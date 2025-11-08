@@ -210,7 +210,4 @@ impl TagFormat for V2_4 {
         file.flush().map_err(|_| ())?;
         Ok(())
     }
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "V2_4 Tag Format")
-    }
 }

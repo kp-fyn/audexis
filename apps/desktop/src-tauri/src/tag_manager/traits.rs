@@ -47,7 +47,6 @@ pub trait TagFormat: Debug {
         file_path: &PathBuf,
         updated_tags: HashMap<FrameKey, TagValue>,
     ) -> Result<(), ()>;
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
 impl Display for dyn TagFormat {

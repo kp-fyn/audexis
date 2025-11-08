@@ -229,8 +229,4 @@ impl TagFormat for V2_3 {
 
         Ok(())
     }
-
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "V2_3 Tag Format")
-    }
 }

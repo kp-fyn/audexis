@@ -1,5 +1,6 @@
 use crate::tag_manager::traits::Formats;
-use base64;
+
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -171,7 +172,7 @@ impl From<File> for SerializableFile {
                     TagValue::Text(s) => SerializableTagValue::Text(s),
                     TagValue::Picture { mime, data } => SerializableTagValue::Picture {
                         mime,
-                        data_base64: base64::encode(data),
+                        data_base64: general_purpose::STANDARD.encode(data),
                     },
                 };
                 (key, value)

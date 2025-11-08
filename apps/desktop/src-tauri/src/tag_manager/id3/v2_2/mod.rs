@@ -76,13 +76,13 @@ impl TagFormat for V2_2 {
                     raw.insert(id, TagValue::Text(text));
                 }
             } else if id == "PIC" && content.len() > 4 {
-                let encoding = content[0];
+                // let encoding = content[0];
                 let image_format = &content[1..4];
                 let mut idx = 4;
                 if idx >= content.len() {
                     break;
                 }
-                let picture_type = content[idx];
+                // let picture_type = content[idx];
                 idx += 1;
                 if idx >= content.len() {
                     break;
@@ -205,9 +205,5 @@ impl TagFormat for V2_2 {
         file.write_all(&audio_data).map_err(|_| ())?;
         file.flush().map_err(|_| ())?;
         Ok(())
-    }
-
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "V2_2 Tag Format")
     }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::path;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -16,7 +15,6 @@ use crate::workspace::Workspace;
 use crate::AppState;
 
 pub struct Ev {
-    pub path: PathBuf,
     pub kind: notify::event::EventKind,
 }
 pub struct FileWatcher {
@@ -89,7 +87,6 @@ impl FileWatcher {
                         touched.insert(
                             p.to_path_buf(),
                             Ev {
-                                path: p.clone(),
                                 kind: ev.event.kind.clone(),
                             },
                         );
@@ -100,7 +97,6 @@ impl FileWatcher {
                         touched.insert(
                             p.to_path_buf(),
                             Ev {
-                                path: p.clone(),
                                 kind: ev.event.kind.clone(),
                             },
                         );
