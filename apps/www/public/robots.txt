@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://audexis.app/sitemap.xml
+Sitemap: https://www.audexis.app/sitemap.xml

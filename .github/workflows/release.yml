@@ -92,6 +92,8 @@ jobs:
           releaseBody: "See the CHANGELOG.md for details."
           releaseDraft: true
           prerelease: false
+          includeRelease: true
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
           projectPath: "./apps/desktop"
 
