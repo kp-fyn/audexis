@@ -195,11 +195,15 @@ export function FindReplaceProvider({
       options
     );
     if (newVal === String(v.value ?? "")) return;
-    const payload: Record<string, { type: "Text"; value: string }> = {};
     const key = field.charAt(0).toUpperCase() + field.slice(1);
-    payload[key] = { type: "Text", value: newVal };
-    await invoke("save_changes", {
-      changes: { tags: payload, paths: [file.path] },
+    const frames = [
+      {
+        key,
+        values: [{ type: "Text", value: newVal }],
+      },
+    ];
+    await invoke("save_frame_changes", {
+      frameChanges: { paths: [file.path], frames },
     });
   }, [active, matches, files, field, options, query, replaceWith]);
 
@@ -218,10 +222,14 @@ export function FindReplaceProvider({
       );
       if (newVal === String(v.value ?? "")) continue;
       const key = field.charAt(0).toUpperCase() + field.slice(1);
-      const payload: Record<string, { type: "Text"; value: string }> = {};
-      payload[key] = { type: "Text", value: newVal };
-      await invoke("save_changes", {
-        changes: { tags: payload, paths: [file.path] },
+      const frames = [
+        {
+          key,
+          values: [{ type: "Text", value: newVal }],
+        },
+      ];
+      await invoke("save_frame_changes", {
+        frameChanges: { paths: [file.path], frames },
       });
     }
   }, [matches, files, field, options, query, replaceWith]);

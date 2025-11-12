@@ -54,6 +54,8 @@ pub fn id3v23_code(key: FrameKey) -> &'static str {
         FrameKey::Time => "TIME",
         FrameKey::RecordingDate => "TDRC",
         FrameKey::ReleaseDate => "TDOR",
+
+        _ => "TXXX",
     }
 }
 
@@ -108,6 +110,7 @@ pub fn id3v22_code(key: FrameKey) -> &'static str {
         FrameKey::Time => "TIM",            // Time
         FrameKey::RecordingDate => "TRD",   // Recording dates (approx)
         FrameKey::ReleaseDate => "TRD",     // Approx reuse
+        _ => "TXX",                         // Fallback for extended keys
     }
 }
 
@@ -293,34 +296,50 @@ pub static ID3V24_REVERSE_MAP: Lazy<HashMap<&'static str, FrameKey>> = Lazy::new
     map
 });
 
-pub fn raw_to_tags(raw: &HashMap<String, TagValue>) -> HashMap<FrameKey, TagValue> {
-    let mut result = HashMap::new();
-
-    for key in ID3V23_REVERSE_MAP.values() {
-        let id3_key = id3v23_code(*key);
-        let value = raw
-            .get(id3_key)
-            .cloned()
-            .unwrap_or_else(|| TagValue::Text(String::new()));
-        result.insert(*key, value);
+pub fn raw_to_tags(raw: &HashMap<String, Vec<TagValue>>) -> HashMap<FrameKey, Vec<TagValue>> {
+    let mut result: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+    for (id, values) in raw.iter() {
+        if let Some(key) = ID3V23_REVERSE_MAP.get(id.as_str()) {
+            let mut expanded: Vec<TagValue> = Vec::new();
+            for v in values.iter() {
+                match v {
+                    TagValue::Text(s)
+                        if matches!(key, FrameKey::Artist | FrameKey::Genre) && s.contains('/') =>
+                    {
+                        for part in s.split('/') {
+                            let seg = part.trim();
+                            if !seg.is_empty() {
+                                expanded.push(TagValue::Text(seg.to_string()));
+                            }
+                        }
+                    }
+                    _ => expanded.push(v.clone()),
+                }
+            }
+            result.entry(*key).or_insert_with(Vec::new).extend(expanded);
+        }
     }
-
     result
 }
 pub fn tags_to_raw(tags: &HashMap<FrameKey, TagValue>) -> HashMap<&'static str, TagValue> {
-    tags.iter()
-        .map(|(key, value)| (id3v23_code(*key), value.clone()))
-        .collect()
+    let mut out: HashMap<&'static str, TagValue> = HashMap::new();
+    for (key, value) in tags.iter() {
+        let id = match key {
+            FrameKey::Artists => id3v23_code(FrameKey::Artist),
+            _ => id3v23_code(*key),
+        };
+        out.insert(id, value.clone());
+    }
+    out
 }
-pub fn id3v22_raw_to_tags(raw: &HashMap<String, TagValue>) -> HashMap<FrameKey, TagValue> {
-    let mut result = HashMap::new();
-    for key in ID3V22_REVERSE_MAP.values() {
-        let id = id3v22_code(*key);
-        let value = raw
-            .get(id)
-            .cloned()
-            .unwrap_or_else(|| TagValue::Text(String::new()));
-        result.insert(*key, value);
+pub fn id3v22_raw_to_tags(
+    raw: &HashMap<String, Vec<TagValue>>,
+) -> HashMap<FrameKey, Vec<TagValue>> {
+    let mut result: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+    for (id, values) in raw.iter() {
+        if let Some(k) = ID3V22_REVERSE_MAP.get(id.as_str()) {
+            result.entry(*k).or_default().extend(values.clone());
+        }
     }
     result
 }
@@ -331,22 +350,38 @@ pub fn id3v22_tags_to_raw(tags: &HashMap<FrameKey, TagValue>) -> HashMap<&'stati
         .collect()
 }
 
-pub fn id3v24_raw_to_tags(raw: &HashMap<String, TagValue>) -> HashMap<FrameKey, TagValue> {
-    let mut result = HashMap::new();
-    for key in ID3V24_REVERSE_MAP.values() {
-        let id = id3v24_code(*key);
-        let value = raw
-            .get(id)
-            .or_else(|| {
-                if *key == FrameKey::Year {
-                    raw.get("TYER")
-                } else {
-                    None
+pub fn id3v24_raw_to_tags(
+    raw: &HashMap<String, Vec<TagValue>>,
+) -> HashMap<FrameKey, Vec<TagValue>> {
+    let mut result: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+    for (id, values) in raw.iter() {
+        let key_opt = ID3V24_REVERSE_MAP.get(id.as_str()).cloned().or_else(|| {
+            if id == "TYER" {
+                Some(FrameKey::Year)
+            } else {
+                None
+            }
+        });
+        if let Some(k) = key_opt {
+            let mut expanded: Vec<TagValue> = Vec::new();
+            for v in values.iter() {
+                match v {
+                    TagValue::Text(s)
+                        if matches!(k, FrameKey::Artist | FrameKey::Genre)
+                            && s.contains('\u{0}') =>
+                    {
+                        for part in s.split('\u{0}') {
+                            let seg = part.trim();
+                            if !seg.is_empty() {
+                                expanded.push(TagValue::Text(seg.to_string()));
+                            }
+                        }
+                    }
+                    _ => expanded.push(v.clone()),
                 }
-            })
-            .cloned()
-            .unwrap_or_else(|| TagValue::Text(String::new()));
-        result.insert(*key, value);
+            }
+            result.entry(k).or_default().extend(expanded);
+        }
     }
     result
 }

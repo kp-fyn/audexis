@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
-import { Settings } from "lucide-react";
+import { Minimize, Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsModal } from "@/ui/components/SettingsModal";
 import useShortcuts from "@/ui/hooks/useShortcuts";
@@ -14,6 +14,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/components/Dropdown";
+import { MaximizeIcon } from "./icons/maximize";
+import { MinimizeIcon } from "./icons/minimize";
+import { CloseIcon } from "./icons/close";
 
 export default function Titlebar() {
   const [hover, setHover] = useState<boolean>(false);
@@ -72,7 +75,9 @@ export default function Titlebar() {
   return (
     <div
       data-tauri-drag-region={true}
-      className="header items-start flex bg-background border-b w-full z-[9999999]  border-border fixed h-[48px] top-0"
+      className={`header items-start flex ${
+        os !== "macos" && "flex-row-reverse"
+      } bg-background border-b w-full z-9999999  border-border fixed h-12 top-0`}
     >
       {os === "macos" && !isWindowFullscreen && (
         <div data-tauri-drag-region={true} className="h-full items-center flex">
@@ -125,10 +130,40 @@ export default function Titlebar() {
           </div>
         </div>
       )}
+      {os !== "macos" && !isWindowFullscreen && (
+        <div
+          data-tauri-drag-region={true}
+          className="h-full items-center flex flex-1"
+        >
+          <div className="flex ml-auto">
+            <button
+              onClick={minimizeWindow}
+              aria-label="Minimize"
+              className="hover:bg-hover px-3 py-4 h-full"
+            >
+              <MinimizeIcon className="w-4 h-4"></MinimizeIcon>
+            </button>
+            <button
+              onClick={maximizeWindow}
+              aria-label="Maximize"
+              className="hover:bg-hover px-3 py-4 h-full"
+            >
+              <MaximizeIcon className="w-4 h-4"></MaximizeIcon>
+            </button>
+            <button
+              onClick={closeWindow}
+              aria-label="Close"
+              className="hover:bg-red-600 px-3 py-4 h-full"
+            >
+              <CloseIcon className="w-4 h-4"></CloseIcon>
+            </button>
+          </div>
+        </div>
+      )}
       {window.label === "main" && (
         <div
           data-tauri-drag-region={true}
-          className="z-[999999] ml-auto justify-center px-2 gap-2 flex items-center h-full"
+          className="z-999999 ml-0 justify-center px-2 gap-2 flex items-center h-full"
         >
           <>
             <DropdownMenu>
@@ -167,7 +202,7 @@ export default function Titlebar() {
               <button
                 aria-label="Open Settings"
                 onClick={() => setSettingsOpen(true)}
-                className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-[2px] focus:ring-offset-background transition-colors active:scale-95"
+                className="h-7 w-7 inline-flex items-center justify-center rounded-md hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background transition-colors active:scale-95"
               >
                 <Settings className="h-4 w-4" />
               </button>

@@ -1,11 +1,11 @@
-use crate::tag_manager::itunes::utils::{get_atom_flag, raw_to_tags, tags_to_raw};
+use crate::tag_manager::itunes::utils::{
+    get_atom_flag, raw_to_tags, tags_to_raw, FREEFORM_REVERSE_MAP,
+};
 use crate::tag_manager::traits::TagFormat;
-use crate::tag_manager::utils::TagValue;
+use crate::tag_manager::utils::{FreeformTag, TagValue};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Error;
-
-// to do: Add support for ---- (freeforms) atoms
 
 #[derive(Debug, Clone)]
 pub struct V0 {}
@@ -101,17 +101,14 @@ impl V0 {
 
         Err(())
     }
-    fn encode_ilst(
-        raw_tags: HashMap<&'static str, TagValue>,
-        old_ilst_atoms: Vec<Atom>,
-    ) -> Vec<u8> {
+    fn encode_ilst(raw_entries: Vec<(String, TagValue)>, old_ilst_atoms: Vec<Atom>) -> Vec<u8> {
         let mut ilst_entries: Vec<u8> = Vec::new();
         let mut encoded_keys: Vec<String> = Vec::new();
 
-        for (key, value) in &raw_tags {
-            if key == &"covr" {
+        for (key, value) in &raw_entries {
+            if key == "covr" {
                 match value {
-                    TagValue::Picture { mime, data } => {
+                    TagValue::Picture { mime, data, .. } => {
                         let mut mime_buff: Vec<u8> = vec![0x00, 0x00, 0x00, 0x0d];
                         if mime == "image/png" {
                             mime_buff = vec![0x00, 0x00, 0x00, 0x0e];
@@ -135,12 +132,63 @@ impl V0 {
                         key_atom.extend_from_slice(&key_bytes);
                         key_atom.extend_from_slice(&data_atom);
                         ilst_entries.extend_from_slice(&key_atom);
-                        encoded_keys.push("covr".to_string());
+                        if !encoded_keys.iter().any(|k| k == "covr") {
+                            encoded_keys.push("covr".to_string());
+                        }
                     }
+
                     _ => {}
                 }
+            } else if key.starts_with("----:") {
+                if let Some((_, rest)) = key.split_once(':') {
+                    if let Some((mean, name)) = rest.split_once(':') {
+                        let mut mean_buf = Vec::new();
+                        let mean_size = (8 + 4 + mean.as_bytes().len()) as u32;
+                        mean_buf.extend_from_slice(&mean_size.to_be_bytes());
+                        mean_buf.extend_from_slice(b"mean");
+                        mean_buf.extend_from_slice(&[0u8; 4]);
+                        mean_buf.extend_from_slice(mean.as_bytes());
+
+                        let mut name_buf = Vec::new();
+                        let name_size = (8 + 4 + name.as_bytes().len()) as u32;
+                        name_buf.extend_from_slice(&name_size.to_be_bytes());
+                        name_buf.extend_from_slice(b"name");
+                        name_buf.extend_from_slice(&[0u8; 4]);
+                        name_buf.extend_from_slice(name.as_bytes());
+
+                        let emit_one = |text: &str, ilst_entries: &mut Vec<u8>| {
+                            let mut data_buf = Vec::new();
+                            let mut inner = Vec::new();
+                            inner.extend_from_slice(&[0x00, 0x00, 0x00, 0x01]);
+                            inner.extend_from_slice(&[0u8; 4]);
+                            inner.extend_from_slice(text.as_bytes());
+                            let total = 8 + inner.len();
+                            data_buf.extend_from_slice(&(total as u32).to_be_bytes());
+                            data_buf.extend_from_slice(b"data");
+                            data_buf.extend_from_slice(&inner);
+
+                            let mut key_atom = Vec::new();
+                            let key_bytes = V0::parse_key("----");
+                            let key_size = 8 + mean_buf.len() + name_buf.len() + data_buf.len();
+                            key_atom.extend_from_slice(&(key_size as u32).to_be_bytes());
+                            key_atom.extend_from_slice(&key_bytes);
+                            key_atom.extend_from_slice(&mean_buf);
+                            key_atom.extend_from_slice(&name_buf);
+                            key_atom.extend_from_slice(&data_buf);
+                            ilst_entries.extend_from_slice(&key_atom);
+                        };
+
+                        if let TagValue::Text(text) = value {
+                            emit_one(text, &mut ilst_entries);
+                        }
+
+                        if !encoded_keys.iter().any(|k| k == key) {
+                            encoded_keys.push(key.clone());
+                        }
+                    }
+                }
             } else {
-                if let Some(data_buffer) = V0::data_to_buffer(&key, &value) {
+                let mut emit_key = |data_buffer: Vec<u8>| {
                     let data_atom_size = 8 + data_buffer.len();
                     let data_size_buffer = (data_atom_size as u32).to_be_bytes().to_vec();
                     let mut data_atom = Vec::new();
@@ -155,13 +203,59 @@ impl V0 {
                     key_atom.extend_from_slice(&key_bytes);
                     key_atom.extend_from_slice(&data_atom);
                     ilst_entries.extend_from_slice(&key_atom);
-                    encoded_keys.push(key.to_string());
+                };
+                if let Some(data_buffer) = V0::data_to_buffer(&key, &value) {
+                    emit_key(data_buffer);
+                    if !encoded_keys.iter().any(|k| k == key) {
+                        encoded_keys.push(key.to_string());
+                    }
                 }
             }
         }
 
         for atom in old_ilst_atoms {
-            if !encoded_keys.iter().any(|k| k == &atom.atom_type) {
+            if atom.atom_type == "----" {
+                let mut cursor: u64 = 8;
+                let end: u64 = atom.size;
+                let mut mean: Option<String> = None;
+                let mut name: Option<String> = None;
+                while cursor + 8 <= end {
+                    let sz = u32::from_be_bytes([
+                        atom.buffer[cursor as usize],
+                        atom.buffer[cursor as usize + 1],
+                        atom.buffer[cursor as usize + 2],
+                        atom.buffer[cursor as usize + 3],
+                    ]) as u64;
+                    if sz < 8 || cursor + sz > end {
+                        break;
+                    }
+                    let t = &atom.buffer[(cursor + 4) as usize..(cursor + 8) as usize];
+                    let t_str = String::from_utf8_lossy(t);
+                    if &*t_str == "mean" {
+                        mean = Some(
+                            String::from_utf8_lossy(
+                                &atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                            )
+                            .to_string(),
+                        );
+                    } else if &*t_str == "name" {
+                        name = Some(
+                            String::from_utf8_lossy(
+                                &atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                            )
+                            .to_string(),
+                        );
+                    }
+                    cursor += sz;
+                }
+                if let (Some(mean), Some(name)) = (mean, name) {
+                    let comp = format!("----:{}:{}", mean, name);
+                    if encoded_keys.iter().any(|k| k == &comp) {
+                        continue;
+                    }
+                }
+                ilst_entries.extend_from_slice(&atom.buffer);
+            } else if !encoded_keys.iter().any(|k| k == &atom.atom_type) {
                 ilst_entries.extend_from_slice(&atom.buffer);
             }
         }
@@ -713,13 +807,7 @@ impl TagFormat for V0 {
     fn get_tags(
         &self,
         file_path: &std::path::PathBuf,
-    ) -> Result<
-        std::collections::HashMap<
-            crate::tag_manager::utils::FrameKey,
-            crate::tag_manager::utils::TagValue,
-        >,
-        std::io::Error,
-    > {
+    ) -> Result<HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>, std::io::Error> {
         let buffer = fs::read(file_path)?;
         let ilst_atom = V0::ensure_ilst_atom(&buffer);
         if ilst_atom.is_err() {
@@ -730,37 +818,85 @@ impl TagFormat for V0 {
         }
         let ilst_atom = ilst_atom.unwrap();
         let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
-        let mut raw_tags: HashMap<String, TagValue> = HashMap::new();
+        let mut raw_entries: Vec<(String, TagValue)> = Vec::new();
         for atom in &ilst_sub_atoms {
             let data_start = atom.position + 16;
             let data_size = atom.size - 16;
 
             if atom.atom_type == "covr" {
                 let mut mime_type = "image/jpeg";
-                let magic_number =
-                    &ilst_atom.buffer[(data_start + 8) as usize..(data_start + 24) as usize];
-
+                let magic_number = &ilst_atom.buffer[(data_start + 8) as usize
+                    ..(data_start + 24).min(data_start + data_size) as usize];
                 if magic_number.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
                     mime_type = "image/png";
                 } else if magic_number.starts_with(&[0xFF, 0xD8, 0xFF]) {
                     mime_type = "image/jpeg";
-                } else {
                 }
-                raw_tags.insert(
+                let pic = crate::tag_manager::utils::PictureData {
+                    mime: mime_type.to_string(),
+                    data: ilst_atom.buffer
+                        [(data_start + 8) as usize..(data_start + data_size) as usize]
+                        .to_vec(),
+                    picture_type: None,
+                    description: None,
+                };
+                raw_entries.push((
                     atom.atom_type.clone(),
                     TagValue::Picture {
-                        mime: mime_type.to_string(),
-                        data: ilst_atom.buffer
-                            [(data_start + 8) as usize..(data_start + data_size) as usize]
-                            .to_vec(),
+                        mime: pic.mime.clone(),
+                        data: pic.data.clone(),
+                        picture_type: pic.picture_type,
+                        description: pic.description.clone(),
                     },
-                );
+                ));
             } else if atom.atom_type == "----" {
-                let text = String::from_utf8_lossy(
-                    &ilst_atom.buffer[(data_start - 8) as usize..(data_start + data_size) as usize],
-                )
-                .to_string();
-                raw_tags.insert(atom.atom_type.clone(), TagValue::Text(text));
+                let mut cursor = atom.position + 8;
+                let end = atom.position + atom.size;
+                let mut mean: Option<String> = None;
+                let mut name: Option<String> = None;
+                let mut value_text: Option<String> = None;
+                while cursor + 8 <= end {
+                    let sz = u32::from_be_bytes([
+                        ilst_atom.buffer[cursor as usize],
+                        ilst_atom.buffer[cursor as usize + 1],
+                        ilst_atom.buffer[cursor as usize + 2],
+                        ilst_atom.buffer[cursor as usize + 3],
+                    ]) as u64;
+                    if sz < 8 || cursor + sz > end {
+                        break;
+                    }
+                    let t = &ilst_atom.buffer[(cursor + 4) as usize..(cursor + 8) as usize];
+                    let t_str = String::from_utf8_lossy(t);
+                    match &*t_str {
+                        "mean" => {
+                            let s = String::from_utf8_lossy(
+                                &ilst_atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                            )
+                            .to_string();
+                            mean = Some(s);
+                        }
+                        "name" => {
+                            let s = String::from_utf8_lossy(
+                                &ilst_atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                            )
+                            .to_string();
+                            name = Some(s);
+                        }
+                        "data" => {
+                            let s = String::from_utf8_lossy(
+                                &ilst_atom.buffer[(cursor + 16) as usize..(cursor + sz) as usize],
+                            )
+                            .to_string();
+                            value_text = Some(s);
+                        }
+                        _ => {}
+                    }
+                    cursor += sz;
+                }
+                if let (Some(mean), Some(name), Some(val)) = (mean, name, value_text) {
+                    let key = format!("----:{}:{}", mean, name);
+                    raw_entries.push((key, TagValue::Text(val)));
+                }
             } else {
                 let item = get_atom_flag(&atom.atom_type);
                 if let Some(item) = item {
@@ -775,7 +911,8 @@ impl TagFormat for V0 {
                         } else {
                             ilst_atom.buffer[(data_start + 8) as usize] as u32
                         };
-                        raw_tags.insert(atom.atom_type.clone(), TagValue::Text(value.to_string()));
+                        raw_entries
+                            .push((atom.atom_type.clone(), TagValue::Text(value.to_string())));
                         continue;
                     }
                 }
@@ -787,41 +924,259 @@ impl TagFormat for V0 {
                 .chars()
                 .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
                 .collect::<String>();
-                raw_tags.insert(atom.atom_type.clone(), TagValue::Text(text));
+                raw_entries.push((atom.atom_type.clone(), TagValue::Text(text)));
             }
         }
-
-        return Ok(raw_to_tags(&raw_tags));
+        let vec_map = raw_to_tags(&raw_entries);
+        return Ok(vec_map);
     }
     fn write_tags(
         &self,
         file_path: &std::path::PathBuf,
-        updated_tags: std::collections::HashMap<
-            crate::tag_manager::utils::FrameKey,
-            crate::tag_manager::utils::TagValue,
-        >,
+        updated_tags: HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>,
     ) -> Result<(), ()> {
-        let mut raw_updated_tags = tags_to_raw(&updated_tags);
-        let old_tags = self.get_tags(file_path).map_err(|_| ())?;
-        let mut raw_old_tags = tags_to_raw(&old_tags);
+        let mut updated_entries: Vec<(String, TagValue)> = Vec::new();
+        let mut updated_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-        raw_old_tags.extend(raw_updated_tags);
-        raw_updated_tags = raw_old_tags;
+        let mut push_key_once = |key: &String| {
+            updated_keys.insert(key.clone());
+        };
+
+        for (k, vals) in updated_tags.iter() {
+            match k {
+                crate::tag_manager::utils::FrameKey::UserDefinedText => {
+                    for v in vals {
+                        if let TagValue::UserText(ut) = v {
+                            let key = format!("----:{}:{}", "com.apple.iTunes", ut.description);
+                            updated_entries.push((key.clone(), TagValue::Text(ut.value.clone())));
+                            push_key_once(&key);
+                        } else if let TagValue::Text(s) = v {
+                            let key = format!("----:{}:{}", "com.apple.iTunes", "TXXX");
+                            updated_entries.push((key.clone(), TagValue::Text(s.clone())));
+                            push_key_once(&key);
+                        }
+                    }
+                }
+                crate::tag_manager::utils::FrameKey::UserDefinedURL => {
+                    for v in vals {
+                        if let TagValue::UserUrl(u) = v {
+                            let key = format!("----:{}:{}", "com.apple.iTunes", u.description);
+                            updated_entries.push((key.clone(), TagValue::Text(u.url.clone())));
+                            push_key_once(&key);
+                        }
+                    }
+                }
+                crate::tag_manager::utils::FrameKey::AttachedPicture => {
+                    let mut any = false;
+                    for v in vals {
+                        if let TagValue::Picture { .. } = v {
+                            updated_entries.push(("covr".to_string(), v.clone()));
+                            any = true;
+                        }
+                    }
+                    if any {
+                        push_key_once(&"covr".to_string());
+                    }
+                }
+                crate::tag_manager::utils::FrameKey::Artists => {
+                    let joined = vals
+                        .iter()
+                        .filter_map(|v| match v {
+                            TagValue::Text(s) => Some(s.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("/");
+                    if !joined.is_empty() {
+                        let key = "©ART".to_string();
+                        updated_entries.push((key.clone(), TagValue::Text(joined)));
+                        push_key_once(&key);
+                    }
+                }
+                other => {
+                    let code = crate::tag_manager::itunes::utils::itunes_code(*other);
+                    if code == "----" {
+                        if let Some(spec) =
+                            crate::tag_manager::itunes::utils::itunes_freeform_spec(*other)
+                        {
+                            if let Some(first) =
+                                vals.iter().find(|v| matches!(v, TagValue::Text(_)))
+                            {
+                                let key = format!("----:{}:{}", spec.mean, spec.name);
+                                updated_entries.push((key.clone(), first.clone()));
+                                push_key_once(&key);
+                            }
+                        }
+                    } else {
+                        let text_joined = vals
+                            .iter()
+                            .filter_map(|v| match v {
+                                TagValue::Text(s) => Some(s.clone()),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                            .join("/");
+                        let key = code.to_string();
+                        if !text_joined.is_empty() {
+                            updated_entries.push((key.clone(), TagValue::Text(text_joined)));
+                            push_key_once(&key);
+                        } else if let Some(first) = vals.first() {
+                            updated_entries.push((key.clone(), first.clone()));
+                            push_key_once(&key);
+                        }
+                    }
+                }
+            }
+        }
+
+        let old_vec = self.get_tags(file_path).map_err(|_| ())?;
+        let mut old_entries: Vec<(String, TagValue)> = Vec::new();
+        for (k, vals) in old_vec.iter() {
+            match k {
+                crate::tag_manager::utils::FrameKey::UserDefinedText => {
+                    for v in vals {
+                        if let TagValue::UserText(ut) = v {
+                            let key = format!("----:{}:{}", "com.apple.iTunes", ut.description);
+                            if !updated_keys.contains(&key) {
+                                old_entries.push((key, TagValue::Text(ut.value.clone())));
+                            }
+                        }
+                    }
+                }
+                crate::tag_manager::utils::FrameKey::UserDefinedURL => {
+                    for v in vals {
+                        if let TagValue::UserUrl(u) = v {
+                            let key = format!("----:{}:{}", "com.apple.iTunes", u.description);
+                            if !updated_keys.contains(&key) {
+                                old_entries.push((key, TagValue::Text(u.url.clone())));
+                            }
+                        }
+                    }
+                }
+                crate::tag_manager::utils::FrameKey::AttachedPicture => {
+                    let key = "covr".to_string();
+                    if !updated_keys.contains(&key) {
+                        for v in vals {
+                            if let TagValue::Picture { .. } = v {
+                                old_entries.push((key.clone(), v.clone()));
+                            }
+                        }
+                    }
+                }
+                other => {
+                    let code = crate::tag_manager::itunes::utils::itunes_code(*other);
+                    if code == "----" {
+                        if let Some(spec) =
+                            crate::tag_manager::itunes::utils::itunes_freeform_spec(*other)
+                        {
+                            let key = format!("----:{}:{}", spec.mean, spec.name);
+                            if !updated_keys.contains(&key) {
+                                if let Some(first) = vals.first() {
+                                    old_entries.push((key, first.clone()));
+                                }
+                            }
+                        }
+                    } else {
+                        let key = code.to_string();
+                        if !updated_keys.contains(&key) {
+                            if let Some(first) = vals.first() {
+                                old_entries.push((key, first.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut all_entries = updated_entries;
+        all_entries.extend(old_entries);
 
         let buffer = fs::read(file_path).map_err(|_| ())?;
         let ilst_atom = V0::ensure_ilst_atom(&buffer);
 
         let rebuilt_file = if let Ok(ilst_atom) = ilst_atom {
             let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
-            let updated_ilst_buffer = V0::encode_ilst(raw_updated_tags, ilst_sub_atoms);
+            let updated_ilst_buffer = V0::encode_ilst(all_entries, ilst_sub_atoms);
             V0::rebuild_file(updated_ilst_buffer, &buffer).ok_or(())?
         } else {
-            let updated_ilst_buffer = V0::encode_ilst(raw_updated_tags, Vec::new());
+            let updated_ilst_buffer = V0::encode_ilst(all_entries, Vec::new());
             V0::rebuild_file_insert_ilst(updated_ilst_buffer, &buffer).ok_or(())?
         };
 
         fs::write(file_path, &rebuilt_file).map_err(|_| ())?;
 
         Ok(())
+    }
+
+    fn get_freeforms(
+        &self,
+        file_path: &std::path::PathBuf,
+    ) -> Result<Vec<FreeformTag>, std::io::Error> {
+        let buffer = std::fs::read(file_path)?;
+        let ilst_atom = V0::ensure_ilst_atom(&buffer)
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "missing ilst"))?;
+        let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
+        let mut out: Vec<FreeformTag> = Vec::new();
+        for atom in &ilst_sub_atoms {
+            if atom.atom_type != "----" {
+                continue;
+            }
+            let mut cursor = atom.position + 8;
+            let end = atom.position + atom.size;
+            let mut mean: Option<String> = None;
+            let mut name: Option<String> = None;
+            let mut value_text: Option<String> = None;
+            while cursor + 8 <= end {
+                let sz = u32::from_be_bytes([
+                    ilst_atom.buffer[cursor as usize],
+                    ilst_atom.buffer[cursor as usize + 1],
+                    ilst_atom.buffer[cursor as usize + 2],
+                    ilst_atom.buffer[cursor as usize + 3],
+                ]) as u64;
+                if sz < 8 || cursor + sz > end {
+                    break;
+                }
+                let t = &ilst_atom.buffer[(cursor + 4) as usize..(cursor + 8) as usize];
+                let t_str = String::from_utf8_lossy(t);
+                match &*t_str {
+                    "mean" => {
+                        let s = String::from_utf8_lossy(
+                            &ilst_atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                        )
+                        .to_string();
+                        mean = Some(s);
+                    }
+                    "name" => {
+                        let s = String::from_utf8_lossy(
+                            &ilst_atom.buffer[(cursor + 12) as usize..(cursor + sz) as usize],
+                        )
+                        .to_string();
+                        name = Some(s);
+                    }
+                    "data" => {
+                        let s = String::from_utf8_lossy(
+                            &ilst_atom.buffer[(cursor + 16) as usize..(cursor + sz) as usize],
+                        )
+                        .to_string();
+                        value_text = Some(s);
+                    }
+                    _ => {}
+                }
+                cursor += sz;
+            }
+            if let (Some(mean), Some(name), Some(val)) = (mean, name, value_text) {
+                if FREEFORM_REVERSE_MAP
+                    .get(&(mean.as_str(), name.as_str()))
+                    .is_none()
+                {
+                    out.push(FreeformTag {
+                        mean,
+                        name,
+                        value: val,
+                    });
+                }
+            }
+        }
+        Ok(out)
     }
 }

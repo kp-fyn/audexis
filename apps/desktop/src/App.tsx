@@ -48,6 +48,115 @@ function App() {
   const { config, setColumns, setAllColumns, allColumns } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
 
+  function normalizeFilesPayload(payload: any[]): File[] {
+    const toTagText = (value: string) => ({ type: "Text", value });
+    const toTagPicture = (val: any): TagPicture => ({
+      type: "Picture",
+      value: val,
+    });
+    return (payload || []).map((sf: any) => {
+      const tagsMap = (sf && sf.tags) || {};
+      const out: Partial<AllTags> = {} as any;
+      const getFirst = (key: string) =>
+        Array.isArray(tagsMap[key]) ? tagsMap[key][0] : undefined;
+
+      const textKeys = [
+        "title",
+        "artist",
+        "album",
+        "year",
+        "trackNumber",
+        "genre",
+        "albumArtist",
+        "contentGroup",
+        "composer",
+        "encodedBy",
+        "unsyncedLyrics",
+        "length",
+        "conductor",
+        "comments",
+        "copyright",
+        "private",
+        "relativeVolumeAdjustment",
+        "encryptionMethod",
+        "groupIdRegistration",
+        "generalObject",
+        "commercialUrl",
+        "copyrightUrl",
+        "audioFileUrl",
+        "artistUrl",
+        "radioStationUrl",
+        "paymentUrl",
+        "bitmapImageUrl",
+        "synchronizedLyrics",
+        "tempoCodes",
+        "musicCdIdentifier",
+        "eventTimingCodes",
+        "sequence",
+        "playCount",
+        "audioSeekPointIndex",
+        "mediaType",
+        "commercialFrame",
+        "audioEncryption",
+        "signatureFrame",
+        "softwareEncoder",
+        "audioEncodingMethod",
+        "recommendedBufferSize",
+        "beatsPerMinute",
+        "language",
+        "fileType",
+        "time",
+        "recordingDate",
+        "releaseDate",
+      ];
+      for (const k of textKeys) {
+        const first = getFirst(k);
+        if (!first) continue;
+        if (first.type === "Text")
+          out[k as keyof AllTags] = toTagText(first.value) as any;
+      }
+
+      {
+        const uu = getFirst("userDefinedUrl");
+        if (
+          uu &&
+          uu.type === "UserUrl" &&
+          uu.value &&
+          typeof uu.value.url === "string"
+        ) {
+          (out as any).userDefinedUrl = toTagText(uu.value.url);
+        }
+        const ut = getFirst("userDefinedText");
+        if (
+          ut &&
+          ut.type === "UserText" &&
+          ut.value &&
+          typeof ut.value.value === "string"
+        ) {
+          (out as any).userDefinedText = toTagText(ut.value.value);
+        }
+      }
+
+      {
+        const ap = getFirst("attachedPicture");
+        if (ap && ap.type === "Picture" && ap.value) {
+          (out as any).attachedPicture = toTagPicture(ap.value);
+        }
+      }
+
+      const file: File = {
+        path: sf.path,
+        tag_format: sf.tag_format,
+        tag_formats: sf.tag_formats,
+        fileName: sf.path?.split("/").pop() || sf.path,
+        release: sf.tag_format,
+        tags: out as AllTags,
+        _frames: tagsMap,
+      } as File;
+      return file;
+    });
+  }
+
   const helpers: ColumnDef<File, any>[] = config.columns.map((item) => {
     if (item.kind === "Image") {
       return columnHelper.display({
@@ -63,16 +172,34 @@ function App() {
           const tag = row.original.tags[item.value as keyof AllTags] as
             | AllTags[keyof AllTags]
             | undefined;
-          if (!tag || (tag as any).type !== "Picture")
+          if (!tag || !(tag as any).type)
             return <div className="text-[11px] italic opacity-40">—</div>;
-          const pic = tag as TagPicture;
-          return (
-            <img
-              src={`data:${pic.value.mime};base64,${pic.value.data_base64}`}
-              alt="Attached"
-              className="max-h-[38px] w-auto rounded-sm border border-border object-cover"
-            />
-          );
+          if ((tag as any).type === "Picture") {
+            const pic = tag as TagPicture;
+            const count = Array.isArray(
+              (row.original as any)._frames?.attachedPicture
+            )
+              ? ((row.original as any)._frames.attachedPicture as any[]).filter(
+                  (v) => v && v.type === "Picture"
+                ).length
+              : 0;
+            return (
+              <div className="relative inline-flex items-center">
+                <img
+                  src={`data:${pic.value.mime};base64,${pic.value.data_base64}`}
+                  alt="Attached"
+                  className="max-h-[38px] w-auto rounded-sm border border-border object-cover"
+                />
+                {count > 1 && (
+                  <span className="ml-1 text-[10px] px-1 rounded bg-muted text-foreground/70">
+                    +{count - 1}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
+          return <div className="text-[11px] italic opacity-40">—</div>;
         },
       }) as ColumnDef<File, any>;
     } else if (item.value === "path") {
@@ -109,12 +236,20 @@ function App() {
         sortingFn: "alphanumeric",
         enableSorting: true,
         cell: ({ row }) => {
+          const formats = (row.original as any).tag_formats as
+            | string[]
+            | undefined;
+          const primary = row.original.tag_format;
+          const label =
+            formats && formats.length > 1 ? formats.join(" + ") : primary;
           return (
-            <div
-              className="text-[11px] truncate px-2"
-              title={row.original.tag_format}
-            >
-              {row.original.tag_format}
+            <div className="text-[11px] truncate px-2" title={label}>
+              {label}
+              {formats && formats.length > 1 && (
+                <span className="ml-1 text-[10px] px-1 rounded bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                  multiple
+                </span>
+              )}
             </div>
           );
         },
@@ -137,10 +272,35 @@ function App() {
         sortingFn: "alphanumeric",
         enableSorting: true,
         cell: ({ row }: any) => {
-          const tag = (row.original.tags as any)[item.value];
+          const tag = (row.original.tags as AllTags)[
+            item.value as keyof AllTags
+          ] as any;
+          console.log({ tag });
+          const frames = (row.original as any)._frames as
+            | Record<string, any[]>
+            | undefined;
+          console.log({ frames });
+          const frameVals = Array.isArray(frames?.[item.value])
+            ? (frames![item.value] as any[])
+            : [];
+          const textVals = frameVals.filter((v) => v && v.type === "Text");
+          const count = textVals.length;
+
           if (!tag || tag.type !== "Text")
             return <div className="text-[11px] italic opacity-40">—</div>;
-          return <TagValueChip text={tag.value} />;
+
+          const display =
+            typeof tag.value === "string" ? tag.value : String(tag.value ?? "");
+          return (
+            <div className="inline-flex items-center gap-1">
+              <TagValueChip text={display} />
+              {count > 1 && (
+                <span className="text-[10px] px-1 rounded bg-muted text-foreground/70">
+                  +{count - 1}
+                </span>
+              )}
+            </div>
+          );
         },
       }
     ) as ColumnDef<File, any>;
@@ -180,8 +340,9 @@ function App() {
   });
 
   useEffect(() => {
-    const unlisten = listen("workspace-updated", (event: Event<File[]>) => {
-      setFiles(event.payload);
+    const unlisten = listen("workspace-updated", (event: Event<any[]>) => {
+      const normalized = normalizeFilesPayload(event.payload as any[]);
+      setFiles(normalized);
       setIsLoading(false);
     });
 
@@ -290,7 +451,7 @@ function App() {
         }}
         className="flex flex-col flex-1  w-full select-none"
       >
-        <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
           <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
             Tag Editor
           </h1>

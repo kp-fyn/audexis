@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function EditOnGitHub() {
   const pathname = usePathname();
 
-  const githubPath = `www/app${pathname}.mdx`;
+  const githubPath = `apps/www/app${pathname}.mdx`;
   const githubUrl = `https://github.com/kp-fyn/audexis/edit/main/${githubPath}`;
 
   return (

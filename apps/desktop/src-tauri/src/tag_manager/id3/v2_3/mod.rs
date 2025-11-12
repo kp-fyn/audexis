@@ -1,6 +1,8 @@
 use crate::tag_manager::id3::utils::{raw_to_tags, tags_to_raw};
 use crate::tag_manager::traits::TagFormat;
-use crate::tag_manager::utils::{FrameKey, RawTagMap, TagMap, TagValue};
+use crate::tag_manager::utils::{
+    FrameKey, PictureData, TagMap, TagValue, UserTextEntry, UserUrlEntry,
+};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Read;
@@ -24,7 +26,7 @@ impl TagFormat for V2_3 {
         Self {}
     }
 
-    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, TagValue>> {
+    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, Vec<TagValue>>> {
         let has_header = utils::ensure_header(&file_path);
 
         match has_header {
@@ -74,16 +76,57 @@ impl TagFormat for V2_3 {
 
             let content = &tag_data[pos + 10..pos + 10 + size];
 
-            if frame_id.starts_with('T') || frame_id.starts_with("W") {
+            if frame_id == "TXXX" || frame_id == "WXXX" {
                 if !content.is_empty() {
                     let encoding = content[0];
-                    let text = match encoding {
+                    let rest = &content[1..];
+                    let desc_end = rest.iter().position(|&b| b == 0x00).unwrap_or(rest.len());
+                    let (desc_bytes, _ignored_split) = rest.split_at(desc_end);
+                    let value_bytes = if desc_end < rest.len() {
+                        &rest[desc_end + 1..]
+                    } else {
+                        &[]
+                    };
+                    let decode = |bytes: &[u8]| match encoding {
+                        0x00 => String::from_utf8_lossy(bytes).to_string(),
+                        0x01 => {
+                            if bytes.starts_with(&[0xFF, 0xFE]) {
+                                String::from_utf16_lossy(
+                                    &bytes[2..]
+                                        .chunks(2)
+                                        .filter(|c| c.len() == 2)
+                                        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                                        .collect::<Vec<_>>(),
+                                )
+                            } else {
+                                String::from_utf8_lossy(bytes).to_string()
+                            }
+                        }
+                        _ => String::from_utf8_lossy(bytes).to_string(),
+                    };
+                    let description = decode(desc_bytes);
+                    let value = decode(value_bytes);
+                    let entry = if frame_id == "TXXX" {
+                        TagValue::UserText(UserTextEntry { description, value })
+                    } else {
+                        TagValue::UserUrl(UserUrlEntry {
+                            description,
+                            url: value,
+                        })
+                    };
+                    tags.entry(frame_id).or_default().push(entry);
+                }
+            } else if frame_id.starts_with('T') || frame_id.starts_with("W") {
+                if !content.is_empty() {
+                    let encoding = content[0];
+                    let raw_string = match encoding {
                         0x00 => String::from_utf8_lossy(&content[1..]).to_string(),
                         0x01 => {
                             if content[1..].starts_with(&[0xFF, 0xFE]) {
                                 String::from_utf16_lossy(
                                     &content[3..]
                                         .chunks(2)
+                                        .filter(|c| c.len() == 2)
                                         .map(|c| u16::from_le_bytes([c[0], c[1]]))
                                         .collect::<Vec<_>>(),
                                 )
@@ -93,29 +136,61 @@ impl TagFormat for V2_3 {
                         }
                         _ => "<Unknown Encoding>".to_string(),
                     };
-                    tags.insert(frame_id, TagValue::Text(text));
+                    if (frame_id == "TPE1" || frame_id == "TCON") && raw_string.contains('/') {
+                        for part in raw_string.split('/') {
+                            let seg = part.trim();
+                            if !seg.is_empty() {
+                                tags.entry(frame_id.clone())
+                                    .or_default()
+                                    .push(TagValue::Text(seg.to_string()));
+                            }
+                        }
+                    } else {
+                        tags.entry(frame_id)
+                            .or_default()
+                            .push(TagValue::Text(raw_string));
+                    }
                 }
             } else if frame_id == "APIC" && !content.is_empty() {
                 let _encoding = content[0];
-                if let Some(null_pos) = content[1..].iter().position(|&b| b == 0x00) {
-                    let mime_type = String::from_utf8_lossy(&content[1..null_pos + 1]).to_string();
-                    let description_start = null_pos + 2;
+                if let Some(mime_null_rel) = content[1..].iter().position(|&b| b == 0x00) {
+                    let mime_start = 1usize;
+                    let mime_end = 1 + mime_null_rel;
+                    let mime_type =
+                        String::from_utf8_lossy(&content[mime_start..mime_end]).to_string();
+
+                    let picture_type_index = mime_end + 1;
+                    if picture_type_index >= content.len() {
+                        pos += 10 + size;
+                        continue;
+                    }
+                    let picture_type = content[picture_type_index];
+                    let description_start = picture_type_index + 1;
                     let description_end = content[description_start..]
                         .iter()
                         .position(|&b| b == 0x00)
-                        .map_or(content.len(), |pos| description_start + pos);
-                    let _description =
-                        String::from_utf8_lossy(&content[description_start..description_end])
-                            .to_string();
-                    let image_data = &content[description_end + 1..];
+                        .map_or(content.len(), |p| description_start + p);
+                    let description = if description_end > description_start {
+                        Some(
+                            String::from_utf8_lossy(&content[description_start..description_end])
+                                .to_string(),
+                        )
+                    } else {
+                        None
+                    };
+                    let image_data =
+                        if description_end < content.len() && description_end + 1 < content.len() {
+                            &content[description_end + 1..]
+                        } else {
+                            &[]
+                        };
 
-                    tags.insert(
-                        frame_id,
-                        TagValue::Picture {
-                            mime: mime_type,
-                            data: image_data.to_vec(),
-                        },
-                    );
+                    tags.entry(frame_id).or_default().push(TagValue::Picture {
+                        mime: mime_type,
+                        data: image_data.to_vec(),
+                        picture_type: Some(picture_type),
+                        description,
+                    });
                 }
             }
 
@@ -123,14 +198,13 @@ impl TagFormat for V2_3 {
         }
 
         let tags = raw_to_tags(&tags);
-
         Ok(tags)
     }
 
     fn write_tags(
         &self,
         file_path: &PathBuf,
-        updated_tags: HashMap<FrameKey, TagValue>,
+        updated_tags: HashMap<FrameKey, Vec<TagValue>>,
     ) -> Result<(), ()> {
         use std::io::{Read, Seek, SeekFrom, Write};
 
@@ -151,7 +225,7 @@ impl TagFormat for V2_3 {
         file.read_exact(&mut tag_data).map_err(|_| ())?;
 
         let mut pos: usize = 0;
-        let mut raw_tags: RawTagMap = HashMap::new();
+        let mut raw_frames: Vec<(String, Vec<u8>)> = Vec::new();
         while pos + 10 <= tag_data.len() {
             let id_bytes = &tag_data[pos..pos + 4];
             if id_bytes == [0, 0, 0, 0] {
@@ -179,33 +253,117 @@ impl TagFormat for V2_3 {
             }
 
             let content = &tag_data[pos + 10..pos + 10 + size];
-            raw_tags.insert(frame_id, content.to_vec());
+            raw_frames.push((frame_id, content.to_vec()));
 
             pos += 10 + size;
         }
 
-        let raw_updated_tags = tags_to_raw(&updated_tags);
+        let mut pictures: Vec<TagValue> = Vec::new();
+        let mut flattened: HashMap<FrameKey, TagValue> = HashMap::new();
+        for (k, vec_vals) in updated_tags.into_iter() {
+            if vec_vals.is_empty() {
+                continue;
+            }
+            if k == FrameKey::AttachedPicture {
+                for v in vec_vals {
+                    if let TagValue::Picture { .. } = v {
+                        pictures.push(v);
+                    }
+                }
+                continue;
+            }
+            if matches!(vec_vals[0], TagValue::Text(_)) && vec_vals.len() > 1 {
+                let joined = vec_vals
+                    .iter()
+                    .filter_map(|v| match v {
+                        TagValue::Text(s) => Some(s.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
+                flattened.insert(k, TagValue::Text(joined));
+            } else {
+                flattened.insert(k, vec_vals[0].clone());
+            }
+        }
+        let raw_updated_tags = tags_to_raw(&flattened);
+        let mut updated_keys: Vec<String> =
+            raw_updated_tags.keys().map(|k| k.to_string()).collect();
+        if !pictures.is_empty() {
+            updated_keys.push("APIC".to_string());
+        }
+        raw_frames.retain(|(id, _)| !updated_keys.iter().any(|k| k == id));
+
         for (k, v) in raw_updated_tags {
             match v {
                 TagValue::Text(text) => {
                     if !text.is_empty() {
-                        let encoded_text = encode_text_payload(&text, false);
-
-                        raw_tags.insert(k.to_string(), encoded_text);
+                        if k == "TXXX" || k == "WXXX" {
+                            let (desc, val) = match text.split_once('=') {
+                                Some((d, v)) => (d.to_string(), v.to_string()),
+                                None => (String::new(), text.clone()),
+                            };
+                            let mut payload = Vec::new();
+                            payload.push(0x00);
+                            payload.extend_from_slice(desc.as_bytes());
+                            payload.push(0x00);
+                            payload.extend_from_slice(val.as_bytes());
+                            raw_frames.push((k.to_string(), payload));
+                        } else {
+                            let encoded_text = encode_text_payload(&text, false);
+                            raw_frames.push((k.to_string(), encoded_text));
+                        }
                     }
                 }
-                TagValue::Picture { mime, data } => {
-                    let encoded_data = utils::encode_img_payload(&mime, 3, "", &data);
-                    raw_tags.insert(k.to_string(), encoded_data);
+                TagValue::Picture {
+                    mime,
+                    data,
+                    picture_type,
+                    description,
+                } => {
+                    let pt = picture_type.unwrap_or(3);
+                    let desc = description.as_deref().unwrap_or("");
+                    let encoded_data = utils::encode_img_payload(&mime, pt, desc, &data);
+                    raw_frames.push((k.to_string(), encoded_data));
                 }
+                TagValue::UserText(ut) => {
+                    let mut payload = Vec::new();
+                    payload.push(0x00);
+                    payload.extend_from_slice(ut.description.as_bytes());
+                    payload.push(0x00);
+                    payload.extend_from_slice(ut.value.as_bytes());
+                    raw_frames.push((k.to_string(), payload));
+                }
+                TagValue::UserUrl(uu) => {
+                    let mut payload = Vec::new();
+                    payload.push(0x00);
+                    payload.extend_from_slice(uu.description.as_bytes());
+                    payload.push(0x00);
+                    payload.extend_from_slice(uu.url.as_bytes());
+                    raw_frames.push((k.to_string(), payload));
+                }
+            }
+        }
+        for v in pictures.into_iter() {
+            if let TagValue::Picture {
+                mime,
+                data,
+                picture_type,
+                description,
+            } = v
+            {
+                let pt = picture_type.unwrap_or(3);
+                let desc = description.as_deref().unwrap_or("");
+                let encoded_data = utils::encode_img_payload(&mime, pt, desc, &data);
+                raw_frames.push(("APIC".to_string(), encoded_data));
             }
         }
         println!(
             "Updated raw tags: {:?}",
-            raw_tags.keys().collect::<Vec<_>>()
+            raw_frames.iter().map(|(k, _)| k).collect::<Vec<_>>()
         );
 
-        let frames = raw_tags
+        let frames = raw_frames
             .iter()
             .map(|(id, content)| build_frame(id, content))
             .collect::<Vec<_>>();

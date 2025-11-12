@@ -1,10 +1,10 @@
-use crate::tag_manager::utils::{FrameKey, TagValue};
+use crate::tag_manager::utils::{FrameKey, FreeformTag, TagValue};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use std::{fmt, write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Formats {
     Id3v22,
     Id3v23,
@@ -12,6 +12,9 @@ pub enum Formats {
     Id3v11,
     Id3v10,
     Itunes,
+    Flac,
+    Vorbis,
+    Riff,
     Unknown,
 }
 impl Display for Formats {
@@ -23,6 +26,9 @@ impl Display for Formats {
             Formats::Id3v23 => "id3v2.3",
             Formats::Id3v24 => "id3v2.4",
             Formats::Itunes => "Itunes",
+            Formats::Flac => "FLAC",
+            Formats::Vorbis => "Vorbis",
+            Formats::Riff => "RIFF",
             Formats::Unknown => "Unknown",
         };
         write!(f, "{}", s)
@@ -41,11 +47,17 @@ pub trait TagFormat: Debug {
     where
         Self: Sized;
 
-    fn get_tags(&self, file_path: &PathBuf) -> Result<HashMap<FrameKey, TagValue>, std::io::Error>;
+    fn get_tags(
+        &self,
+        file_path: &PathBuf,
+    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, std::io::Error>;
+    fn get_freeforms(&self, _file_path: &PathBuf) -> Result<Vec<FreeformTag>, std::io::Error> {
+        Ok(vec![])
+    }
     fn write_tags(
         &self,
         file_path: &PathBuf,
-        updated_tags: HashMap<FrameKey, TagValue>,
+        updated_tags: HashMap<FrameKey, Vec<TagValue>>,
     ) -> Result<(), ()>;
 }
 

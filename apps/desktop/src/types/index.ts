@@ -252,6 +252,7 @@ export interface UserConfig {
   onboarding: boolean;
   view: string;
   density: "default" | "compact" | "comfort";
+  show_diff_modal: boolean;
 }
 
 export interface Column {
@@ -294,11 +295,40 @@ export interface TagPicture {
   value: {
     mime: string;
     data_base64: string;
+    picture_type?: number;
+    description?: string;
   };
+}
+
+export interface UserTextEntry {
+  description: string;
+  value: string;
+}
+export interface UserUrlEntry {
+  description: string;
+  url: string;
+}
+
+export type SerializableTagFrameValue =
+  | TagText
+  | TagPicture
+  | { type: "UserText"; value: UserTextEntry }
+  | { type: "UserUrl"; value: UserUrlEntry };
+
+export interface SerializableTagFrame {
+  key: string;
+  values: SerializableTagFrameValue[];
+}
+
+export interface FrameChangesPayload {
+  paths: string[];
+  frames: SerializableTagFrame[];
 }
 
 export interface File {
   path: string;
   tags: AllTags;
   tag_format: string;
+  tag_formats?: string[];
+  _frames?: Record<string, SerializableTagFrameValue[]>;
 }

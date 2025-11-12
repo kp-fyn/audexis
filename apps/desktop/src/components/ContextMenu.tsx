@@ -226,7 +226,7 @@ const MenuOverlay = React.forwardRef<
     },
     {
       label: "Paste",
-      shortcut: "⌘V",
+      shortcut: "mod+V",
       type: "item",
       disabled: !isEditableElement(state.target),
       onSelect: () => {
@@ -381,7 +381,7 @@ const MenuOverlay = React.forwardRef<
                           <span className="truncate">{sub.label}</span>
                           {sub.shortcut ? (
                             <span className="ml-auto text-xs text-muted-foreground tracking-widest">
-                              {sub.shortcut}
+                              {parseShortcut(sub.shortcut)}
                             </span>
                           ) : null}
                         </button>
@@ -413,7 +413,7 @@ const MenuOverlay = React.forwardRef<
               <span className="truncate">{it.label}</span>
               {it.shortcut ? (
                 <span className="ml-auto text-xs text-muted-foreground tracking-widest">
-                  {it.shortcut}
+                  {parseShortcut(it.shortcut)}
                 </span>
               ) : null}
             </button>
@@ -424,3 +424,14 @@ const MenuOverlay = React.forwardRef<
   );
 });
 MenuOverlay.displayName = "MenuOverlay";
+function parseShortcut(shortcut: string) {
+  shortcut = shortcut.replace(
+    "mod",
+    navigator.platform.includes("Mac") ? "⌘" : "Ctrl"
+  );
+  shortcut = shortcut.replace("cmd", "⌘");
+  shortcut = shortcut.replace("ctrl", "Ctrl");
+  shortcut = shortcut.replace("alt", "Alt");
+  shortcut = shortcut.replace("shift", "Shift");
+  return shortcut;
+}

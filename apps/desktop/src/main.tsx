@@ -122,14 +122,14 @@ function Root() {
         {
           type: "item",
           label: "Undo",
-          shortcut: "⌘Z",
+          shortcut: "mod+Z",
           disabled: !canUndo,
           onSelect: () => undo(),
         },
         {
           type: "item",
           label: "Redo",
-          shortcut: "⌘⇧Z",
+          shortcut: "mod+shift+Z",
           disabled: !canRedo,
           onSelect: () => redo(),
         },
@@ -137,20 +137,20 @@ function Root() {
         {
           type: "item",
           label: "Import Files…",
-          shortcut: "⌘I",
+          shortcut: "mod+I",
           onSelect: () => invoke("import_files", { fileType: "file" }),
         },
         {
           type: "item",
           label: "Import Folder…",
-          shortcut: "⌘⇧I",
+          shortcut: "mod+shift+I",
           onSelect: () => invoke("import_files", { fileType: "folder" }),
         },
         { type: "separator" },
         {
           type: "item",
           label: "Refresh",
-          shortcut: "⌘R",
+          shortcut: "mod+R",
           onSelect: () => window.location.reload(),
         },
       ]}

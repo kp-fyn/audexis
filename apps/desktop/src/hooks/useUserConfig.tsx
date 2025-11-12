@@ -19,6 +19,7 @@ const UserConfigContext = createContext<Config>({
     columns: [],
     albums: [],
     density: "default",
+    show_diff_modal: false,
   },
   allColumns: [],
   setTheme: () => {},
@@ -26,6 +27,7 @@ const UserConfigContext = createContext<Config>({
   setColumns: () => {},
   setDensity: () => {},
   setAllColumns: () => {},
+  setShowDiffModal: () => {},
 });
 
 interface Config {
@@ -36,6 +38,7 @@ interface Config {
   setView: (view: "simple" | "folder") => void;
   setColumns: (column: Column[]) => void;
   setDensity: (density: "default" | "compact" | "comfort") => void;
+  setShowDiffModal: (enabled: boolean) => void;
 }
 
 export function useUserConfig(): Config {
@@ -63,6 +66,7 @@ export function UserConfigProvider({
     columns: [],
     albums: [],
     density: "default",
+    show_diff_modal: false,
   });
   const [allColumns, setAllColumns] = useState<Column[]>([]);
   useEffect(() => {
@@ -70,6 +74,7 @@ export function UserConfigProvider({
       "user-config-updated",
       (event: Event<UserConfig>) => {
         const config = event.payload;
+        console.log(config);
         const params = new URLSearchParams(window.location.search);
         const themeLower = (config.theme as string).toLowerCase() as
           | "light"
@@ -160,6 +165,14 @@ export function UserConfigProvider({
             },
           });
           document.documentElement.setAttribute("data-density", density);
+        },
+        setShowDiffModal: (enabled) => {
+          setUserConfig((prev) => ({ ...prev, showDiffModal: enabled }));
+          invoke("update_user_config", {
+            patch: {
+              show_diff_modal: enabled,
+            },
+          });
         },
       }}
     >

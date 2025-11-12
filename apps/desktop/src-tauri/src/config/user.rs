@@ -93,6 +93,8 @@ pub struct UserConfig {
     pub albums: Vec<Album>,
     pub columns: Vec<Column>,
     pub density: Density,
+    #[serde(default)]
+    pub show_diff_modal: bool,
 }
 
 impl Default for UserConfig {
@@ -103,6 +105,7 @@ impl Default for UserConfig {
             view: ViewMode::Folder,
             onboarding: true,
             albums: vec![],
+            show_diff_modal: false,
             columns: vec![
                 Column {
                     value: "attachedPicture".into(),
@@ -183,6 +186,7 @@ pub struct PartialUserConfig {
     pub albums: Option<Vec<Album>>,
     pub columns: Option<Vec<Column>>,
     pub density: Option<Density>,
+    pub show_diff_modal: Option<bool>,
 }
 pub const CONFIG_FILE: &str = "user_config.json";
 

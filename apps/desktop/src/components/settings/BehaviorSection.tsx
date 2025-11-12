@@ -1,3 +1,4 @@
+import { useUserConfig } from "@/ui/hooks/useUserConfig";
 import { SectionHeader } from "./SectionHeader";
 import { Toggle } from "./Toggle";
 
@@ -13,10 +14,7 @@ interface BehaviorSectionProps {
 }
 
 const defaultOptions: BehaviorOption[] = [
-  { key: "autoSave", label: "Auto-save edits" },
-  { key: "confirmDestructive", label: "Confirm destructive changes" },
-  { key: "advancedTags", label: "Enable advanced tags" },
-  { key: "showHiddenFrames", label: "Show hidden frames" },
+  { key: "showDiffModal", label: "Show diff preview before saving" },
 ];
 
 export function BehaviorSection({
@@ -24,6 +22,9 @@ export function BehaviorSection({
   options = defaultOptions,
   onBehaviorChange,
 }: BehaviorSectionProps) {
+  console.log(behavior);
+  const { config } = useUserConfig();
+  console.log(options);
   return (
     <section className="space-y-4 animate-in fade-in">
       <SectionHeader title="Behavior" description="Interaction preferences " />
@@ -32,8 +33,10 @@ export function BehaviorSection({
           <Toggle
             key={item.key}
             label={item.label}
-            checked={behavior[item.key] ?? false}
-            onChange={(checked) => onBehaviorChange(item.key, checked)}
+            checked={behavior[item.key]}
+            onChange={(checked) => {
+              onBehaviorChange(item.key, checked);
+            }}
           />
         ))}
       </div>

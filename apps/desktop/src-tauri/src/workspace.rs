@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use tauri::AppHandle;
 
-use crate::tag_manager::traits::Formats;
-use crate::tag_manager::utils::{File, FrameKey, TagValue};
-use crate::tag_manager::TagManager;
+use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend};
+// use crate::tag_manager::traits::Formats;
+use crate::tag_manager::utils::{
+    File, FrameKey, SerializableTagValue, TagValue, UserTextEntry, UserUrlEntry,
+};
+use base64::Engine;
 
 use std::fs;
 use std::fs::metadata;
@@ -11,50 +14,69 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    tag_manager: TagManager,
+    backend: DefaultBackend,
     pub files: Vec<File>,
 }
 
 impl Workspace {
     pub fn new(_app: &AppHandle) -> Self {
         Self {
-            tag_manager: TagManager::new(),
+            backend: DefaultBackend::new(),
             files: Vec::new(),
         }
     }
     pub fn write_tags(
         &mut self,
         file_paths: Vec<String>,
-        updated_tags: HashMap<FrameKey, TagValue>,
+        updated_tags: HashMap<FrameKey, Vec<TagValue>>,
     ) {
         for file_path_str in file_paths {
-            println!("{}", file_path_str);
             let file_path = PathBuf::from(&file_path_str);
             if let Some(file) = self.files.iter_mut().find(|x| x.path == file_path) {
-                if let Some(rc) = self.tag_manager.get_release_class(&file.tag_format) {
-                    match rc.write_tags(&file.path, updated_tags.clone()) {
-                        Ok(_) => match rc.get_tags(&file.path) {
-                            Ok(refreshed) => {
-                                file.tags = refreshed;
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to re-read tags after write ({}). Falling back to merge.", e);
-                                for (k, v) in &updated_tags {
-                                    file.tags.insert(*k, v.clone());
-                                }
-                            }
-                        },
-                        Err(_) => {
-                            eprintln!("Failed to write tags for: {}", file_path_str);
-                            continue;
-                        }
+                let mut single_map: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+                for (k, v) in &updated_tags {
+                    single_map.insert(*k, v.clone());
+                }
+                let changes = crate::tag_manager::utils::Changes {
+                    paths: vec![file_path_str.clone()],
+                    tags: single_map
+                        .into_iter()
+                        .map(|(k, vec_vals)| {
+                            let ser_vals: Vec<SerializableTagValue> = vec_vals
+                                .into_iter()
+                                .map(|v| match v {
+                                    TagValue::Text(s) => SerializableTagValue::Text(s),
+                                    TagValue::Picture {
+                                        mime,
+                                        data,
+                                        picture_type,
+                                        description,
+                                    } => SerializableTagValue::Picture {
+                                        mime,
+                                        data_base64: base64::engine::general_purpose::STANDARD
+                                            .encode(&data),
+                                        picture_type,
+                                        description,
+                                    },
+                                    TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
+                                    TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+                                })
+                                .collect();
+                            (k, ser_vals)
+                        })
+                        .collect(),
+                };
+                let _res = self.backend.write_changes(&changes);
+                match self.backend.read(&file.path) {
+                    Ok(refreshed) => {
+                        file.tags = refreshed.tags;
                     }
-                } else {
-                    eprintln!("No tag format handler for: {}", file_path_str);
+                    Err(e) => {
+                        eprintln!("Failed to refresh tags for {}: {:?}", file_path_str, e);
+                    }
                 }
             } else {
-                println!("Path not found in workspace: {}", file_path_str);
-                continue;
+                eprintln!("Path not found in workspace: {}", file_path_str);
             }
         }
     }
@@ -68,23 +90,22 @@ impl Workspace {
     }
     pub fn refresh_tags(&mut self, file_path: &PathBuf) -> bool {
         if let Some(file) = self.files.iter_mut().find(|x| &x.path == file_path) {
-            if let Some(rc) = self.tag_manager.get_release_class(&file.tag_format) {
-                match rc.get_tags(&file.path) {
-                    Ok(refreshed) => {
-                        file.tags = refreshed;
-                        return true;
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to refresh tags for {}: {}", file_path.display(), e);
-                        return false;
-                    }
+            match self.backend.read(&file.path) {
+                Ok(refreshed) => {
+                    file.tags = refreshed.tags;
+                    return true;
                 }
-            } else {
-                eprintln!("No tag format handler for: {}", file_path.display());
-                return false;
+                Err(e) => {
+                    eprintln!(
+                        "Failed to refresh tags for {}: {:?}",
+                        file_path.display(),
+                        e
+                    );
+                    return false;
+                }
             }
         } else {
-            println!("Path not found in workspace: {}", file_path.display());
+            eprintln!("Path not found in workspace: {}", file_path.display());
             return false;
         }
     }
@@ -103,38 +124,19 @@ impl Workspace {
         };
         println!("{}", md.is_file());
         if md.is_file() {
-            let tag_format_str = self.tag_manager.detect_tag_format(&file);
-            match tag_format_str {
-                Formats::Unknown => {
+            let detected = self.backend.read(&file);
+            match detected {
+                Ok(f) => {
+                    self.files.push(f);
+                    print!("Imported file: {}", file.display());
+                    return true;
+                }
+                Err(BackendError::UnsupportedFormat(_)) => {
+                    println!("Unsupported format for file: {}", file.display());
                     return false;
                 }
-
-                _ => {
-                    print!("{:?}", &tag_format_str);
-                    let tag_format = self.tag_manager.get_release_class(&tag_format_str);
-                    print!("{:?}", &tag_format);
-                    match tag_format {
-                        Some(tag_format) => {
-                            println!("{}", tag_format);
-                            let tags = tag_format.get_tags(&file);
-
-                            match tags {
-                                Ok(tags) => {
-                                    let audio_file = File {
-                                        path: file.clone(),
-                                        tag_format: tag_format_str,
-                                        tags,
-                                    };
-                                    self.files.push(audio_file);
-                                    return true;
-                                }
-                                Err(e) => {
-                                    eprintln!("Error reading tags: {}", e);
-                                }
-                            }
-                        }
-                        None => return false,
-                    }
+                Err(e) => {
+                    eprintln!("Failed to import {}: {:?}", file.display(), e);
                     return false;
                 }
             }
@@ -174,10 +176,18 @@ impl Workspace {
         fn apply_pattern(file: &File, pattern: &str) -> String {
             let result = pattern.to_string();
             let mut map: HashMap<String, String> = HashMap::new();
-            for (k, v) in &file.tags {
+            for (k, vec_v) in &file.tags {
                 let key = k.to_string();
-                if let TagValue::Text(text) = v {
-                    map.insert(key, text.clone());
+                let concatenated = vec_v
+                    .iter()
+                    .filter_map(|v| match v {
+                        TagValue::Text(s) => Some(s.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
+                if !concatenated.is_empty() {
+                    map.insert(key, concatenated);
                 }
             }
             let ext = file.path.extension().and_then(|e| e.to_str()).unwrap_or("");

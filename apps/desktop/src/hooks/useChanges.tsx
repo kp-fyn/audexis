@@ -400,9 +400,7 @@ export function ChangesProvider({
     Object.entries(input).forEach(([key, val]) => {
       if (val === undefined || val === null) return;
       if (typeof val === "object" && "type" in val && "value" in val) {
-        out[key.charAt(0).toUpperCase() + key.slice(1)] = val as
-          | TagText
-          | TagPicture;
+        out[key.charAt(0).toUpperCase() + key.slice(1)] = val as any;
       } else if (typeof val === "string") {
         out[key.charAt(0).toUpperCase() + key.slice(1)] = {
           type: "Text",
@@ -419,10 +417,16 @@ export function ChangesProvider({
     if (!selected || selected.length === 0) return;
 
     const tags = toSerializableTags(changes);
+    const frames = Object.entries(tags).map(([k, v]) => ({
+      key: k,
+      values: [v as any],
+    }));
 
     try {
       const prev = state || {};
-      await invoke("save_changes", { changes: { tags, paths: selected } });
+      await invoke("save_frame_changes", {
+        frameChanges: { paths: selected, frames },
+      });
       setHistory((h) => {
         const last = h.past[h.past.length - 1];
         const dedup = last && isEqualChanges(last, prev);

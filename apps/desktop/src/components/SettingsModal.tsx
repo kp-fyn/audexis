@@ -41,6 +41,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     setColumns,
     allColumns,
     setDensity: persistDensity,
+    setShowDiffModal,
   } = useUserConfig();
 
   const columnMetaById = useMemo(() => {
@@ -48,12 +49,16 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     for (const c of config.columns) map[c.value] = c;
     return map;
   }, [config.columns]);
+
   const [behavior, setBehavior] = useState<Record<string, boolean>>({
-    autoSave: true,
-    confirmDestructive: true,
-    advancedTags: false,
-    showHiddenFrames: false,
+    showDiffModal: false,
   });
+
+  useEffect(() => {
+    setBehavior({
+      showDiffModal: config.show_diff_modal ?? false,
+    });
+  }, [config.show_diff_modal]);
 
   useEffect(() => {
     if (!open) return;
@@ -82,7 +87,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   useEffect(() => {
     if (!open) return;
     document.documentElement.setAttribute("data-density", config.density);
-    return () => document.documentElement.removeAttribute("data-density");
   }, [config.density, open]);
 
   useEffect(() => {
@@ -145,12 +149,19 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     }, 160);
   }, [onClose]);
 
-  const handleBehaviorChange = useCallback((key: string, value: boolean) => {
-    setBehavior((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  }, []);
+  const handleBehaviorChange = useCallback(
+    (key: string, value: boolean) => {
+      setBehavior((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+
+      if (key === "showDiffModal") {
+        setShowDiffModal(value);
+      }
+    },
+    [setShowDiffModal]
+  );
 
   if (!open || !portalNode) return null;
 

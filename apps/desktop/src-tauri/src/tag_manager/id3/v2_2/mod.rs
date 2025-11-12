@@ -1,7 +1,7 @@
 use crate::tag_manager::id3::utils::{id3v22_raw_to_tags, id3v22_tags_to_raw};
 use crate::tag_manager::id3::v2_3::utils::{create_header_with_version, encode_text_payload};
 use crate::tag_manager::traits::TagFormat;
-use crate::tag_manager::utils::{FrameKey, TagValue};
+use crate::tag_manager::utils::{FrameKey, TagValue, UserTextEntry, UserUrlEntry};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Read;
@@ -21,7 +21,7 @@ impl TagFormat for V2_2 {
         Self {}
     }
 
-    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, TagValue>> {
+    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, Vec<TagValue>>> {
         let mut file = File::open(file_path)?;
         let mut header = [0u8; 10];
         if file.read_exact(&mut header).is_err() {
@@ -37,7 +37,7 @@ impl TagFormat for V2_2 {
         let mut tag_data = vec![0u8; tag_size];
         file.read_exact(&mut tag_data)?;
         let mut pos = 0usize;
-        let mut raw: HashMap<String, TagValue> = HashMap::new();
+        let mut raw: HashMap<String, Vec<TagValue>> = HashMap::new();
         while pos + 6 <= tag_data.len() {
             let id_bytes = &tag_data[pos..pos + 3];
             if id_bytes.iter().all(|b| *b == 0) {
@@ -53,7 +53,47 @@ impl TagFormat for V2_2 {
                 break;
             }
             let content = &tag_data[pos + 6..pos + 6 + size];
-            if id.starts_with('T') || id.starts_with('W') {
+            if id == "TXX" || id == "WXX" {
+                if !content.is_empty() {
+                    let encoding = content[0];
+                    let rest = &content[1..];
+                    let desc_end = rest.iter().position(|&b| b == 0x00).unwrap_or(rest.len());
+                    let (desc_bytes, _ignored_split) = rest.split_at(desc_end);
+                    let value_bytes = if desc_end < rest.len() {
+                        &rest[desc_end + 1..]
+                    } else {
+                        &[]
+                    };
+                    let decode = |bytes: &[u8]| match encoding {
+                        0x00 => String::from_utf8_lossy(bytes).to_string(),
+                        0x01 => {
+                            if bytes.starts_with(&[0xFF, 0xFE]) {
+                                String::from_utf16_lossy(
+                                    &bytes[2..]
+                                        .chunks(2)
+                                        .filter(|c| c.len() == 2)
+                                        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                                        .collect::<Vec<_>>(),
+                                )
+                            } else {
+                                String::from_utf8_lossy(bytes).to_string()
+                            }
+                        }
+                        _ => String::from_utf8_lossy(bytes).to_string(),
+                    };
+                    let description = decode(desc_bytes);
+                    let value = decode(value_bytes);
+                    let entry = if id == "TXX" {
+                        TagValue::UserText(UserTextEntry { description, value })
+                    } else {
+                        TagValue::UserUrl(UserUrlEntry {
+                            description,
+                            url: value,
+                        })
+                    };
+                    raw.entry(id).or_default().push(entry);
+                }
+            } else if id.starts_with('T') || id.starts_with('W') {
                 if !content.is_empty() {
                     let encoding = content[0];
                     let text = match encoding {
@@ -73,7 +113,7 @@ impl TagFormat for V2_2 {
                         }
                         _ => "<Unknown Encoding>".to_string(),
                     };
-                    raw.insert(id, TagValue::Text(text));
+                    raw.entry(id).or_default().push(TagValue::Text(text));
                 }
             } else if id == "PIC" && content.len() > 4 {
                 // let encoding = content[0];
@@ -82,7 +122,7 @@ impl TagFormat for V2_2 {
                 if idx >= content.len() {
                     break;
                 }
-                // let picture_type = content[idx];
+                let picture_type = content[idx];
                 idx += 1;
                 if idx >= content.len() {
                     break;
@@ -97,6 +137,11 @@ impl TagFormat for V2_2 {
                 } else {
                     desc_end
                 };
+                let description = if desc_end > idx {
+                    Some(String::from_utf8_lossy(&content[idx..desc_end]).to_string())
+                } else {
+                    None
+                };
                 let image_data = &content[image_data_start..];
                 let mime = match std::str::from_utf8(image_format) {
                     Ok(f) => match f {
@@ -107,13 +152,12 @@ impl TagFormat for V2_2 {
                     .to_string(),
                     Err(_) => "application/octet-stream".to_string(),
                 };
-                raw.insert(
-                    id,
-                    TagValue::Picture {
-                        mime,
-                        data: image_data.to_vec(),
-                    },
-                );
+                raw.entry(id).or_default().push(TagValue::Picture {
+                    mime,
+                    data: image_data.to_vec(),
+                    picture_type: Some(picture_type),
+                    description,
+                });
             }
             pos += 6 + size;
         }
@@ -123,7 +167,7 @@ impl TagFormat for V2_2 {
     fn write_tags(
         &self,
         file_path: &PathBuf,
-        updated: HashMap<FrameKey, TagValue>,
+        updated: HashMap<FrameKey, Vec<TagValue>>,
     ) -> Result<(), ()> {
         use std::io::{Read, Seek, SeekFrom, Write};
         let mut file = OpenOptions::new()
@@ -162,7 +206,26 @@ impl TagFormat for V2_2 {
             raw.insert(id, content.to_vec());
             pos += 6 + size;
         }
-        let raw_updates = id3v22_tags_to_raw(&updated);
+        let mut single_map: HashMap<FrameKey, TagValue> = HashMap::new();
+        for (k, vals) in updated.into_iter() {
+            if vals.is_empty() {
+                continue;
+            }
+            if matches!(vals[0], TagValue::Text(_)) && vals.len() > 1 {
+                let joined = vals
+                    .iter()
+                    .filter_map(|v| match v {
+                        TagValue::Text(s) => Some(s.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
+                single_map.insert(k, TagValue::Text(joined));
+            } else {
+                single_map.insert(k, vals[0].clone());
+            }
+        }
+        let raw_updates = id3v22_tags_to_raw(&single_map);
         for (k, v) in raw_updates {
             match v {
                 TagValue::Text(t) => {
@@ -171,8 +234,35 @@ impl TagFormat for V2_2 {
                         raw.insert(k.to_string(), encoded);
                     }
                 }
-                // TODO: COme back
-                TagValue::Picture { .. } => { /* Skipping picture write for v2.2 to keep simple */ }
+                TagValue::Picture {
+                    mime,
+                    data,
+                    picture_type,
+                    description,
+                } => {
+                    let enc: u8 = 0x00;
+                    let format_code = if mime == "image/png" { b"PNG" } else { b"JPG" };
+                    let pt = picture_type.unwrap_or(3);
+                    let desc_bytes = description.as_deref().unwrap_or("").as_bytes();
+                    let mut payload = Vec::new();
+                    payload.push(enc);
+                    payload.extend_from_slice(format_code);
+                    payload.push(pt);
+                    payload.extend_from_slice(desc_bytes);
+                    payload.push(0x00);
+                    payload.extend_from_slice(&data);
+                    raw.insert("PIC".to_string(), payload);
+                }
+                TagValue::UserText(ut) => {
+                    let joined = format!("{}={}", ut.description, ut.value);
+                    let encoded = encode_text_payload(&joined, false);
+                    raw.insert(k.to_string(), encoded);
+                }
+                TagValue::UserUrl(uu) => {
+                    let joined = format!("{}={}", uu.description, uu.url);
+                    let encoded = encode_text_payload(&joined, false);
+                    raw.insert(k.to_string(), encoded);
+                }
             }
         }
         let mut frames: Vec<u8> = Vec::new();

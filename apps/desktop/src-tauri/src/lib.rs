@@ -4,7 +4,7 @@ mod tag_manager;
 mod workspace;
 use tauri_plugin_opener::OpenerExt;
 
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose, Engine as _};
@@ -19,13 +19,15 @@ use workspace::Workspace;
 
 use crate::file_watcher::FileWatcher;
 use crate::tag_manager::utils::{
-    Changes, FrameKey, SerializableFile, SerializableTagValue, TagValue,
+    Changes, FrameChanges, FrameKey, SerializableFile, SerializableTagValue, TagValue,
 };
+use std::collections::HashMap;
 use tauri::Manager;
 
 use crate::config::user::{
     get_config_path, load_config, save_config, Column, PartialUserConfig, Theme,
 };
+use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
 use config::user;
 
 pub struct AppState {
@@ -56,6 +58,9 @@ fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Result
     if let Some(onboarding) = patch.onboarding {
         config.onboarding = onboarding;
     }
+    if let Some(show_diff_modal) = patch.show_diff_modal {
+        config.show_diff_modal = show_diff_modal;
+    }
 
     save_config(&path, &config).map_err(|e| format!("Save failed: {}", e))?;
     app_handle.emit("user-config-updated", config).unwrap();
@@ -64,32 +69,167 @@ fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Result
 
 #[tauri::command]
 fn save_changes(app_handle: AppHandle, changes: Changes, state: State<'_, AppState>) {
-    println!("Changes to save: {:?}", changes);
-    let mut updates: HashMap<FrameKey, TagValue> = HashMap::new();
-    for (frame_key, v) in changes.tags.into_iter() {
-        match v {
-            SerializableTagValue::Text(t) => {
-                updates.insert(frame_key, TagValue::Text(t));
-            }
-            SerializableTagValue::Picture { mime, data_base64 } => {
-                if let Ok(data) = general_purpose::STANDARD.decode(&data_base64) {
-                    updates.insert(frame_key, TagValue::Picture { mime, data });
+    let backend = DefaultBackend::new();
+    let _ = backend.write_changes(&changes);
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        for p in &changes.paths {
+            ws.refresh_tags(&PathBuf::from(p));
+        }
+        let serializable_files: Vec<SerializableFile> = ws
+            .files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect();
+        let _ = app_handle.emit("workspace-updated", serializable_files);
+    }
+}
+
+#[tauri::command]
+fn save_frame_changes(
+    app_handle: AppHandle,
+    frame_changes: FrameChanges,
+    state: State<'_, AppState>,
+) {
+    let mut tag_map: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+    for frame in &frame_changes.frames {
+        for val in &frame.values {
+            match val {
+                SerializableTagValue::Text(t) => {
+                    tag_map
+                        .entry(frame.key)
+                        .or_default()
+                        .push(TagValue::Text(t.clone()));
+                }
+                SerializableTagValue::Picture {
+                    mime,
+                    data_base64,
+                    picture_type,
+                    description,
+                } => {
+                    if let Ok(data) = base64::engine::general_purpose::STANDARD.decode(data_base64)
+                    {
+                        tag_map
+                            .entry(frame.key)
+                            .or_default()
+                            .push(TagValue::Picture {
+                                mime: mime.clone(),
+                                data,
+                                picture_type: *picture_type,
+                                description: description.clone(),
+                            });
+                    }
+                }
+                SerializableTagValue::UserText(entry) => {
+                    tag_map
+                        .entry(frame.key)
+                        .or_default()
+                        .push(TagValue::UserText(entry.clone()));
+                }
+                SerializableTagValue::UserUrl(entry) => {
+                    tag_map
+                        .entry(frame.key)
+                        .or_default()
+                        .push(TagValue::UserUrl(entry.clone()));
                 }
             }
         }
     }
-    let mut ws = state.workspace.lock().unwrap();
-    ws.write_tags(changes.paths, updates);
 
-    let serializable_files: Vec<SerializableFile> = ws
-        .files
-        .clone()
-        .into_iter()
-        .map(SerializableFile::from)
-        .collect();
-    app_handle
-        .emit("workspace-updated", serializable_files)
-        .unwrap();
+    let backend = DefaultBackend::new();
+    let mut write_changes = Changes {
+        paths: frame_changes.paths.clone(),
+        tags: HashMap::new(),
+    };
+    for (k, vec_vals) in tag_map.into_iter() {
+        let ser_vals: Vec<SerializableTagValue> = vec_vals
+            .into_iter()
+            .map(|v| match v {
+                TagValue::Text(s) => SerializableTagValue::Text(s),
+                TagValue::Picture {
+                    mime,
+                    data,
+                    picture_type,
+                    description,
+                } => SerializableTagValue::Picture {
+                    mime,
+                    data_base64: base64::engine::general_purpose::STANDARD.encode(&data),
+                    picture_type,
+                    description,
+                },
+                TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
+                TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+            })
+            .collect();
+        write_changes.tags.insert(k, ser_vals);
+    }
+    let _ = backend.write_changes(&write_changes);
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        for p in &frame_changes.paths {
+            ws.refresh_tags(&PathBuf::from(p));
+        }
+        let serializable_files: Vec<SerializableFile> = ws
+            .files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect();
+        let _ = app_handle.emit("workspace-updated", serializable_files);
+    }
+}
+
+#[derive(serde::Serialize)]
+struct FrameReadResult {
+    path: String,
+    frames: Vec<crate::tag_manager::utils::SerializableTagFrame>,
+}
+
+#[tauri::command]
+fn get_frames(paths: Vec<String>) -> Vec<FrameReadResult> {
+    use crate::tag_manager::tag_backend::DefaultBackend;
+    use crate::tag_manager::utils::{map_to_frames, SerializableTagFrame};
+    let backend = DefaultBackend::new();
+    let mut out: Vec<FrameReadResult> = Vec::new();
+    for p in paths {
+        let pb = std::path::PathBuf::from(&p);
+        if let Ok(file) = backend.read(&pb) {
+            let frames = map_to_frames(&file.tags)
+                .into_iter()
+                .map(|f| SerializableTagFrame {
+                    key: f.key,
+                    values: f
+                        .values
+                        .into_iter()
+                        .map(|v| match v {
+                            TagValue::Text(s) => SerializableTagValue::Text(s),
+                            TagValue::Picture {
+                                mime,
+                                data,
+                                picture_type,
+                                description,
+                            } => SerializableTagValue::Picture {
+                                mime,
+                                data_base64: base64::engine::general_purpose::STANDARD.encode(data),
+                                picture_type,
+                                description,
+                            },
+                            TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
+                            TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+                        })
+                        .collect(),
+                })
+                .collect();
+            out.push(FrameReadResult { path: p, frames });
+        } else {
+            out.push(FrameReadResult {
+                path: p,
+                frames: Vec::new(),
+            });
+        }
+    }
+    out
 }
 
 #[tauri::command]
@@ -125,6 +265,8 @@ fn import_image() -> Option<SerializableTagValue> {
         let img_tag = SerializableTagValue::Picture {
             data_base64: img_base64,
             mime: mime.to_string(),
+            picture_type: Some(3),
+            description: None,
         };
         Some(img_tag)
     } else {
@@ -143,6 +285,83 @@ fn get_all_columns() -> Vec<Column> {
         FrameKey::TrackNumber,
         FrameKey::Genre,
         FrameKey::AlbumArtist,
+        FrameKey::AcoustidId,
+        FrameKey::AcoustidFingerprint,
+        FrameKey::AlbumArtistSort,
+        FrameKey::AlbumSort,
+        FrameKey::Arranger,
+        FrameKey::ArtistSort,
+        FrameKey::Artists,
+        FrameKey::Asin,
+        FrameKey::Barcode,
+        FrameKey::CatalogNumber,
+        FrameKey::Compilation,
+        FrameKey::ComposerSort,
+        FrameKey::Director,
+        FrameKey::DiscNumber,
+        FrameKey::DiscSubtitle,
+        FrameKey::EncoderSettings,
+        FrameKey::Engineer,
+        FrameKey::Gapless,
+        FrameKey::Grouping,
+        FrameKey::InitialKey,
+        FrameKey::Isrc,
+        FrameKey::License,
+        FrameKey::Lyricist,
+        FrameKey::Lyrics,
+        FrameKey::Media,
+        FrameKey::Mixer,
+        FrameKey::Mood,
+        FrameKey::Movement,
+        FrameKey::MovementTotal,
+        FrameKey::MovementNumber,
+        FrameKey::MusicBrainzArtistId,
+        FrameKey::MusicBrainzDiscId,
+        FrameKey::MusicBrainzOriginalArtistId,
+        FrameKey::MusicBrainzOriginalAlbumId,
+        FrameKey::MusicBrainzRecordingId,
+        FrameKey::MusicBrainzAlbumArtistId,
+        FrameKey::MusicBrainzReleaseGroupId,
+        FrameKey::MusicBrainzAlbumId,
+        FrameKey::MusicBrainzTrackId,
+        FrameKey::MusicBrainzReleaseTrackId,
+        FrameKey::MusicBrainzTrmId,
+        FrameKey::MusicBrainzWorkId,
+        FrameKey::MusicIpFingerprint,
+        FrameKey::MusicIpPuid,
+        FrameKey::OriginalAlbum,
+        FrameKey::OriginalArtist,
+        FrameKey::OriginalFilename,
+        FrameKey::OriginalDate,
+        FrameKey::OriginalYear,
+        FrameKey::Performer,
+        FrameKey::Podcast,
+        FrameKey::PodcastUrl,
+        FrameKey::Producer,
+        FrameKey::Rating,
+        FrameKey::Label,
+        FrameKey::ReleaseCountry,
+        FrameKey::ReleaseStatus,
+        FrameKey::ReleaseType,
+        FrameKey::Remixer,
+        FrameKey::ReplayGainAlbumGain,
+        FrameKey::ReplayGainAlbumPeak,
+        FrameKey::ReplayGainAlbumRange,
+        FrameKey::ReplayGainReferenceLoudness,
+        FrameKey::ReplayGainTrackGain,
+        FrameKey::ReplayGainTrackPeak,
+        FrameKey::ReplayGainTrackRange,
+        FrameKey::Script,
+        FrameKey::Show,
+        FrameKey::ShowSort,
+        FrameKey::ShowMovement,
+        FrameKey::Subtitle,
+        FrameKey::TotalDiscs,
+        FrameKey::TotalTracks,
+        FrameKey::TitleSort,
+        FrameKey::Website,
+        FrameKey::Work,
+        FrameKey::Writer,
         FrameKey::ContentGroup,
         FrameKey::Composer,
         FrameKey::EncodedBy,
@@ -268,7 +487,12 @@ fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppStat
         FileDialog::new()
             .set_title("Select files or folders")
             .set_directory(home_dir.clone())
-            .add_filter("Audio Files", &["m4a", "mp4", "mp3"])
+            .add_filter(
+                "Audio Files",
+                &[
+                    "m4a", "mp4", "mp3", "flac", "ogg", "opus", "wav", "aiff", "aif",
+                ],
+            )
             .pick_files()
             .unwrap_or_default()
             .into_iter()
@@ -278,7 +502,12 @@ fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppStat
         FileDialog::new()
             .set_title("Select files or folders")
             .set_directory(home_dir)
-            .add_filter("Audio Files", &["m4a", "mp4", "mp3"])
+            .add_filter(
+                "Audio Files",
+                &[
+                    "m4a", "mp4", "mp3", "flac", "ogg", "opus", "wav", "aiff", "aif",
+                ],
+            )
             .pick_folders()
             .unwrap_or_default()
             .into_iter()
@@ -432,10 +661,12 @@ pub fn run() {
             update_user_config,
             import_image,
             save_changes,
+            save_frame_changes,
+            get_frames,
             get_all_columns,
             open,
             open_default,
-            rename_files
+            rename_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
