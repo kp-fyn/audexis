@@ -16,6 +16,8 @@ jobs:
         include:
           - platform: "macos-latest"
             args: "--target universal-apple-darwin"
+          - platform: "windows-latest"
+            args: "--target x86_64-pc-windows-msvc"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -40,7 +42,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'windows-latest' && 'x86_64-pc-windows-msvc'}}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -50,6 +52,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      # macOS Certificate Import
       - name: Import signing certificate (macOS only)
         if: matrix.platform == 'macos-latest'
         env:
@@ -75,6 +78,38 @@ jobs:
 
           # Allow codesign to access the keychain
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+      # Windows Build and Signing
+      - name: Install Windows dependencies
+        if: matrix.platform == 'windows-latest'
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          # Install additional dependencies if needed
+
+      - name: Windows signing and build
+        if: matrix.platform == 'windows-latest'
+        uses: Azure/trusted-signing-action@v0.5.10
+        with:
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files: ${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.exe,${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.dll
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_KEY_VAULT_NAME: ${{ secrets.AZURE_KEY_VAULT_NAME }}
+          CERTIFICATE_NAME: ${{ secrets.WINDOWS_CERTIFICATE_NAME }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+
+          command: |
+            # Build the application using cargo for Windows
+            cargo build --release --target x86_64-pc-windows-msvc
+
+            # Sign the binary using Azure Trusted Signing
+            SignTool sign /fd SHA256 /a /sm /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 /v /f path/to/certificate.pfx app.exe
 
       - name: Build and sign app
         uses: tauri-apps/tauri-action@v0
