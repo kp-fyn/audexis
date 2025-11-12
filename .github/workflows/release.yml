@@ -82,11 +82,32 @@ jobs:
       # Windows Build and Signing
       - name: Install Windows dependencies
         if: matrix.platform == 'windows-latest'
-        run: |
+        run:
           rustup target add x86_64-pc-windows-msvc
           # Install additional dependencies if needed
 
+      - name: Build and sign app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Audexis v__VERSION__"
+          releaseBody: "See the CHANGELOG.md for details."
+          releaseDraft: true
+          prerelease: false
+          includeRelease: true
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}
+          projectPath: "./apps/desktop"
       - name: Windows signing and build
+
         if: matrix.platform == 'windows-latest'
         uses: Azure/trusted-signing-action@v0.5.10
         with:
@@ -115,27 +136,6 @@ jobs:
 
             # Sign the binary using Azure Trusted Signing
             SignTool sign /fd SHA256 /a /sm /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 /v /f path/to/certificate.pfx app.exe
-
-      - name: Build and sign app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Audexis v__VERSION__"
-          releaseBody: "See the CHANGELOG.md for details."
-          releaseDraft: true
-          prerelease: false
-          includeRelease: true
-          includeUpdaterJson: true
-          args: ${{ matrix.args }}
-          projectPath: "./apps/desktop"
 
       - name: Cleanup keychain (macOS only)
         if: always() && matrix.platform == 'macos-latest'
