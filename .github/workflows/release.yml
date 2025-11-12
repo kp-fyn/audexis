@@ -85,7 +85,9 @@ jobs:
         run:
           rustup target add x86_64-pc-windows-msvc
           # Install additional dependencies if needed
-
+      - name: Install Windows dependencies2
+        if: matrix.platform == 'windows-latest'
+        run: cargo install trusted-signing-cli
       - name: Build and sign app
         uses: tauri-apps/tauri-action@v0
         env:
