@@ -20,7 +20,7 @@ export default async function Home() {
     },
     description:
       "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, album art, track information, and more with ease.",
-    softwareVersion: release?.tag_name || "0.1.0-alpha",
+    softwareVersion: release?.tag_name || "alpha",
     datePublished: release?.published_at || new Date().toISOString(),
     author: {
       "@type": "Person",
