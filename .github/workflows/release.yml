@@ -109,12 +109,13 @@ jobs:
           where signtool
       - name: Build and sign app
         uses: tauri-apps/tauri-action@v0
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_EDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           AZURE_CERTIFICATE_PROFILE_NAME: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
           AZURE_CODE_SIGNING_ACCOUNT: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -131,7 +132,7 @@ jobs:
           prerelease: false
           includeRelease: true
           includeUpdaterJson: true
-          args: ${{ matrix.args }}
+          args: --verbose ${{ matrix.args }}
           projectPath: "./apps/desktop"
 
       - name: Cleanup keychain (macOS only)
