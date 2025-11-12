@@ -35,6 +35,9 @@
       "providerShortName": null,
       "entitlements": "entitlements.plist"
     },
+    "windows": {
+      "signCommand": "trusted-signing-cli -e $AZURE_EDPOINT -a $AZURE_CODE_SIGNING_ACCOUNT -c $AZURE_CERTIFICATE_PROFILE_NAME -d Audexis %1"
+    },
     "publisher": "kp-fyn",
     "homepage": "https://github.com/kp-fyn/audexis"
   },

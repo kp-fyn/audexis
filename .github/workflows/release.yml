@@ -90,6 +90,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_EDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_CERTIFICATE_PROFILE_NAME: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
+          AZURE_CODE_SIGNING_ACCOUNT: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -106,36 +109,6 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
           projectPath: "./apps/desktop"
-      - name: Windows signing and build
-
-        if: matrix.platform == 'windows-latest'
-        uses: Azure/trusted-signing-action@v0.5.10
-        with:
-          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-          certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE_NAME }}
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          trusted-signing-account-name: Audexis
-          files-folder-filter: exe,dll
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-          files: ${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.exe,${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.dll
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_KEY_VAULT_NAME: ${{ secrets.AZURE_KEY_VAULT_NAME }}
-          CERTIFICATE_NAME: ${{ secrets.WINDOWS_CERTIFICATE_NAME }}
-          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-
-          command: |
-            # Build the application using cargo for Windows
-            cargo build --release --target x86_64-pc-windows-msvc
-
-            # Sign the binary using Azure Trusted Signing
-            SignTool sign /fd SHA256 /a /sm /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 /v /f path/to/certificate.pfx app.exe
 
       - name: Cleanup keychain (macOS only)
         if: always() && matrix.platform == 'macos-latest'
