@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
-import { Minimize, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsModal } from "@/ui/components/SettingsModal";
 import useShortcuts from "@/ui/hooks/useShortcuts";
@@ -163,7 +163,9 @@ export default function Titlebar() {
       {window.label === "main" && (
         <div
           data-tauri-drag-region={true}
-          className="z-999999 ml-0 justify-center px-2 gap-2 flex items-center h-full"
+          className={`z-999999 ${
+            os === "macos" && "ml-auto"
+          }  justify-center px-2 gap-2 flex items-center h-full`}
         >
           <>
             <DropdownMenu>

@@ -1,4 +1,3 @@
-import { useUserConfig } from "@/ui/hooks/useUserConfig";
 import { SectionHeader } from "./SectionHeader";
 import { Toggle } from "./Toggle";
 
@@ -22,9 +21,6 @@ export function BehaviorSection({
   options = defaultOptions,
   onBehaviorChange,
 }: BehaviorSectionProps) {
-  console.log(behavior);
-  const { config } = useUserConfig();
-  console.log(options);
   return (
     <section className="space-y-4 animate-in fade-in">
       <SectionHeader title="Behavior" description="Interaction preferences " />
