@@ -88,6 +88,25 @@ jobs:
       - name: Install Windows dependencies2
         if: matrix.platform == 'windows-latest'
         run: cargo install trusted-signing-cli
+      - name: Ensure .NET  is installed
+        if: matrix.platform == 'windows-latest'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Install Azure CLI
+        if: matrix.platform == 'windows-latest'
+        run: |
+          choco install azure-cli -y
+          az --version
+
+      - name: Verify signtool availability
+        if: matrix.platform == 'windows-latest'
+        run: |
+          echo "Checking signtool..."
+          where signtool || echo "signtool not found; installing Windows SDK"
+          choco install windows-sdk-11-version-22h2-all -y
+          where signtool
       - name: Build and sign app
         uses: tauri-apps/tauri-action@v0
         env:
