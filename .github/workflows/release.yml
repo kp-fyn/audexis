@@ -95,6 +95,11 @@ jobs:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          trusted-signing-account-name: Audexis
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
           files: ${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.exe,${{ github.workspace }}\apps\desktop\src-tauri\target\x86_64-pc-windows-msvc\release\audexis.dll
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
