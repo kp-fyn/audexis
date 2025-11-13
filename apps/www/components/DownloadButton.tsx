@@ -55,7 +55,8 @@ export function DownloadButton({ release }: DownloadButtonProps) {
       </a>
 
       <p className="text-sm text-muted-foreground">
-        Version {release.tag_name} • {mainFileSize} MB • Windows 10+
+        Version {release.tag_name} • {mainFileSize} MB • is{" "}
+        {isMac ? "macOS 11+" : "Windows 10+"}
       </p>
 
       <Button asChild variant="link">
