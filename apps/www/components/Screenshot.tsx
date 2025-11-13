@@ -17,17 +17,15 @@ export default function Screenshot() {
   }
 
   return (
-    <section className="w-full px-8 py-16">
-      <div className="relative w-full aspect-video rounded-[10.5    rem] overflow-hidden">
-        <Image
-          src={`/screenshot-${theme || "dark"}.png`}
-          alt="Audexis Screenshot"
-          fill
-          sizes="100vw"
-          className="object-contain r"
-          priority
-        />
-      </div>
-    </section>
+    <div className="  h-full w-full   flex">
+      <Image
+        src={`/screenshot-${theme || "dark"}.png`}
+        alt="Audexis Screenshot"
+        width={1200}
+        height={700}
+        className="max-w-full rounded"
+        priority
+      />
+    </div>
   );
 }

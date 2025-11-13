@@ -1,6 +1,6 @@
 [package]
 name = "audexis"
-version = "0.2.3"
+version = "0.1.0"
 description = "An audio metadata editor built with Tauri"
 authors = ["Kp Adeyinka"]
 edition = "2021"

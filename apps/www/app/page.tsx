@@ -44,10 +44,10 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="flex min-h-screen flex-col bg-background">
-        <section className="flex flex-col items-center justify-center px-4 py-20 md:py-32">
-          <div className="max-w-4xl text-center space-y-6">
+        <section className="flex flex-row  px-4 py-20 md:py-32">
+          <div className="max-w-4xl mt-18  space--6">
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-              Audio Metadata,
+              Audio Metadata
               <br />
               <span className="text-primary">Simplified</span>
             </h1>
@@ -58,23 +58,25 @@ export default async function Home() {
               organize your music library with ease.
             </p>
 
-            <div className="flex items-start  flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <div className="flex i  flex-col sm:flex-row item-center gap-4 mt-8">
               <DownloadButton release={release} />
-              <Link
-                href="/docs"
-                className="inline-flex  gap-2 rounded-lg border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-muted"
-              >
-                View Documentation
-              </Link>
+              <div>
+                <Link
+                  href="/docs"
+                  className="inline-flex  gap-2 rounded-lg border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-muted"
+                >
+                  View Documentation
+                </Link>
+              </div>
             </div>
-
-            <p className="text-sm text-muted-foreground mt-4">
-              Free & Open Source • macOS 11+
-            </p>
+          </div>
+          <div className="flex-1  flex">
+            <div className="ml-auto pl-12">
+              <Screenshot />
+            </div>
           </div>
         </section>
 
-        <Screenshot />
         <section className="px-4 py-16 bg-muted/30">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
