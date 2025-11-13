@@ -8,13 +8,14 @@ interface DownloadButtonProps {
 }
 
 export function DownloadButton({ release }: DownloadButtonProps) {
+  console.log("DownloadButton release:", release);
   if (!release) {
     return (
       <button
         disabled
         className="inline-flex items-center gap-2 rounded-lg bg-muted px-8 py-4 text-lg font-semibold text-muted-foreground cursor-not-allowed"
       >
-        Download Coming Soon
+        Download Error
       </button>
     );
   }

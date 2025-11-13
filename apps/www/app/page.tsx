@@ -52,9 +52,9 @@ export default async function Home() {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              A powerful and intuitive audio metadata editor for macOS. Edit ID3
-              tags, manage album art, batch rename files, and organize your
-              music library with ease.
+              A powerful and intuitive audio metadata editor for macOS and
+              Windows. Edit ID3 tags, manage album art, batch rename files, and
+              organize your music library with ease.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
