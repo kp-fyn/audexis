@@ -1,11 +1,11 @@
 import "../styles/globals.css";
-import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import SearchBar from "@/components/SearchBar";
 import { getDocsGroups } from "@/app/docs/registry";
 import type { Metadata } from "next";
 import Script from "next/script";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.audexis.app"),
@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     default: "Audexis - Audio Metadata Editor for macOS",
     template: "%s | Audexis",
   },
+
   description:
     "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, manage album art, batch rename files, and organize your music library with ease.",
   keywords: [
@@ -88,11 +89,7 @@ export default async function RootLayout({
           />
         </head>
         <body className="">
-          <ThemeProvider
-            attribute="data-theme"
-            defaultTheme="system"
-            enableSystem
-          >
+          <ThemeProvider>
             <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md py-1">
               <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-4">
                 <div className="flex items-center gap-4">

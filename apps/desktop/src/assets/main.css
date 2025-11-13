@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import "@audexis/shared/styles";
+@import "./shared.css";
 
 @font-face {
   font-family: "Reddit Sans";
