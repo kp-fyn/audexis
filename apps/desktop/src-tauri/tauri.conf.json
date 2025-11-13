@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "audexis",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "identifier": "com.audexis",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "npm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
