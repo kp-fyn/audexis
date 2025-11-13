@@ -70,14 +70,19 @@ export default async function RootLayout({
     <>
       <html lang="en" dir="ltr" suppressHydrationWarning>
         <head>
+          <Script
+            fetchPriority="high"
+            strategy="beforeInteractive"
+            src="/noFlash.js"
+          />
           <script
             dangerouslySetInnerHTML={{
               __html: `
               try {
-                const theme = localStorage.getItem("theme");
+                let theme2= localStorage.getItem("theme");
                 if (
-                  theme === "dark" ||
-                  (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+                  theme2 === "dark" ||
+                  (!theme2 && window.matchMedia("(prefers-color-scheme: dark)").matches)
                 ) {
                   document.documentElement.setAttribute("data-theme", "dark");
                 } else {

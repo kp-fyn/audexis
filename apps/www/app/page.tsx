@@ -43,7 +43,6 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Script type="text/javascript" src="/noFlash.js" beforeInteractive />
       <div className="flex min-h-screen flex-col bg-background">
         <section className="flex flex-col items-center justify-center px-4 py-20 md:py-32">
           <div className="max-w-4xl text-center space-y-6">
