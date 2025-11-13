@@ -71,23 +71,14 @@ export default async function RootLayout({
       <html lang="en" dir="ltr" suppressHydrationWarning>
         <head>
           <script
-            id="theme-script"
             dangerouslySetInnerHTML={{
               __html: `
-          (function() {
-            try {
-              var theme = localStorage.getItem('theme');
-              if (
-                theme === 'dark' ||
-                (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-              ) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-              } else {
-                document.documentElement.setAttribute('data-theme', 'light');
-              }
-            } catch (e) {}
-          })();
-        `,
+              (function() {
+                const fetchedTheme = localStorage.getItem('theme') || 'dark';
+                let theme = fetchedTheme !== 'light' || fetchedTheme !== 'dark' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+              })();
+            `,
             }}
           />
         </head>
