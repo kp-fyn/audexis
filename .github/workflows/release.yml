@@ -45,7 +45,9 @@ jobs:
           workspaces: "./apps/desktop/src-tauri -> target"
 
       - name: Install frontend dependencies
+
         run: npm install
+        working-directory: ./apps/desktop
 
       # macOS Certificate Import
       - name: Import signing certificate (macOS only)
