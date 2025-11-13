@@ -37,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (storedTheme !== "light" && storedTheme !== "dark") {
         storedTheme = "light";
       }
-      setTheme(storedTheme);
+      setTheme(storedTheme as "light" | "dark");
       document.documentElement.setAttribute("data-theme", storedTheme);
       document.cookie = `theme=${storedTheme}; path=/; max-age=31536000`;
     } else {
