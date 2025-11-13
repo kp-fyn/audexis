@@ -13,7 +13,7 @@ export function useAutoUpdater() {
       try {
         console.log("[Auto-Updater] Checking for updates...");
 
-        const update = await check({ target: "darwin-aarch64" });
+        const update = await check();
         console.log({ update });
         console.log("[Auto-Updater] Update check result:", update);
 
