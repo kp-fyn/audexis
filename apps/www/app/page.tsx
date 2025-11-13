@@ -57,11 +57,11 @@ export default async function Home() {
               organize your music library with ease.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <div className="flex items-start  flex-col sm:flex-row items-center justify-center gap-4 mt-8">
               <DownloadButton release={release} />
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-muted"
+                className="inline-flex  gap-2 rounded-lg border border-border px-8 py-4 text-lg font-semibold transition-colors hover:bg-muted"
               >
                 View Documentation
               </Link>
@@ -298,28 +298,6 @@ export default async function Home() {
             </div>
           </div>
         </section>
-
-        <footer className="px-4 py-8 border-t border-border">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <div>MIT {new Date().getFullYear()} © Audexis</div>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/docs"
-                className="hover:text-foreground transition-colors"
-              >
-                Documentation
-              </Link>
-              <a
-                href="https://github.com/kp-fyn/audexis"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground transition-colors"
-              >
-                GitHub
-              </a>
-            </div>
-          </div>
-        </footer>
       </div>
     </>
   );
