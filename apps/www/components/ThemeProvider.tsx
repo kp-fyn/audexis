@@ -23,16 +23,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   function changeTheme(newTheme: "light" | "dark") {
     setTheme(newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("theme", newTheme);
+    document.cookie = `theme=${newTheme}; path=/; max-age=31536000`;
   }
   useEffect(() => {
-    const storedTheme = localStorage.getItem("theme") as
-      | "light"
-      | "dark"
-      | null;
-    if (storedTheme) {
+    let storedTheme = "";
+    document.cookie.split("; ").forEach((cookie) => {
+      const [name, value] = cookie.split("=");
+      if (name === "theme" && (value === "light" || value === "dark")) {
+        storedTheme = value;
+      }
+    });
+    if (storedTheme.length) {
+      if (storedTheme !== "light" && storedTheme !== "dark") {
+        storedTheme = "light";
+      }
       setTheme(storedTheme);
       document.documentElement.setAttribute("data-theme", storedTheme);
+      document.cookie = `theme=${storedTheme}; path=/; max-age=31536000`;
     } else {
       const prefersDark = window.matchMedia(
         "(prefers-color-scheme: dark)"
@@ -41,7 +48,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         "data-theme",
         prefersDark ? "dark" : "light"
       );
-      localStorage.setItem("theme", prefersDark ? "dark" : "light");
+      document.cookie = `theme=${
+        prefersDark ? "dark" : "light"
+      }; path=/; max-age=31536000`;
+
       setTheme(prefersDark ? "dark" : "light");
     }
   }, []);

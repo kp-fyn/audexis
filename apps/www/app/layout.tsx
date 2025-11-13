@@ -4,8 +4,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import SearchBar from "@/components/SearchBar";
 import { getDocsGroups } from "@/app/docs/registry";
 import type { Metadata } from "next";
-import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.audexis.app"),
@@ -66,21 +66,15 @@ export default async function RootLayout({
 }) {
   const groups = await getDocsGroups();
 
+  let theme = (await cookies()).get("theme")?.value || "light";
+
+  if (theme !== "light" && theme !== "dark") {
+    theme = "light";
+  }
+
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                const fetchedTheme = localStorage.getItem('theme') || 'dark';
-                let theme = fetchedTheme !== 'light' || fetchedTheme !== 'dark' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : 'light';
-                document.documentElement.setAttribute('data-theme', theme);
-              })();
-            `,
-          }}
-        />
-      </head>
+    <html lang="en" dir="ltr" data-theme={theme} suppressHydrationWarning>
+      <head></head>
       <body className="">
         <ThemeProvider>
           <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md py-1">
