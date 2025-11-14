@@ -3,6 +3,7 @@ mod file_watcher;
 mod tag_manager;
 mod workspace;
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_updater::UpdaterExt;
 
 // use std::collections::HashMap;
 use std::sync::Mutex;
@@ -86,6 +87,46 @@ fn save_changes(app_handle: AppHandle, changes: Changes, state: State<'_, AppSta
     }
 }
 
+#[tauri::command]
+async fn check_update(app: tauri::AppHandle) -> Option<u8> {
+    let updater = app.updater();
+    if updater.is_err() {
+        return Some(1);
+    }
+    let updater = updater.unwrap();
+
+    if let Ok(update) = updater.check().await {
+        return Some(1);
+    } else {
+        println!(
+            "No update available. Current version: {}",
+            app.package_info().version
+        );
+        return Some(0);
+    }
+}
+#[tauri::command]
+async fn update_app(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
+    if let Some(update) = app.updater()?.check().await? {
+        let mut downloaded = 0;
+
+        update
+            .download_and_install(
+                |chunk_length, content_length| {
+                    downloaded += chunk_length;
+                    println!("downloaded {downloaded} from {content_length:?}");
+                },
+                || {
+                    println!("download finished");
+                },
+            )
+            .await?;
+
+        app.restart();
+    }
+
+    Ok(())
+}
 #[tauri::command]
 fn save_frame_changes(
     app_handle: AppHandle,
@@ -667,6 +708,8 @@ pub fn run() {
             open,
             open_default,
             rename_files,
+            check_update,
+            update_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

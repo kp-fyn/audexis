@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import toast from "react-hot-toast";
+import { invoke } from "@tauri-apps/api/core";
 
 export function useAutoUpdater() {
   useEffect(() => {
@@ -13,18 +14,15 @@ export function useAutoUpdater() {
       try {
         console.log("[Auto-Updater] Checking for updates...");
 
-        const update = await check();
-        console.log({ update });
-        console.log("[Auto-Updater] Update check result:", update);
+        let hasUpdate = await invoke("check_update");
 
-        if (update) {
-          console.log("[Auto-Updater] Update available:", update.version);
+        if (hasUpdate) {
           toast(
             (t) => (
               <div className="flex flex-col gap-2">
                 <div className="font-semibold">Update Available!</div>
                 <div className="text-sm">
-                  Version {update.version} is ready to install
+                  There is an update ready to install
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -33,11 +31,9 @@ export function useAutoUpdater() {
                       toast.loading("Downloading update...");
 
                       try {
-                        await update.downloadAndInstall();
+                        await invoke("update_app");
                         toast.dismiss();
-                        toast.success(
-                          "Update installed! Close and reopen app to apply."
-                        );
+                        toast("", {});
                       } catch (error) {
                         toast.dismiss();
                         toast.error(`Update failed: ${error}`);
@@ -57,6 +53,7 @@ export function useAutoUpdater() {
               </div>
             ),
             {
+              id: "update-available",
               duration: Infinity,
             }
           );
