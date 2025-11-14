@@ -14,7 +14,7 @@ export function useAutoUpdater() {
         console.log("[Auto-Updater] Checking for updates...");
 
         let hasUpdate = await invoke("check_update");
-
+        console.log(hasUpdate);
         if (hasUpdate) {
           toast(
             (t) => (

@@ -2,6 +2,7 @@ mod config;
 mod file_watcher;
 mod tag_manager;
 mod workspace;
+use semver::Version;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 
@@ -91,17 +92,17 @@ fn save_changes(app_handle: AppHandle, changes: Changes, state: State<'_, AppSta
 async fn check_update(app: tauri::AppHandle) -> Option<u8> {
     let updater = app.updater();
     if updater.is_err() {
-        return Some(1);
+        return Some(0);
     }
     let updater = updater.unwrap();
 
     if let Ok(update) = updater.check().await {
-        return Some(1);
+        if update.is_some() {
+            return Some(1);
+        } else {
+            return Some(0);
+        }
     } else {
-        println!(
-            "No update available. Current version: {}",
-            app.package_info().version
-        );
         return Some(0);
     }
 }
