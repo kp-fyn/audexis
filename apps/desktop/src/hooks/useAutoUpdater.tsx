@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { check } from "@tauri-apps/plugin-updater";
 import toast from "react-hot-toast";
 import { invoke } from "@tauri-apps/api/core";
 
