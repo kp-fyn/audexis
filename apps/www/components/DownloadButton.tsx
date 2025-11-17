@@ -7,9 +7,15 @@ import { Button } from "./Button";
 
 interface DownloadButtonProps {
   release: GitHubRelease | null;
+  metadata?: boolean;
+  style?: "foreground" | "muted";
 }
 
-export function DownloadButton({ release }: DownloadButtonProps) {
+export function DownloadButton({
+  release,
+  metadata,
+  style,
+}: DownloadButtonProps) {
   const [os, setOs] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,25 +51,31 @@ export function DownloadButton({ release }: DownloadButtonProps) {
 
   return (
     <div className="flex flex-col justify-start">
-      <a
-        href={mainAsset?.browser_download_url}
-        download
-        className="inline-flex rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      <Button
+        size={"lg"}
+        variant={style === "foreground" ? "secondary" : "default"}
+        asChild
       >
-        <ArrowDownTrayIcon className="h-6 w-6 mr-2" />
-        Download for {isMac ? "macOS" : "Windows"}
-      </a>
-
-      <p className="text-sm text-muted-foreground">
-        Version {release.tag_name} • {mainFileSize} MB • is{" "}
-        {isMac ? "macOS 11+" : "Windows 10+"}
-      </p>
-
-      <Button asChild variant="link">
-        <a download href={altAsset?.browser_download_url}>
-          Download for {isMac ? "Windows" : "macOS"}
+        <a href={mainAsset?.browser_download_url} download>
+          <ArrowDownTrayIcon className="h-6 w-6 mr-2" />
+          Download for {isMac ? "macOS" : "Windows"}
         </a>
       </Button>
+      {metadata && (
+        <>
+          <p className="text-sm text-muted-foreground text-center ">
+            Version {release.tag_name} • {mainFileSize} MB • &nbsp;
+            {isMac ? "macOS 11+" : "Windows 10+"}
+          </p>
+          <div className="flex justify-center">
+            <Button asChild variant="link" className="w-max">
+              <a download href={altAsset?.browser_download_url}>
+                Download for {isMac ? "Windows" : "macOS"}
+              </a>
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

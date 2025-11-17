@@ -4,8 +4,11 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 
 export function EditOnGitHub() {
-  const pathname = usePathname();
-
+  let pathname = usePathname();
+  console.log("Current pathname:", pathname);
+  if (pathname === "/docs" || pathname === "/docs/") {
+    pathname = "/docs/page";
+  }
   const githubPath = `apps/www/app${pathname}.mdx`;
   const githubUrl = `https://github.com/kp-fyn/audexis/edit/main/${githubPath}`;
 

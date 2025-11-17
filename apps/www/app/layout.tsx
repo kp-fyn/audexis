@@ -1,11 +1,10 @@
 import "../styles/globals.css";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import SearchBar from "@/components/SearchBar";
-import { getDocsGroups } from "@/app/docs/registry";
+
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { cookies } from "next/headers";
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.audexis.app"),
@@ -64,8 +63,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const groups = await getDocsGroups();
-
   let theme = (await cookies()).get("theme")?.value || "light";
 
   if (theme !== "light" && theme !== "dark") {
@@ -75,39 +72,11 @@ export default async function RootLayout({
   return (
     <html lang="en" dir="ltr" data-theme={theme} suppressHydrationWarning>
       <head></head>
-      <body className="">
+
+      <body>
         <ThemeProvider>
-          <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md py-1">
-            <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-4">
-              <div className="flex items-center gap-4">
-                <Link href="/" className="font-semibold">
-                  Audexis
-                </Link>
-                <nav className="hidden sm:flex items-center gap-4 text-sm">
-                  <Link href="/docs">Docs</Link>
-                  <a
-                    href="https://github.com/kp-fyn/audexis"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    GitHub
-                  </a>
-                </nav>
-              </div>
-
-              <div className="hidden sm:block flex-1 max-w-md mx-auto">
-                <SearchBar groups={groups} />
-              </div>
-
-              <div className="ml-auto flex items-center gap-2">
-                <div className="sm:hidden">
-                  <SearchBar groups={groups} />
-                </div>
-                <ThemeToggle />
-              </div>
-            </div>
-          </header>
-          <main className=" px-4 py-6">{children}</main>
+          <Navbar />
+          <main className="mt-14">{children}</main>
           <footer className=" px-4 py-8 text-sm opacity-70 border-t border-border">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
               <div>MIT {new Date().getFullYear()} © Audexis</div>

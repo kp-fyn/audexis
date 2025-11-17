@@ -21,6 +21,7 @@ export default function SearchBar({ groups }: SearchProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -93,6 +94,22 @@ export default function SearchBar({ groups }: SearchProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, results, selectedIndex, handleSelect]);
 
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(e.target as Node) &&
+        isOpen
+      ) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [isOpen]);
   return (
     <>
       <button
@@ -100,7 +117,7 @@ export default function SearchBar({ groups }: SearchProps) {
           setIsOpen(true);
           setTimeout(() => inputRef.current?.focus(), 100);
         }}
-        className="group flex items-center gap-3 px-4 py-1.5 bg-muted/50 hover:bg-muted/80 border border-border rounded-lg transition-all duration-150 text-left sm:w-full w-auto"
+        className="group flex items-center gap-3 md:px-4 px-2 py-2 md:bg-muted/50 md:hover:bg-muted/80 border border-border rounded-lg transition-all duration-150 text-left md:w-full w-auto"
       >
         <svg
           className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0"
@@ -115,18 +132,19 @@ export default function SearchBar({ groups }: SearchProps) {
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
-        <span className="hidden sm:inline text-sm text-muted-foreground group-hover:text-foreground flex-1">
+        <span className="hidden md:inline text-sm text-muted-foreground group-hover:text-foreground flex-1">
           Search documentation...
         </span>
-        <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground bg-background border border-border rounded">
+        <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground bg-background border border-border rounded">
           <span className="text-xs">⌘</span>K
         </kbd>
       </button>
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4 bg-background/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] h-[100vh] px-4 bg-background/80 backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
+          ref={searchRef}
         >
           <div
             className="w-full max-w-2xl bg-background border border-border rounded-lg shadow-2xl overflow-hidden"

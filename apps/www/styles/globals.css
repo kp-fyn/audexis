@@ -29,15 +29,6 @@ main.docs div {
   color: var(--color-muted-foreground);
 }
 
-html[data-theme="dark"] {
-  background-color: #0b0b0b;
-  color-scheme: dark;
-}
-html[data-theme="light"] {
-  background-color: #fff;
-  color-scheme: light;
-}
-
 html,
 body {
   background-color: var(--background);
@@ -56,7 +47,7 @@ body {
 
 [data-theme="light"] {
   --background: #f1f1f1;
-  --foreground: #0f172a;
+  --foreground: #0a0a0a;
   --hover: #e5e5e5;
   --hover-foreground: #0f172a;
 
@@ -66,13 +57,13 @@ body {
   --popover: #f1f5f9;
   --popover-foreground: #1e293b;
 
-  --primary: #eb5757;
+  --primary: #ef3636;
   --primary-foreground: #ffffff;
 
   --secondary: #e2e8f0;
   --secondary-foreground: #1e293b;
 
-  --muted: #f1f5f9;
+  --muted: #cacccf;
   --muted-foreground: rgb(90, 87, 113);
 
   --destructive: #ef4444;
@@ -92,7 +83,7 @@ body {
 
 [data-theme="dark"] {
   --background: #0a0a0a;
-  --foreground: #f1f5f9;
+  --foreground: #f1f1f1;
   --hover: #1f1f2e;
   --hover-foreground: #f1f5f9;
 
