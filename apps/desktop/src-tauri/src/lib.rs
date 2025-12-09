@@ -2,7 +2,7 @@ mod config;
 mod file_watcher;
 mod tag_manager;
 mod workspace;
-use semver::Version;
+
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 
@@ -12,16 +12,16 @@ use std::sync::Mutex;
 use base64::{engine::general_purpose, Engine as _};
 
 use rfd::FileDialog;
-use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{env, iter};
 use tauri::window::Color;
 use tauri::{AppHandle, Emitter, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 use workspace::Workspace;
 
 use crate::file_watcher::FileWatcher;
 use crate::tag_manager::utils::{
-    Changes, FrameChanges, FrameKey, SerializableFile, SerializableTagValue, TagValue,
+    Changes, CleanupRule, FrameChanges, FrameKey, SerializableFile, SerializableTagValue, TagValue,
 };
 use std::collections::HashMap;
 use tauri::Manager;
@@ -481,6 +481,27 @@ fn get_all_columns() -> Vec<Column> {
     columns
 }
 #[tauri::command]
+fn remove_files(app_handle: AppHandle, paths: Vec<String>, state: State<'_, AppState>) {
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        for p in &paths {
+            ws.remove_file(&PathBuf::from(p));
+        }
+    }
+    let serializable_files: Vec<SerializableFile> = {
+        let ws = state.workspace.lock().unwrap();
+        ws.files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect()
+    };
+    app_handle
+        .emit("workspace-updated", serializable_files)
+        .unwrap();
+}
+
+#[tauri::command]
 fn get_workspace_files(app_handle: AppHandle, state: State<'_, AppState>) {
     let ws = state.workspace.lock().unwrap();
     let serializable_files: Vec<SerializableFile> = ws
@@ -592,6 +613,48 @@ struct RenameResultItem {
     error: Option<String>,
 }
 
+#[tauri::command]
+fn clean_up_file_names(
+    app_handle: AppHandle,
+    options: Vec<CleanupRule>,
+    paths: Vec<String>,
+    state: State<'_, AppState>,
+) -> Vec<RenameResultItem> {
+    let results = {
+        let mut ws = state.workspace.lock().unwrap();
+        ws.clean_up_file_names(paths, options)
+    };
+
+    let serializable_files: Vec<SerializableFile> = {
+        let ws = state.workspace.lock().unwrap();
+        ws.files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect()
+    };
+    app_handle
+        .emit("workspace-updated", serializable_files)
+        .unwrap();
+
+    results
+        .into_iter()
+        .map(|(old, new, res)| match res {
+            Ok(()) => RenameResultItem {
+                old,
+                new,
+                ok: true,
+                error: None,
+            },
+            Err(e) => RenameResultItem {
+                old,
+                new,
+                ok: false,
+                error: Some(e),
+            },
+        })
+        .collect()
+}
 #[tauri::command]
 fn rename_files(
     app_handle: AppHandle,
@@ -705,11 +768,13 @@ pub fn run() {
             save_changes,
             save_frame_changes,
             get_frames,
+            remove_files,
             get_all_columns,
             open,
             open_default,
             rename_files,
             check_update,
+            clean_up_file_names,
             update_app
         ])
         .run(tauri::generate_context!())

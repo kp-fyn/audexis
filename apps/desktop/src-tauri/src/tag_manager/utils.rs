@@ -219,6 +219,20 @@ pub enum SerializableTagValue {
     UserUrl(UserUrlEntry),
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CleanupRule {
+    ReplaceUnderscores,
+    NormalizeDashes,
+    FixCapitalization,
+    TrimWhitespace,
+    CollapseSpaces,
+
+    RemoveSuffixes,
+    NormalizeFeat,
+    RemoveBrackets,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializablePicture {
     pub mime: String,

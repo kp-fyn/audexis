@@ -31,7 +31,6 @@ export default async function Navbar() {
         <div className="hidden md:flex   ml-auto lg:w-xl">
           <SearchBar groups={groups} />
         </div>
-
         <div className="ml-auto flex items-center gap-2">
           <div className="md:hidden">
             <SearchBar groups={groups} />

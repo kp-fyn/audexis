@@ -275,11 +275,11 @@ function App() {
           const tag = (row.original.tags as AllTags)[
             item.value as keyof AllTags
           ] as any;
-          console.log({ tag });
+
           const frames = (row.original as any)._frames as
             | Record<string, any[]>
             | undefined;
-          console.log({ frames });
+
           const frameVals = Array.isArray(frames?.[item.value])
             ? (frames![item.value] as any[])
             : [];

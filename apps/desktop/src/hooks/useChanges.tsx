@@ -240,13 +240,6 @@ export function ChangesProvider({
       const stillValid = prevSelected.filter((path) => validPaths.has(path));
 
       if (stillValid.length !== prevSelected.length) {
-        if (stillValid.length === 0) {
-          console.log("[useChanges] All selected files removed");
-        } else {
-          console.log(
-            `[useChanges] Selection updated: ${prevSelected.length} → ${stillValid.length} files`
-          );
-        }
         return stillValid;
       }
 

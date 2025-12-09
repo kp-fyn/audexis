@@ -19,6 +19,8 @@ import RenameModal from "@/ui/components/RenameModal";
 import { FindReplaceProvider } from "@/ui/hooks/useFindReplace";
 import FindReplaceBar from "@/ui/components/FindReplaceBar";
 import { useChanges } from "@/ui/hooks/useChanges";
+import { CleanupModal } from "./components/CleanupModal";
+import { CleanupProvider } from "./hooks/useCleanup";
 const query = queryString.parse(window.location.search);
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
@@ -165,6 +167,7 @@ function Root() {
           <FindReplaceBar />
           <SaveBar />
           <RenameModal />
+          <CleanupModal />
         </div>
         {showOnboarding && (
           <OnboardingModal
@@ -181,30 +184,32 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ContextMenuProvider>
       <UserConfigProvider initialTheme={theme}>
-        <RenameProvider>
-          <ChangesProvider>
-            <FindReplaceProvider>
-              <SidebarWidthProvider>
-                <Root />
-                <Toaster
-                  position="top-right"
-                  containerStyle={{
-                    marginTop: "64px",
-                  }}
-                  toastOptions={{
-                    className:
-                      "!bg-background !text-foreground !border !border-border",
-                    style: {
-                      background: "var(--background)",
-                      color: "var(--foreground)",
-                      border: "1px solid var(--border)",
-                    },
-                  }}
-                />
-              </SidebarWidthProvider>
-            </FindReplaceProvider>
-          </ChangesProvider>
-        </RenameProvider>
+        <ChangesProvider>
+          <CleanupProvider>
+            <RenameProvider>
+              <FindReplaceProvider>
+                <SidebarWidthProvider>
+                  <Root />
+                  <Toaster
+                    position="top-right"
+                    containerStyle={{
+                      marginTop: "64px",
+                    }}
+                    toastOptions={{
+                      className:
+                        "!bg-background !text-foreground !border !border-border",
+                      style: {
+                        background: "var(--background)",
+                        color: "var(--foreground)",
+                        border: "1px solid var(--border)",
+                      },
+                    }}
+                  />
+                </SidebarWidthProvider>
+              </FindReplaceProvider>
+            </RenameProvider>
+          </CleanupProvider>
+        </ChangesProvider>
       </UserConfigProvider>
     </ContextMenuProvider>
   </React.StrictMode>

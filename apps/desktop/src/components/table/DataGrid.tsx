@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useChanges } from "@/ui/hooks/useChanges";
 import { useRename } from "@/ui/hooks/useRename";
+import { useCleanup } from "@/ui/hooks/useCleanup";
 
 type DataGridProps = {
   table: any;
@@ -30,6 +31,7 @@ export default function DataGrid({
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const { hasUnsavedChanges, nudgeSaveBar } = useChanges();
   const { start: startRename } = useRename();
+  const { start: startCleanup } = useCleanup();
 
   const getIdAt = (index: number) => files[index]?.path;
   const setSelection = (ids: string[]) => setSelected(Array.from(new Set(ids)));
@@ -214,6 +216,16 @@ export default function DataGrid({
                   startRename(targets, "{artist} - {title}.{ext}");
                 },
               },
+              {
+                type: "item",
+                label: "Cleanup filenames…",
+                onSelect: () => {
+                  const targets =
+                    selected.length > 0 ? selected : [row.original.path];
+
+                  startCleanup(targets);
+                },
+              },
               { type: "separator" },
               {
                 type: "item",
@@ -225,6 +237,17 @@ export default function DataGrid({
                 label: "Open in default app",
                 onSelect: () =>
                   invoke("open_default", { path: row.original.path }),
+              },
+              { type: "separator" },
+              {
+                type: "item",
+                label: "Remove from workspace",
+                onSelect: () => {
+                  const targets =
+                    selected.length > 0 ? selected : [row.original.path];
+
+                  invoke("remove_files", { paths: targets });
+                },
               },
             ]}
             asChild

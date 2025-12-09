@@ -74,9 +74,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       .then(setAppVersion)
       .catch(() => setAppVersion("Unknown"));
   }, [open]);
-  useEffect(() => {
-    console.log({ appVersion });
-  }, [appVersion]);
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;

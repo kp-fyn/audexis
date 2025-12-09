@@ -4,7 +4,7 @@ use tauri::AppHandle;
 use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend};
 // use crate::tag_manager::traits::Formats;
 use crate::tag_manager::utils::{
-    File, FrameKey, SerializableTagValue, TagValue, UserTextEntry, UserUrlEntry,
+    CleanupRule, File, FrameKey, SerializableTagValue, TagValue, UserTextEntry, UserUrlEntry,
 };
 use base64::Engine;
 
@@ -143,6 +143,169 @@ impl Workspace {
         } else {
             return false;
         }
+    }
+    pub fn clean_up_file_names(
+        &mut self,
+        file_paths: Vec<String>,
+        options: Vec<CleanupRule>,
+    ) -> Vec<(String, String, Result<(), String>)> {
+        let mut results = Vec::new();
+        println!("Starting cleanup for {} files", file_paths.len());
+        for path_str in file_paths {
+            let path = PathBuf::from(&path_str);
+            println!("Processing file: {}", path.display());
+            if let Some(file) = self.files.iter_mut().find(|x| x.path == path) {
+                let mut new_name = file
+                    .path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("untitled")
+                    .to_string();
+                for rule in &options {
+                    match rule {
+                        CleanupRule::ReplaceUnderscores => {
+                            new_name = new_name.replace('_', " ");
+                        }
+                        CleanupRule::NormalizeDashes => {
+                            new_name = new_name
+                                .chars()
+                                .map(|c| if c == '–' || c == '—' { '-' } else { c })
+                                .collect();
+                        }
+                        CleanupRule::NormalizeFeat => {
+                            let patterns = vec![
+                                " feat. ",
+                                " ft. ",
+                                " featuring ",
+                                "Feat. ",
+                                "Ft. ",
+                                "Featuring ",
+                                " FEAT. ",
+                                " FT. ",
+                                " FEATURING ",
+                            ];
+                            for p in patterns {
+                                if new_name.contains(p) {
+                                    new_name = new_name.replace(p, " feat. ");
+                                }
+                            }
+                        }
+                        CleanupRule::RemoveSuffixes => {
+                            let suffixes = vec![
+                                "(Official Video)",
+                                "[Official Video]",
+                                "(Official Music Video)",
+                                "[Official Music Video]",
+                                "(Lyric Video)",
+                                "[Lyric Video]",
+                                "(Audio)",
+                                "[Audio]",
+                            ];
+                            for suffix in suffixes {
+                                if new_name.ends_with(suffix) {
+                                    new_name = new_name.trim_end_matches(suffix).trim().to_string();
+                                }
+                            }
+                        }
+
+                        CleanupRule::RemoveBrackets => {
+                            let patterns = vec![('(', ')'), ('[', ']'), ('{', '}'), ('<', '>')];
+                            for (open, close) in patterns {
+                                loop {
+                                    if let Some(start) = new_name.find(open) {
+                                        if let Some(end) = new_name[start..].find(close) {
+                                            let end = start + end;
+                                            new_name.replace_range(start..=end, "");
+                                            new_name = new_name.trim().to_string();
+                                        } else {
+                                            break;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        CleanupRule::FixCapitalization => {
+                            fn capitalize_word(word: &str) -> String {
+                                let mut chars = word.chars();
+                                match chars.next() {
+                                    Some(first) => {
+                                        first.to_uppercase().collect::<String>() + chars.as_str()
+                                    }
+                                    None => String::new(),
+                                }
+                            }
+                            const LOWERS: &[&str] = &[
+                                "the", "a", "an", "and", "or", "but", "for", "nor", "as", "at",
+                                "by", "in", "on", "of", "per", "to", "vs",
+                            ];
+
+                            let words: Vec<&str> = new_name.split_whitespace().collect();
+
+                            let mut result: Vec<String> = Vec::with_capacity(words.len());
+
+                            for (i, word) in words.iter().enumerate() {
+                                let w = word.to_lowercase();
+
+                                if i == 0 {
+                                    result.push(capitalize_word(&w));
+                                } else if LOWERS.contains(&w.as_str()) {
+                                    result.push(w);
+                                } else {
+                                    result.push(capitalize_word(&w));
+                                }
+                            }
+
+                            new_name = result.join(" ");
+                        }
+
+                        CleanupRule::CollapseSpaces => {
+                            let mut collapsed = String::new();
+                            let mut prev_space = false;
+                            for c in new_name.chars() {
+                                if c.is_whitespace() {
+                                    if !prev_space {
+                                        collapsed.push(' ');
+                                        prev_space = true;
+                                    }
+                                } else {
+                                    collapsed.push(c);
+                                    prev_space = false;
+                                }
+                            }
+                            new_name = collapsed;
+                        }
+                        CleanupRule::TrimWhitespace => {
+                            new_name = new_name.trim().to_string();
+                        }
+                    }
+                }
+                print!("Renaming to: {}", new_name);
+                let ext = file.path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if !ext.is_empty() {
+                    new_name = format!("{}.{}", new_name, ext);
+                }
+                let parent = file.path.parent().unwrap_or(Path::new("."));
+                let target = parent.join(&new_name);
+                if target != file.path {
+                    match fs::rename(&file.path, &target) {
+                        Ok(_) => {
+                            file.path = target.clone();
+                            results.push((path_str.clone(), target.display().to_string(), Ok(())));
+                        }
+                        Err(e) => {
+                            results.push((
+                                path_str.clone(),
+                                target.display().to_string(),
+                                Err(e.to_string()),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        results
     }
 
     pub fn rename_by_pattern(
