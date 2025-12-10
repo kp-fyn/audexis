@@ -1,42 +1,42 @@
 // TODO: Add preview of changes before applying
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useChanges } from "@/ui/hooks/useChanges";
-import type { File } from "@/ui/types";
+// import { useChanges } from "@/ui/hooks/useChanges";
+// import type { File } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useCleanup } from "../hooks/useCleanup";
 import { Checkbox } from "./Checkbox";
 
-function sanitizeFilename(name: string) {
-  const invalid = /[\\/:*?"<>|]/g;
-  return name
-    .trim()
-    .replace(invalid, "_")
-    .replace(/\s+/g, " ")
-    .replace(/^\.+|\.+$/g, "");
-}
+// function sanitizeFilename(name: string) {
+//   const invalid = /[\\/:*?"<>|]/g;
+//   return name
+//     .trim()
+//     .replace(invalid, "_")
+//     .replace(/\s+/g, " ")
+//     .replace(/^\.+|\.+$/g, "");
+// }
 
-function applyPatternFrontend(file: File, pattern: string): string {
-  const map: Record<string, string> = {};
-  const tags = file.tags as any;
-  Object.keys(tags).forEach((k) => {
-    const v = tags[k];
-    if (v && typeof v === "object" && "type" in v && v.type === "Text") {
-      map[k] = String(v.value ?? "");
-    }
-  });
-  const ext = file.path.split(".").pop() || "";
-  map["ext"] = ext;
+// function applyPatternFrontend(file: File, pattern: string): string {
+//   const map: Record<string, string> = {};
+//   const tags = file.tags as any;
+//   Object.keys(tags).forEach((k) => {
+//     const v = tags[k];
+//     if (v && typeof v === "object" && "type" in v && v.type === "Text") {
+//       map[k] = String(v.value ?? "");
+//     }
+//   });
+//   const ext = file.path.split(".").pop() || "";
+//   map["ext"] = ext;
 
-  const replaced = pattern.replace(/\{([^}]+)\}/g, (_m, key) => {
-    const k = String(key);
-    return map[k] ?? "";
-  });
+//   const replaced = pattern.replace(/\{([^}]+)\}/g, (_m, key) => {
+//     const k = String(key);
+//     return map[k] ?? "";
+//   });
 
-  const s = sanitizeFilename(replaced);
-  if (s.toLowerCase().endsWith(`.${ext.toLowerCase()}`)) return s;
-  return ext ? `${s}.${ext}` : s;
-}
+//   const s = sanitizeFilename(replaced);
+//   if (s.toLowerCase().endsWith(`.${ext.toLowerCase()}`)) return s;
+//   return ext ? `${s}.${ext}` : s;
+// }
 const cleanupOptions = [
   {
     id: "replaceUnderscores",
@@ -78,7 +78,7 @@ const cleanupOptions = [
 
 export function CleanupModal() {
   const { open, close, paths } = useCleanup();
-  const { files } = useChanges();
+  // const { files } = useChanges();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const firstRef = useRef<HTMLInputElement | null>(null);
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
@@ -113,10 +113,10 @@ export function CleanupModal() {
     };
   }, [open]);
 
-  const selectedFiles = useMemo(() => {
-    const set = new Set(paths);
-    return files.filter((f) => set.has(f.path));
-  }, [files, paths]);
+  // const selectedFiles = useMemo(() => {
+  //   const set = new Set(paths);
+  //   return files.filter((f) => set.has(f.path));
+  // }, [files, paths]);
 
   // const preview = useMemo(() => {
   //   const items = selectedFiles.map((f) => ({
@@ -166,7 +166,7 @@ export function CleanupModal() {
       aria-modal="true"
       role="dialog"
       aria-labelledby="rename-modal-title"
-      className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 z-1200 flex items-center justify-center p-4 md:p-8"
     >
       <div
         className="absolute inset-0 bg-background/70 backdrop-blur-sm border-t border-border animate-in fade-in"
@@ -175,7 +175,7 @@ export function CleanupModal() {
       <span tabIndex={0} aria-hidden="true" />
       <div
         ref={dialogRef}
-        className={`relative w-full max-w-3xl rounded-lg border border-border bg-gradient-to-b from-background/95 to-background/80 shadow-xl ring-1 ring-border/50 overflow-hidden animate-in ${
+        className={`relative w-full max-w-3xl rounded-lg border border-border bg-linear-to-b from-background/95 to-background/80 shadow-xl ring-1 ring-border/50 overflow-hidden animate-in ${
           closing ? "animate-out fade-out zoom-out-95" : "zoom-in-90"
         } duration-150`}
       >
