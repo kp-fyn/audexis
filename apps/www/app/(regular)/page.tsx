@@ -46,26 +46,26 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="flex min-h-screen flex-col ">
-        <section className="flex flex-col lg:flex-row px-8 lg:px-16   lg:py-32">
-          <div className="max-w-4xl mt-18 space-y-6">
-            <h1 className="text-5xl text-center lg:text-start lg:text-7xl font-bold tracking-tight text-foreground">
+      <div className="flex min-h-screen flex-col  bg-background">
+        <section className="flex flex-col px-8 lg:px-16  items-center justify-center  ">
+          <div className="flex flex-col mt-18 space-y-4 w-full">
+            <h1 className="text-8xl text-center   font-bold tracking-tight text-foreground">
               Audio Metadata
               <br />
               <span className="text-primary">Simplified</span>
             </h1>
 
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-4xl text-center mx-auto">
               A powerful and intuitive audio metadata editor for macOS and
               Windows. Edit ID3 tags, manage album art, batch rename files, and
               organize your music library with ease.
             </p>
 
-            <div className="flex flex-col-reverse lg:flex-row item-center gap-4 mt-8">
+            <div className="flex justify-center flex-col-reverse lg:flex-row item-center gap-4 ">
               <DownloadButton metadata release={release} />
               <div className="w-full lg:w-auto">
                 <Button
-                  variant={"secondary"}
+                  variant={"outline"}
                   className="w-full"
                   size={"lg"}
                   asChild
@@ -76,12 +76,56 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex-1  flex">
-            <div className="lg:ml-auto items-cener lg:pl-12">
-              <Screenshot />
+            <div className="lg:ml-auto items-center lg:pl-12">
+              <div>
+                <Screenshot
+                  src={`/screenshot`}
+                  alt="Audexis Screenshot"
+                  width={1200}
+                  height={300}
+                  className="max-w-full rounded drop-shadow-2xl"
+                />
+              </div>
             </div>
           </div>
         </section>
+
         <Features />
+        <section className=" py-12 mt-24 px-4 lg:px-32 rounded-lg">
+          <h2 className="text-4xl md:text-4xl font-semibold text-foreground mb-4">
+            Customize to your Liking
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-2xl">
+            Tailor Audexis to fit your workflow and aesthetic preferences with a
+            variety of customization options.
+          </p>
+          <div className="flex flex-col lg:flex-row mt-6 gap-x-24 gap-y-12">
+            <div className="flex mt-6 flex-col gap-8">
+              {MiniCustomizationFeatures.map((feature, i) => (
+                <div
+                  key={feature.title}
+                  className={`space-y-2 ${
+                    i + 1 !== MiniCustomizationFeatures.length
+                      ? "border-b border-border pb-4"
+                      : ""
+                  }`}
+                >
+                  <h3 className="text-2xl  text-foreground">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+            <div className=" flex a justify-center w-full  mb-8 md:mb-0">
+              <Screenshot
+                width={1200}
+                height={100}
+                src={`/settings`}
+                alt="Multi Image aspect-video Editing Support in Audexis"
+                className="rounded-lg border border-border shadow-xl "
+              />
+            </div>
+          </div>
+        </section>
         <section className="px-4 py-16">
           <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -103,17 +147,20 @@ export default async function Home() {
             </div>
           </div>
         </section>
-
-        <section className="px-4 py-16 bg-primary/5">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              Ready to Get Started?
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Download Audexis today and take control of your music library.
+        <section className="py-12 bg-muted/70 flex flex-col lg:flex-row mt-24 px-4 lg:px-32 gap-6 rounded-lg ">
+          <div className="flex flex-col">
+            <h3 className="text-4xl font-semibold text-foreground mb-2">
+              Take Control of Your Audio Library
+            </h3>
+            <p className="text-muted-foreground max-w-xl">
+              Audexis empowers you to effortlessly manage and edit your audio
+              metadata, ensuring your music collection is always organized and
+              up-to-date.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-              <DownloadButton release={release} />
+          </div>
+          <div className="flex flex-col sm:flex-row lg:ml-auto items-center justify-center gap-4 mt-8">
+            <DownloadButton release={release} />
+            <Button variant={"outline"} asChild size={"lg"}>
               <a
                 href="https://github.com/kp-fyn/audexis"
                 target="_blank"
@@ -133,10 +180,27 @@ export default async function Home() {
                 </svg>
                 View on GitHub
               </a>
-            </div>
+            </Button>
           </div>
         </section>
       </div>
     </>
   );
 }
+
+const MiniCustomizationFeatures = [
+  {
+    title: "Theme Options",
+    description:
+      "Choose between light, dark, or system themes to match your macOS appearance settings.",
+  },
+  {
+    title: "Column Customization",
+    description: "Drag and drop columns to customize your workspace.",
+  },
+  {
+    title: "Flexible Layouts",
+    description:
+      "Adjust the layout to suit your workflow, whether you prefer a compact view or detailed information.",
+  },
+];

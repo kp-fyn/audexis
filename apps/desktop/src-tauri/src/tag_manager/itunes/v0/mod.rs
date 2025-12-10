@@ -917,6 +917,9 @@ impl TagFormat for V0 {
                     }
                 }
 
+                if data_size > ilst_atom.size {
+                    continue;
+                }
                 let text = String::from_utf8_lossy(
                     &ilst_atom.buffer[data_start as usize..(data_start + data_size) as usize],
                 )

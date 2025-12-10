@@ -46,75 +46,77 @@ body {
 }
 
 [data-theme="light"] {
-  --background: #f1f1f1;
-  --foreground: #0a0a0a;
-  --hover: #e5e5e5;
-  --hover-foreground: #0f172a;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 
   --card: #ffffff;
-  --card-foreground: #1e293b;
+  --card-foreground: #0f172a;
 
-  --popover: #f1f5f9;
-  --popover-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
 
-  --primary: #ef3636;
+  --primary: #e11d48;
   --primary-foreground: #ffffff;
 
-  --secondary: #e2e8f0;
-  --secondary-foreground: #1e293b;
+  --secondary: #92979e;
+  --secondary-foreground: #0f172a;
 
-  --muted: #cacccf;
-  --muted-foreground: rgb(90, 87, 113);
+  --muted: #e5e7eb;
+  --muted-foreground: #64748b;
 
-  --destructive: #ef4444;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
-  --border: #cbd5e1;
-  --input: #cbd5e1;
+  --border: #d4d4d8;
+  --input: #d4d4d8;
 
-  --accent: #eb6e6e;
-  --accent-foreground: #ffffff;
+  --accent: #fecdd3;
+  --accent-foreground: #831843;
 
-  --ring: #fca5a5;
+  --hover: #fdf2f6;
+  --hover-foreground: #0f172a;
 
-  --scrollbar-track: #e5e7eb;
-  --scrollbar-thumb: #eb5757;
+  --ring: #e11d48;
+
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #e11d48;
 }
 
 [data-theme="dark"] {
   --background: #0a0a0a;
-  --foreground: #f1f1f1;
-  --hover: #1f1f2e;
-  --hover-foreground: #f1f5f9;
+  --foreground: #f8fafc;
 
-  --card: #1e293b;
+  --card: #111827;
   --card-foreground: #f8fafc;
 
-  --popover: #1a222d;
+  --popover: #111827;
   --popover-foreground: #f8fafc;
 
-  --primary: #eb5757;
-  --primary-foreground: #f8fafc;
+  --primary: #fb7185;
+  --primary-foreground: #0b0f13;
 
-  --secondary: #334155;
+  --secondary: #1e293b;
   --secondary-foreground: #f1f5f9;
 
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
+  --muted: #141a26c7;
+  --muted-foreground: #9ca3af;
 
   --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
+  --destructive-foreground: #0b0f13;
 
-  --border: #334155;
-  --input: #334155;
+  --border: #272e38;
+  --input: #272e38;
 
-  --accent: #eb6e6e;
+  --accent: #4c0f23;
   --accent-foreground: #f8fafc;
 
-  --ring: #fca5a5;
+  --hover: #30121c;
+  --hover-foreground: #ffffff;
 
-  --scrollbar-track: #1e293b;
-  --scrollbar-thumb: #eb5757;
+  --ring: #fb7185;
+
+  --scrollbar-track: #0b0f13;
+  --scrollbar-thumb: #fb7185;
 }
 
 @theme {

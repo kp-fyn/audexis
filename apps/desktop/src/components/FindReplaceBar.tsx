@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useFindReplace } from "@/ui/hooks/useFindReplace";
 import Select from "@/ui/components/Select";
 import { useChanges } from "../hooks/useChanges";
+import { Checkbox } from "./Checkbox";
 
 export default function FindReplaceBar() {
   const {
@@ -88,26 +89,29 @@ export default function FindReplaceBar() {
       />
 
       <label className="text-xs flex items-center gap-1">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={options.caseSensitive}
-          onChange={(e) => setOptions({ caseSensitive: e.target.checked })}
+          onCheckedChange={(checked) =>
+            setOptions({ caseSensitive: checked ? true : false })
+          }
         />
         Aa
       </label>
       <label className="text-xs flex items-center gap-1">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={options.wholeWord}
-          onChange={(e) => setOptions({ wholeWord: e.target.checked })}
+          onCheckedChange={(checked) =>
+            setOptions({ wholeWord: checked ? true : false })
+          }
         />
         Word
       </label>
       <label className="text-xs flex items-center gap-1">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={options.regex}
-          onChange={(e) => setOptions({ regex: e.target.checked })}
+          onCheckedChange={(checked) =>
+            setOptions({ regex: checked ? true : false })
+          }
         />
         Regex
       </label>

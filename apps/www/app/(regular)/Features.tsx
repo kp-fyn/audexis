@@ -8,10 +8,10 @@ export default function Features() {
   const { theme } = useTheme();
   const features = getFeatures();
   return (
-    <section className="px-4 xl:px-24 py-16">
+    <section className="px-4 xl:px-24 py-16 bg-linear-to-t  from-background to-primary/20 rounded-lg mt-24">
       <div className="">
         <div className="mb-12">
-          <h2 className="text-4xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl md:text-4xl text-foreground mb-4">
             Everything You Need
           </h2>
           <p className="text-muted-foreground max-w-2xl ">
@@ -50,10 +50,10 @@ function Feature({
   const flexDirection = index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row";
   console.log(SVG);
   return (
-    <div className=" px-4 bg-muted/30 py-12 flex flex-col rounded   lg:px-">
+    <div className=" px-4  py-12 flex flex-col rounded   lg:px-">
       <div className={`flex flex-col ${flexDirection} gap-12 lg:gap-24`}>
         <div className=" flex flex-col w-full  lg:w-3/4 lg:px-12 gap-4  md:mt-12">
-          <div className="rounded-full bg-primary/10 p-3 w-fit">
+          <div className="rounded-full     p-3 w-fit">
             <SVG className="h-6 w-6 text-primary" />
           </div>
           <h3 className="text-3xl font-semibold text-foreground ">{title}</h3>
