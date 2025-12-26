@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { Cell, flexRender } from "@tanstack/react-table";
-import { CSSProperties, ReactNode, useEffect, useState } from "react";
+import { CSSProperties, ReactNode, useState } from "react";
 import { CSS as CSSUtil } from "@dnd-kit/utilities";
 import { File } from "@/ui/types";
 
