@@ -74,7 +74,7 @@ export function UserConfigProvider({
       "user-config-updated",
       (event: Event<UserConfig>) => {
         const config = event.payload;
-        console.log(config);
+
         const params = new URLSearchParams(window.location.search);
         const themeLower = (config.theme as string).toLowerCase() as
           | "light"
@@ -82,7 +82,7 @@ export function UserConfigProvider({
         params.set("theme", themeLower);
         document.documentElement.setAttribute(
           "data-density",
-          config.density.toLowerCase() as string
+          config.density.toLowerCase() as string,
         );
 
         const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -105,7 +105,7 @@ export function UserConfigProvider({
         }
 
         document.documentElement.setAttribute("data-theme", themeLower);
-      }
+      },
     );
     // window.app.onUserConfigUpdate((_e, config) => {
     //     console.log(config);
@@ -160,8 +160,8 @@ export function UserConfigProvider({
                 density === "default"
                   ? "Default"
                   : density === "compact"
-                  ? "Compact"
-                  : "Comfort",
+                    ? "Compact"
+                    : "Comfort",
             },
           });
           document.documentElement.setAttribute("data-density", density);

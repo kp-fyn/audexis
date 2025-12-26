@@ -1,6 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import ErrorPage from "./error";
+import { ErrorBoundary } from "react-error-boundary";
+
 import "./assets/main.css";
 import Titlebar from "./components/Titlebar";
 import queryString from "query-string";
@@ -39,9 +42,9 @@ if (params.get("theme") !== theme) {
 
 function Root() {
   const [showOnboarding, setShowOnboarding] = React.useState(
-    query.onboarding === "true"
+    query.onboarding === "true",
   );
-  const { undo, redo, canUndo, canRedo } = useChanges();
+  const { canUndo, canRedo } = useChanges();
 
   useAutoUpdater();
 
@@ -63,7 +66,7 @@ function Root() {
         combo: ["mod+f"],
         handler: () => {
           window.dispatchEvent(
-            new CustomEvent("audexis:find-open", { detail: { mode: "find" } })
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } }),
           );
         },
         allowInInputs: true,
@@ -74,7 +77,7 @@ function Root() {
           window.dispatchEvent(
             new CustomEvent("audexis:find-open", {
               detail: { mode: "replace" },
-            })
+            }),
           );
         },
         allowInInputs: true,
@@ -100,7 +103,7 @@ function Root() {
         allowInInputs: true,
       },
     ],
-    []
+    [],
   );
 
   const handleCloseOnboarding = () => {
@@ -110,7 +113,7 @@ function Root() {
       params.delete("onboarding");
       const newUrl = `${window.location.pathname}?${params.toString()}`.replace(
         /\?$/,
-        ""
+        "",
       );
       window.history.replaceState({}, "", newUrl);
     }
@@ -126,14 +129,14 @@ function Root() {
           label: "Undo",
           shortcut: "mod+Z",
           disabled: !canUndo,
-          onSelect: () => undo(),
+          onSelect: () => invoke("undo"),
         },
         {
           type: "item",
           label: "Redo",
           shortcut: "mod+shift+Z",
           disabled: !canRedo,
-          onSelect: () => redo(),
+          onSelect: () => invoke("redo"),
         },
         { type: "separator" },
         {
@@ -182,35 +185,37 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ContextMenuProvider>
-      <UserConfigProvider initialTheme={theme}>
-        <ChangesProvider>
-          <CleanupProvider>
-            <RenameProvider>
-              <FindReplaceProvider>
-                <SidebarWidthProvider>
-                  <Root />
-                  <Toaster
-                    position="top-right"
-                    containerStyle={{
-                      marginTop: "64px",
-                    }}
-                    toastOptions={{
-                      className:
-                        "!bg-background !text-foreground !border !border-border",
-                      style: {
-                        background: "var(--background)",
-                        color: "var(--foreground)",
-                        border: "1px solid var(--border)",
-                      },
-                    }}
-                  />
-                </SidebarWidthProvider>
-              </FindReplaceProvider>
-            </RenameProvider>
-          </CleanupProvider>
-        </ChangesProvider>
-      </UserConfigProvider>
-    </ContextMenuProvider>
-  </React.StrictMode>
+    <ErrorBoundary FallbackComponent={ErrorPage}>
+      <ContextMenuProvider>
+        <UserConfigProvider initialTheme={theme}>
+          <ChangesProvider>
+            <CleanupProvider>
+              <RenameProvider>
+                <FindReplaceProvider>
+                  <SidebarWidthProvider>
+                    <Root />
+                    <Toaster
+                      position="top-right"
+                      containerStyle={{
+                        marginTop: "64px",
+                      }}
+                      toastOptions={{
+                        className:
+                          "!bg-background !text-foreground !border !border-border",
+                        style: {
+                          background: "var(--background)",
+                          color: "var(--foreground)",
+                          border: "1px solid var(--border)",
+                        },
+                      }}
+                    />
+                  </SidebarWidthProvider>
+                </FindReplaceProvider>
+              </RenameProvider>
+            </CleanupProvider>
+          </ChangesProvider>
+        </UserConfigProvider>
+      </ContextMenuProvider>
+    </ErrorBoundary>
+  </React.StrictMode>,
 );

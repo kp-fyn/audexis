@@ -44,13 +44,13 @@ const FindReplaceContext = createContext<Ctx | null>(null);
 
 function buildMatcher(
   query: string,
-  opts: FindOptions
+  opts: FindOptions,
 ): ((s: string) => boolean) | null {
   if (!query) return null;
   if (opts.regex) {
     try {
       const re = new RegExp(query, opts.caseSensitive ? "g" : "gi");
-      console.log(re);
+
       return (s: string) => re.test(s ?? "");
     } catch {
       return null;
@@ -60,12 +60,12 @@ function buildMatcher(
   if (opts.wholeWord) {
     const re = new RegExp(
       `\\b${query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
-      opts.caseSensitive ? "" : "i"
+      opts.caseSensitive ? "" : "i",
     );
     return (s: string) => re.test(s ?? "");
   }
   return (s: string) => {
-    const hay = opts.caseSensitive ? s ?? "" : (s ?? "").toLowerCase();
+    const hay = opts.caseSensitive ? (s ?? "") : (s ?? "").toLowerCase();
     return hay.includes(needle);
   };
 }
@@ -74,7 +74,7 @@ function applyReplace(
   orig: string,
   query: string,
   replacement: string,
-  opts: FindOptions
+  opts: FindOptions,
 ): string {
   if (!query) return orig;
   if (opts.regex) {
@@ -88,14 +88,14 @@ function applyReplace(
   if (opts.wholeWord) {
     const re = new RegExp(
       `\\b${query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
-      opts.caseSensitive ? "g" : "gi"
+      opts.caseSensitive ? "g" : "gi",
     );
     return (orig ?? "").replace(re, replacement);
   }
   if (!opts.caseSensitive) {
     const re = new RegExp(
       query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&"),
-      "gi"
+      "gi",
     );
     return (orig ?? "").replace(re, replacement);
   }
@@ -134,7 +134,6 @@ export function FindReplaceProvider({
     if (!match) return [] as number[];
     const arr: number[] = [];
     files.forEach((f, idx) => {
-      console.log(f);
       if (field === "all") {
         const t = f.tags as any;
         const any = Object.values(t).some(
@@ -142,7 +141,7 @@ export function FindReplaceProvider({
             v &&
             typeof v === "object" &&
             v.type === "Text" &&
-            match(String(v.value ?? ""))
+            match(String(v.value ?? "")),
         );
         if (any) arr.push(idx);
       } else {
@@ -174,7 +173,7 @@ export function FindReplaceProvider({
       }
       setSelected([targetPath]);
     },
-    [matches, files, setSelected, hasUnsavedChanges, nudgeSaveBar]
+    [matches, files, setSelected, hasUnsavedChanges, nudgeSaveBar],
   );
 
   const next = useCallback(() => focusMatch(active + 1), [active, focusMatch]);
@@ -192,7 +191,7 @@ export function FindReplaceProvider({
       String(v.value ?? ""),
       query,
       replaceWith,
-      options
+      options,
     );
     if (newVal === String(v.value ?? "")) return;
     const key = field.charAt(0).toUpperCase() + field.slice(1);
@@ -218,7 +217,7 @@ export function FindReplaceProvider({
         String(v.value ?? ""),
         query,
         replaceWith,
-        options
+        options,
       );
       if (newVal === String(v.value ?? "")) continue;
       const key = field.charAt(0).toUpperCase() + field.slice(1);

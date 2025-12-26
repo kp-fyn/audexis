@@ -1,8 +1,6 @@
 use crate::tag_manager::id3::utils::{raw_to_tags, tags_to_raw};
 use crate::tag_manager::traits::TagFormat;
-use crate::tag_manager::utils::{
-    FrameKey, PictureData, TagMap, TagValue, UserTextEntry, UserUrlEntry,
-};
+use crate::tag_manager::utils::{FrameKey, TagMap, TagValue, UserTextEntry, UserUrlEntry};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::Read;
@@ -30,9 +28,8 @@ impl TagFormat for V2_3 {
         let has_header = utils::ensure_header(&file_path);
 
         match has_header {
-            Ok(true) => println!("File has ID3 header."),
-            Ok(false) => println!("File does not have ID3 header."),
             Err(e) => return Err(e),
+            _ => {}
         }
         let mut file = File::open(file_path)?;
 

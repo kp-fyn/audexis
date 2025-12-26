@@ -348,40 +348,22 @@ impl V0 {
         let moov_atom = top_level_atoms
             .iter()
             .find(|atom| atom.atom_type == "moov")?;
-        println!(
-            "Found moov atom at position {} size {}",
-            moov_atom.position, moov_atom.size
-        );
 
         let moov_sub_atoms = V0::parse_atoms(&moov_atom.buffer, 8, moov_atom.size);
 
         let udta_atom = moov_sub_atoms
             .iter()
             .find(|atom| atom.atom_type == "udta")?;
-        println!(
-            "Found udta at relative position {} size {}",
-            udta_atom.position, udta_atom.size
-        );
 
         let udta_sub_atoms = V0::parse_atoms(&udta_atom.buffer, 8, udta_atom.size);
         let meta_atom = udta_sub_atoms
             .iter()
             .find(|atom| atom.atom_type == "meta")?;
-        println!(
-            "Found meta at relative position {} size {}",
-            meta_atom.position, meta_atom.size
-        );
 
         let meta_sub_atoms = V0::parse_atoms(&meta_atom.buffer, 12, meta_atom.size);
         let ilst_atom = meta_sub_atoms
             .iter()
             .find(|atom| atom.atom_type == "ilst")?;
-        println!(
-            "Found ilst at relative position {} size {}",
-            ilst_atom.position, ilst_atom.size
-        );
-
-        println!("New ilst size: {}", ilst_buffer.len());
 
         let new_meta_buffer = {
             let mut buffer = Vec::new();

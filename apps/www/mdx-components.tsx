@@ -58,7 +58,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     code: (props) => {
       // add highlighting later
       const isInline = !props.className?.includes("language-");
-      console.log(props);
+
       return isInline ? (
         <code
           className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[14px] font-mono text-foreground border border-border/50"

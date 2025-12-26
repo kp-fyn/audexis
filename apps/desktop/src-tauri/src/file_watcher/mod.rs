@@ -78,11 +78,23 @@ impl FileWatcher {
         use notify::event::{EventKind, ModifyKind};
 
         let mut touched: HashMap<PathBuf, Ev> = HashMap::new();
+        let mut modified: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
         for ev in events {
+            println!("File event: {:?}", ev.event.kind);
             match &ev.event.kind {
-                EventKind::Create(_)
-                | EventKind::Modify(ModifyKind::Name(_))
-                | EventKind::Modify(ModifyKind::Data(_)) => {
+                EventKind::Modify(ModifyKind::Name(_)) | EventKind::Modify(ModifyKind::Data(_)) => {
+                    modified.insert(
+                        ev.paths
+                            .get(0)
+                            .unwrap_or(&PathBuf::new())
+                            .to_path_buf()
+                            .to_owned(),
+                        ev.paths[1..].to_vec(),
+                    );
+                }
+                EventKind::Create(_) => {
+                    println!("Create or Modify event");
+                    println!("paths: {:?} ", ev.paths);
                     for p in &ev.paths {
                         touched.insert(
                             p.to_path_buf(),
@@ -105,17 +117,67 @@ impl FileWatcher {
                 _ => {}
             }
         }
+        let state: tauri::State<AppState> = app_handle.state();
+        let mut ws = match state.workspace.lock() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+        let mut was_modified = false;
+        println!("Total touched files: {:?}", modified);
+        if modified.is_empty() == false {
+            for (k, v) in modified {
+                let mut prev_path: Option<PathBuf> = None;
 
+                for p in v.iter() {
+                    let path_to_find: PathBuf =
+                        prev_path.as_ref().cloned().unwrap_or_else(|| k.clone());
+                    println!("Path to find: {:?}", path_to_find);
+                    let file = ws.get_file_by_path(&path_to_find);
+                    if file.is_none() {
+                        continue;
+                    }
+                    if p == &path_to_find {
+                        continue;
+                    }
+
+                    let pe = fs::exists(p.as_path());
+                    let path_exists: bool = match pe {
+                        Ok(exists) => {
+                            if !exists {
+                                false
+                            } else {
+                                true
+                            }
+                        }
+                        Err(_) => continue,
+                    };
+                    if path_exists == false {
+                        continue;
+                    }
+                    let file = file.unwrap();
+
+                    prev_path = Some(p.clone());
+
+                    file.path = p.clone();
+                    was_modified = true;
+                }
+            }
+        }
+        if was_modified {
+            let serializable_files: Vec<SerializableFile> = ws
+                .files
+                .clone()
+                .into_iter()
+                .map(SerializableFile::from)
+                .collect();
+            let _ = app_handle.emit("workspace-updated", serializable_files);
+        }
         if touched.is_empty() {
             return;
         }
 
         let (did_change, serializable_files) = {
-            let state: tauri::State<AppState> = app_handle.state();
-            let mut ws = match state.workspace.lock() {
-                Ok(g) => g,
-                Err(_) => return,
-            };
+            println!("Handling {} touched files", touched.len());
 
             let mut changed = false;
             for p in touched {
@@ -123,6 +185,9 @@ impl FileWatcher {
                 let path_exists: bool = match pe {
                     Ok(exists) => {
                         if !exists {
+                            println!("File was removed: {:?}", p.0);
+                            println!("Is rename: {:?}", p.1.kind.is_modify());
+                            println!("File does not exist: {:?}", p.0);
                             if ws.remove_file(&p.0) {
                                 changed = true;
                             }
@@ -141,7 +206,7 @@ impl FileWatcher {
                 let pth = p.0.clone();
 
                 if (p.1.kind.is_create() || p.1.kind.is_modify()) && ws.import(p.0) {
-                    print!("is create");
+                    println!("is create");
                     changed = true;
                 } else {
                     if path_exists && p.1.kind.is_modify() {

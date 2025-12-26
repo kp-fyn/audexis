@@ -8,8 +8,6 @@ pub fn ensure_header(file_path: &PathBuf) -> std::io::Result<bool> {
     file.read_exact(&mut header)?;
 
     if &header[0..3] == b"ID3" {
-        println!("ID3 header exists. Version: 2.{}.{}", header[3], header[4]);
-
         if (header[3] == 3 && header[4] == 0) || (header[3] == 4 && header[4] == 0) {
             Ok(true)
         } else {
@@ -40,8 +38,6 @@ pub fn ensure_header(file_path: &PathBuf) -> std::io::Result<bool> {
 
         file.write_all(&id3_header)?;
         file.write_all(&rest)?;
-
-        println!("Inserted empty ID3v2.3 header.");
         return Ok(false);
     }
 }

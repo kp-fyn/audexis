@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DocPage({ params }: Props) {
   const { slug } = await params;
   const key = (slug || []).join("/");
-  console.log("Key:", key);
+
   const loader = pages[key];
   if (!loader) notFound();
   const mod = await loader();

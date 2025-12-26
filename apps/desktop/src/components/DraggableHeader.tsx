@@ -39,8 +39,8 @@ export default function DraggableHeader({
         if (column.kind === "Image") return;
         setColumns(
           config.columns.map((item) =>
-            item.value === header.id ? { ...item, size: 200 } : item
-          )
+            item.value === header.id ? { ...item, size: 200 } : item,
+          ),
         );
       }}
       style={{
@@ -77,8 +77,8 @@ export default function DraggableHeader({
               ? sorted === "asc"
                 ? "Sorted ascending"
                 : sorted === "desc"
-                ? "Sorted descending"
-                : "Click to sort"
+                  ? "Sorted descending"
+                  : "Click to sort"
               : undefined
           }
         >
@@ -110,9 +110,9 @@ function DragIcon() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className="lucide-grip-vertical"
     >
       <circle cx="9" cy="12" r="1" />

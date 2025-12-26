@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 export function EditOnGitHub() {
   let pathname = usePathname();
-  console.log("Current pathname:", pathname);
   if (pathname === "/docs" || pathname === "/docs/") {
     pathname = "/docs/page";
   }

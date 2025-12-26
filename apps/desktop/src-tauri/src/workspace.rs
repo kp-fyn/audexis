@@ -11,7 +11,7 @@ use base64::Engine;
 use std::fs;
 use std::fs::metadata;
 use std::path::{Path, PathBuf};
-
+use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Workspace {
     backend: DefaultBackend,
@@ -109,10 +109,28 @@ impl Workspace {
             return false;
         }
     }
+    pub fn refresh_all_tags(&mut self) {
+        for file in self.files.iter_mut() {
+            match self.backend.read(&file.path) {
+                Ok(refreshed) => {
+                    file.tags = refreshed.tags;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Failed to refresh tags for {}: {:?}",
+                        file.path.display(),
+                        e
+                    );
+                }
+            }
+        }
+    }
+    pub fn get_file_by_path(&mut self, path: &Path) -> Option<&mut File> {
+        self.files.iter_mut().find(|f| f.path == path)
+    }
 
     pub fn import(&mut self, file: PathBuf) -> bool {
-        if let Some(index) = self.files.iter().position(|f| f.path == file) {
-            println!("Found file at index: {}", index.to_string());
+        if let Some(_) = self.files.iter().position(|f| f.path == file) {
             return false;
         }
         let md = match metadata(&file) {
@@ -128,7 +146,7 @@ impl Workspace {
             match detected {
                 Ok(f) => {
                     self.files.push(f);
-                    print!("Imported file: {}", file.display());
+
                     return true;
                 }
                 Err(BackendError::UnsupportedFormat(_)) => {
@@ -144,16 +162,19 @@ impl Workspace {
             return false;
         }
     }
+    pub fn get_file(&self, id: Uuid) -> Option<&File> {
+        self.files.iter().find(|f| f.id == id)
+    }
     pub fn clean_up_file_names(
         &mut self,
         file_paths: Vec<String>,
         options: Vec<CleanupRule>,
     ) -> Vec<(String, String, Result<(), String>)> {
         let mut results = Vec::new();
-        println!("Starting cleanup for {} files", file_paths.len());
+
         for path_str in file_paths {
             let path = PathBuf::from(&path_str);
-            println!("Processing file: {}", path.display());
+
             if let Some(file) = self.files.iter_mut().find(|x| x.path == path) {
                 let mut new_name = file
                     .path
@@ -281,7 +302,7 @@ impl Workspace {
                         }
                     }
                 }
-                print!("Renaming to: {}", new_name);
+
                 let ext = file.path.extension().and_then(|e| e.to_str()).unwrap_or("");
                 if !ext.is_empty() {
                     new_name = format!("{}.{}", new_name, ext);

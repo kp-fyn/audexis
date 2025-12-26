@@ -4,12 +4,10 @@ use super::TagManager;
 use base64::Engine;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
+use uuid::Uuid;
 pub trait TagBackend {
     fn read(&self, path: &PathBuf) -> Result<File, BackendError>;
-    fn read_many(&self, paths: &[PathBuf]) -> Vec<Result<File, BackendError>> {
-        paths.iter().map(|p| self.read(p)).collect()
-    }
+
     fn write_changes(&self, changes: &Changes) -> Vec<WriteResult>;
 }
 
@@ -72,7 +70,6 @@ impl DefaultBackend {
 impl TagBackend for DefaultBackend {
     fn read(&self, path: &PathBuf) -> Result<File, BackendError> {
         let fmt = self.resolve_format(path);
-        println!("Detected format: {}", fmt);
         let release = self
             .resolve_release(&fmt)
             .ok_or_else(|| BackendError::UnsupportedFormat(fmt.clone()))?;
@@ -82,6 +79,7 @@ impl TagBackend for DefaultBackend {
         let freeforms = release.get_freeforms(path).unwrap_or_default();
         let tag_formats = self.detect_all_formats(path, &fmt);
         Ok(File {
+            id: Uuid::new_v4(),
             path: path.clone(),
             tags: tag_map,
             tag_format: fmt,

@@ -33,7 +33,12 @@ base64 = "0.21.7"
 notify = "6.1"
 notify-debouncer-full = "0.3"
 tauri-plugin-clipboard-manager = "2.0.0"
-
+[dependencies.uuid]
+version = "1.19.0"
+# Lets you generate random UUIDs
+features = [
+    "v4",
+]
 
 [profile.dev]
 incremental = true

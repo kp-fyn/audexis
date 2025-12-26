@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FrameKey {
@@ -148,7 +149,6 @@ pub enum TagValue {
     UserText(UserTextEntry),
     UserUrl(UserUrlEntry),
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PictureData {
     pub mime: String,
@@ -171,7 +171,7 @@ pub struct UserUrlEntry {
 
 pub type TagMap = HashMap<String, Vec<TagValue>>;
 
-pub type RawTagMap = HashMap<String, Vec<u8>>;
+// pub type RawTagMap = HashMap<String, Vec<u8>>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FreeformTag {
@@ -233,13 +233,13 @@ pub enum CleanupRule {
     RemoveBrackets,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SerializablePicture {
-    pub mime: String,
-    pub data_base64: String,
-    pub picture_type: Option<u8>,
-    pub description: Option<String>,
-}
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct SerializablePicture {
+//     pub mime: String,
+//     pub data_base64: String,
+//     pub picture_type: Option<u8>,
+//     pub description: Option<String>,
+// }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializableFreeform {
@@ -250,6 +250,7 @@ pub struct SerializableFreeform {
 
 #[derive(Debug, Clone)]
 pub struct File {
+    pub id: Uuid,
     pub path: PathBuf,
     pub tags: HashMap<FrameKey, Vec<TagValue>>,
     pub tag_format: Formats,
@@ -468,31 +469,31 @@ impl From<File> for SerializableFile {
     }
 }
 
-pub fn is_multi_value(format: &Formats, key: FrameKey) -> bool {
-    use Formats::*;
-    match format {
-        Id3v23 | Id3v24 => matches!(
-            key,
-            FrameKey::AttachedPicture
-                | FrameKey::UserDefinedText
-                | FrameKey::UserDefinedURL
-                | FrameKey::Genre
-                | FrameKey::Artist
-                | FrameKey::Comments
-        ),
-        Itunes => matches!(
-            key,
-            FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist
-        ),
-        Flac | Vorbis => matches!(
-            key,
-            FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist | FrameKey::Comments
-        ),
-        Riff => matches!(key, FrameKey::AttachedPicture),
-        Id3v22 => matches!(key, FrameKey::AttachedPicture),
-        Id3v10 | Id3v11 | Unknown => false,
-    }
-}
+// pub fn is_multi_value(format: &Formats, key: FrameKey) -> bool {
+//     use Formats::*;
+//     match format {
+//         Id3v23 | Id3v24 => matches!(
+//             key,
+//             FrameKey::AttachedPicture
+//                 | FrameKey::UserDefinedText
+//                 | FrameKey::UserDefinedURL
+//                 | FrameKey::Genre
+//                 | FrameKey::Artist
+//                 | FrameKey::Comments
+//         ),
+//         Itunes => matches!(
+//             key,
+//             FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist
+//         ),
+//         Flac | Vorbis => matches!(
+//             key,
+//             FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist | FrameKey::Comments
+//         ),
+//         Riff => matches!(key, FrameKey::AttachedPicture),
+//         Id3v22 => matches!(key, FrameKey::AttachedPicture),
+//         Id3v10 | Id3v11 | Unknown => false,
+//     }
+// }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

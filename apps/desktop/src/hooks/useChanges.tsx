@@ -5,7 +5,6 @@ import {
   createContext,
   useContext,
   useState,
-  useRef,
   Dispatch,
   SetStateAction,
   ReactNode,
@@ -13,7 +12,7 @@ import {
 } from "react";
 import { useHistoryState } from "@uidotdev/usehooks";
 import toast from "react-hot-toast";
-
+import { listen, Event } from "@tauri-apps/api/event";
 import {
   RootFileTree,
   Tags,
@@ -34,10 +33,6 @@ interface ChangesContext {
   neededItems: { value: string; label: string; maxLength?: number }[];
   setChanges: (newPresent: Partial<AllTags>) => void;
 
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
   setSelected: Dispatch<SetStateAction<string[]>>;
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
   fileTreeFolderSelected: string[];
@@ -60,7 +55,8 @@ interface ChangesContext {
 
   albumDialogValues: Partial<Tags>;
   setAlbumDialogValues: Dispatch<SetStateAction<Partial<Tags>>>;
-
+  canUndo: boolean;
+  canRedo: boolean;
   hasUnsavedChanges: boolean;
   nudgeSaveBar: () => void;
   saveBarNudge: number;
@@ -68,6 +64,8 @@ interface ChangesContext {
 
 const ChangesContext = createContext<ChangesContext>({
   changes: {},
+  canRedo: false,
+  canUndo: false,
   albumId: "",
   setAlbumId: () => {
     throw new Error("setAlbumId function must be overridden");
@@ -107,14 +105,7 @@ const ChangesContext = createContext<ChangesContext>({
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
-  undo: () => {
-    throw new Error("undo function must be overridden");
-  },
-  redo: () => {
-    throw new Error("redo function must be overridden");
-  },
-  canUndo: false,
-  canRedo: false,
+
   saveChanges: () => {
     throw new Error("saveChanges function must be overridden");
   },
@@ -148,10 +139,6 @@ export function ChangesProvider({
   children: ReactNode;
 }): ReactNode {
   const { state, set, clear } = useHistoryState<Partial<AllTags>>({});
-  const [history, setHistory] = useState<{
-    past: Partial<AllTags>[];
-    future: Partial<AllTags>[];
-  }>({ past: [], future: [] });
 
   const [files, setFiles] = useState<File[]>([]);
   const [filesToShow, setFilesToShow] = useState<FileIdentifier[]>([]);
@@ -160,6 +147,10 @@ export function ChangesProvider({
   const [fileTreeFolderSelected, setFileTreeFolderSelected] = useState<
     string[]
   >([]);
+  const [historyState, setHistoryState] = useState<HistoryPayload>({
+    canRedo: false,
+    canUndo: false,
+  });
   const [selected, setSelected] = useState<string[]>([]);
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [albumDialogValues, setAlbumDialogValues] = useState<Partial<Tags>>({
@@ -179,53 +170,11 @@ export function ChangesProvider({
   const [saveBarNudge, setSaveBarNudge] = useState(0);
   const nudgeSaveBar = () => setSaveBarNudge((n) => n + 1);
 
-  const isEqualChanges = (a: Partial<AllTags>, b: Partial<AllTags>) => {
-    try {
-      return JSON.stringify(a) === JSON.stringify(b);
-    } catch {
-      return false;
-    }
-  };
-
   const hasUnsavedChanges =
     Object.keys(state || {}).length > 0 && selected.length > 0;
 
-  const debounceTime = 250;
-  const lastPushRef = useRef(0);
-
   const setChanges = (newPresent: Partial<AllTags>) => {
-    const now = Date.now();
-    setHistory((h) => {
-      const shouldPush = now - lastPushRef.current > debounceTime;
-      if (shouldPush) {
-        lastPushRef.current = now;
-        return { past: [...h.past, state || {}], future: [] };
-      }
-      return h;
-    });
     set(newPresent);
-  };
-
-  const undo = () => {
-    setHistory((h) => {
-      if (h.past.length === 0) return h;
-      const previous = h.past[h.past.length - 1];
-      const newPast = h.past.slice(0, -1);
-      const curr = state || {};
-      set(previous);
-      return { past: newPast, future: [curr, ...h.future] };
-    });
-  };
-
-  const redo = () => {
-    setHistory((h) => {
-      if (h.future.length === 0) return h;
-      const next = h.future[0];
-      const newFuture = h.future.slice(1);
-      const curr = state || {};
-      set(next);
-      return { past: [...h.past, curr], future: newFuture };
-    });
   };
 
   useEffect(() => {
@@ -278,9 +227,24 @@ export function ChangesProvider({
         }
       }
     };
+
     document.addEventListener("click", handleClick);
     return (): void => document.removeEventListener("click", handleClick);
   }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    const unlisten = listen(
+      "history_update",
+      (event: Event<HistoryPayload>) => {
+        const config = event.payload;
+        setHistoryState(config);
+      },
+    );
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
   useEffect(() => {
     const isEditable = (el: Element | null): boolean =>
       el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
@@ -290,9 +254,9 @@ export function ChangesProvider({
         if (isEditable(document.activeElement)) return;
         event.preventDefault();
         if (event.shiftKey) {
-          redo();
+          // redo();
         } else {
-          undo();
+          // undo();
         }
         return;
       }
@@ -325,7 +289,6 @@ export function ChangesProvider({
 
   const clearAllChanges = () => {
     clear();
-    setHistory({ past: [], future: [] });
   };
 
   function showAlbumDialog(page?: number): void {
@@ -353,10 +316,7 @@ export function ChangesProvider({
         changes: state,
         neededItems: getNeededItems(),
         setChanges,
-        undo,
-        redo,
-        canUndo: history.past.length > 0,
-        canRedo: history.future.length > 0,
+
         saveChanges,
         clearChanges: clearAllChanges,
         selected,
@@ -380,6 +340,8 @@ export function ChangesProvider({
         hasUnsavedChanges,
         nudgeSaveBar,
         saveBarNudge,
+        canRedo: historyState.canUndo,
+        canUndo: historyState.canRedo,
       }}
     >
       {children}
@@ -387,7 +349,7 @@ export function ChangesProvider({
   );
 
   function toSerializableTags(
-    input: Partial<AllTags>
+    input: Partial<AllTags>,
   ): Record<string, TagText | TagPicture> {
     const out: Record<string, TagText | TagPicture> = {};
     Object.entries(input).forEach(([key, val]) => {
@@ -416,15 +378,10 @@ export function ChangesProvider({
     }));
 
     try {
-      const prev = state || {};
       await invoke("save_frame_changes", {
         frameChanges: { paths: selected, frames },
       });
-      setHistory((h) => {
-        const last = h.past[h.past.length - 1];
-        const dedup = last && isEqualChanges(last, prev);
-        return { past: dedup ? h.past : [...h.past, prev], future: [] };
-      });
+
       set({});
       toast.success("Changes saved successfully");
     } catch (err: unknown) {
@@ -451,4 +408,9 @@ function getNeededItems(): {
     { value: "encodedBy", label: "Encoded By" },
     { value: "conductor", label: "Conductor" },
   ];
+}
+
+interface HistoryPayload {
+  canUndo: boolean;
+  canRedo: boolean;
 }

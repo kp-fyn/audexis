@@ -48,7 +48,7 @@ function Feature({
   SVG,
 }: FeatureProps) {
   const flexDirection = index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row";
-  console.log(SVG);
+
   return (
     <div className=" px-4  py-12 flex flex-col rounded   lg:px-">
       <div className={`flex flex-col ${flexDirection} gap-12 lg:gap-24`}>
@@ -102,7 +102,7 @@ function getFeatures(): PartialFeatureProps[] {
       title: "Pattern-Based Renaming",
       description: `Audexis includes a powerful renaming system that lets you automatically
         rename files using customizable patterns built from any metadata tag. You can combine
-        fields like artist, album, track number, title, year, or even custom tags to create 
+        fields like artist, album, track number, title, year, or even custom tags to create
         consistent naming formats that match your library’s organization style. Audexis
         generates clean, predictable filenames with a single click, perfect for keeping
         large collections neat and searchable.`,

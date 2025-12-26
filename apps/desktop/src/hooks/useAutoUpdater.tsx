@@ -11,10 +11,8 @@ export function useAutoUpdater() {
       checkingForUpdates = true;
 
       try {
-        console.log("[Auto-Updater] Checking for updates...");
-
         let hasUpdate = await invoke("check_update");
-        console.log(hasUpdate);
+
         if (hasUpdate) {
           toast(
             (t) => (
@@ -54,10 +52,8 @@ export function useAutoUpdater() {
             {
               id: "update-available",
               duration: Infinity,
-            }
+            },
           );
-        } else {
-          console.log("[Auto-Updater] No update available");
         }
       } catch (error) {
         console.error("[Auto-Updater] Update check failed:", error);

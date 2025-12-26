@@ -142,9 +142,8 @@ export function CleanupModal() {
   }, [close]);
 
   const doRename = useCallback(async () => {
-    console.log("e");
     setBusy(true);
-    console.log(options);
+
     try {
       const res: Array<{
         old: string;
@@ -152,7 +151,7 @@ export function CleanupModal() {
         ok: boolean;
         error?: string;
       }> = await invoke("clean_up_file_names", { options, paths });
-      console.log({ res });
+
       setResult(res);
     } finally {
       setBusy(false);
@@ -215,7 +214,7 @@ export function CleanupModal() {
                       setOptions((prev) => [...prev, option.key]);
                     } else {
                       setOptions((prev) =>
-                        prev.filter((k) => k !== option.key)
+                        prev.filter((k) => k !== option.key),
                       );
                     }
                   }}
@@ -310,6 +309,6 @@ export function CleanupModal() {
       </div>
       <span tabIndex={0} aria-hidden="true" />
     </div>,
-    portalNode
+    portalNode,
   );
 }

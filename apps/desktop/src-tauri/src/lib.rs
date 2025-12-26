@@ -1,10 +1,11 @@
 mod config;
 mod file_watcher;
+mod history;
 mod tag_manager;
 mod workspace;
-
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
+use uuid::Uuid;
 
 // use std::collections::HashMap;
 use std::sync::Mutex;
@@ -12,14 +13,15 @@ use std::sync::Mutex;
 use base64::{engine::general_purpose, Engine as _};
 
 use rfd::FileDialog;
+use std::env;
 use std::path::PathBuf;
 use std::process::Command;
-use std::{env, iter};
 use tauri::window::Color;
 use tauri::{AppHandle, Emitter, State, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 use workspace::Workspace;
 
 use crate::file_watcher::FileWatcher;
+use crate::history::{Action, HistoryActionType};
 use crate::tag_manager::utils::{
     Changes, CleanupRule, FrameChanges, FrameKey, SerializableFile, SerializableTagValue, TagValue,
 };
@@ -35,6 +37,7 @@ use config::user;
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
+    pub history: Mutex<history::History>,
 }
 
 #[tauri::command]
@@ -67,25 +70,6 @@ fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Result
     save_config(&path, &config).map_err(|e| format!("Save failed: {}", e))?;
     app_handle.emit("user-config-updated", config).unwrap();
     Ok(())
-}
-
-#[tauri::command]
-fn save_changes(app_handle: AppHandle, changes: Changes, state: State<'_, AppState>) {
-    let backend = DefaultBackend::new();
-    let _ = backend.write_changes(&changes);
-    {
-        let mut ws = state.workspace.lock().unwrap();
-        for p in &changes.paths {
-            ws.refresh_tags(&PathBuf::from(p));
-        }
-        let serializable_files: Vec<SerializableFile> = ws
-            .files
-            .clone()
-            .into_iter()
-            .map(SerializableFile::from)
-            .collect();
-        let _ = app_handle.emit("workspace-updated", serializable_files);
-    }
 }
 
 #[tauri::command]
@@ -129,11 +113,80 @@ async fn update_app(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
     Ok(())
 }
 #[tauri::command]
+fn undo(state: State<'_, AppState>, app_handle: AppHandle) {
+    let mut history = state.history.lock().unwrap();
+    history.undo(&state);
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        ws.refresh_all_tags();
+        let serializable_files: Vec<SerializableFile> = ws
+            .files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect();
+        let _ = app_handle.emit("workspace-updated", serializable_files);
+    }
+}
+#[tauri::command]
+fn redo(state: State<'_, AppState>, app_handle: AppHandle) {
+    let mut history = state.history.lock().unwrap();
+    history.redo(&state);
+    {
+        let mut ws = state.workspace.lock().unwrap();
+        ws.refresh_all_tags();
+        let serializable_files: Vec<SerializableFile> = ws
+            .files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect();
+        let _ = app_handle.emit("workspace-updated", serializable_files);
+    }
+}
+#[tauri::command]
 fn save_frame_changes(
     app_handle: AppHandle,
     frame_changes: FrameChanges,
     state: State<'_, AppState>,
 ) {
+    let mut before_changes: HashMap<Uuid, HashMap<FrameKey, Vec<SerializableTagValue>>> =
+        HashMap::new();
+
+    frame_changes.paths.iter().for_each(|p| {
+        let pb = PathBuf::from(p);
+        let mut ws = state.workspace.lock().unwrap();
+        let file = ws.get_file_by_path(&pb);
+        if let Some(f) = file {
+            let mut frame_map: HashMap<FrameKey, Vec<SerializableTagValue>> = HashMap::new();
+            for frame in &frame_changes.frames {
+                let existing_vals = f
+                    .tags
+                    .get(&frame.key)
+                    .unwrap_or(&Vec::new())
+                    .iter()
+                    .map(|v| match v {
+                        TagValue::Text(s) => SerializableTagValue::Text(s.clone()),
+                        TagValue::Picture {
+                            mime,
+                            data,
+                            picture_type,
+                            description,
+                        } => SerializableTagValue::Picture {
+                            mime: mime.clone(),
+                            data_base64: base64::engine::general_purpose::STANDARD.encode(&data),
+                            picture_type: *picture_type,
+                            description: description.clone(),
+                        },
+                        TagValue::UserText(ut) => SerializableTagValue::UserText(ut.clone()),
+                        TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu.clone()),
+                    })
+                    .collect::<Vec<SerializableTagValue>>();
+                frame_map.insert(frame.key, existing_vals);
+            }
+            before_changes.insert(f.id, frame_map);
+        }
+    });
     let mut tag_map: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
     for frame in &frame_changes.frames {
         for val in &frame.values {
@@ -184,6 +237,7 @@ fn save_frame_changes(
         paths: frame_changes.paths.clone(),
         tags: HashMap::new(),
     };
+
     for (k, vec_vals) in tag_map.into_iter() {
         let ser_vals: Vec<SerializableTagValue> = vec_vals
             .into_iter()
@@ -208,7 +262,64 @@ fn save_frame_changes(
     }
     let _ = backend.write_changes(&write_changes);
     {
+        let mut history = state.history.lock().unwrap();
+
         let mut ws = state.workspace.lock().unwrap();
+        history.add(Action {
+            action_type: HistoryActionType::Tags({
+                let mut fc_map: HashMap<Uuid, history::Frames> = HashMap::new();
+                for p in &frame_changes.paths {
+                    if let Some(file) = ws.files.iter().find(|f| f.path.to_string_lossy() == *p) {
+                        let mut before_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
+                            before_changes
+                                .get(&file.id)
+                                .cloned()
+                                .unwrap_or(HashMap::new());
+                        let mut after_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
+                            HashMap::new();
+                        for frame in &frame_changes.frames {
+                            let existing_vals = file
+                                .tags
+                                .get(&frame.key)
+                                .unwrap_or(&Vec::new())
+                                .iter()
+                                .map(|v| match v {
+                                    TagValue::Text(s) => SerializableTagValue::Text(s.clone()),
+                                    TagValue::Picture {
+                                        mime,
+                                        data,
+                                        picture_type,
+                                        description,
+                                    } => SerializableTagValue::Picture {
+                                        mime: mime.clone(),
+                                        data_base64: base64::engine::general_purpose::STANDARD
+                                            .encode(&data),
+                                        picture_type: *picture_type,
+                                        description: description.clone(),
+                                    },
+                                    TagValue::UserText(ut) => {
+                                        SerializableTagValue::UserText(ut.clone())
+                                    }
+                                    TagValue::UserUrl(uu) => {
+                                        SerializableTagValue::UserUrl(uu.clone())
+                                    }
+                                })
+                                .collect::<Vec<SerializableTagValue>>();
+
+                            after_map.insert(frame.key, frame.values.clone());
+                        }
+                        fc_map.insert(
+                            file.id,
+                            history::Frames {
+                                before: before_map,
+                                after: after_map,
+                            },
+                        );
+                    }
+                }
+                fc_map
+            }),
+        });
         for p in &frame_changes.paths {
             ws.refresh_tags(&PathBuf::from(p));
         }
@@ -290,7 +401,6 @@ fn import_image() -> Option<SerializableTagValue> {
         let path_str = path_buf.to_string_lossy().to_string();
 
         let img = std::fs::read(&path_buf);
-        println!("Selected image path: {}", path_str);
         if img.is_err() {
             return None;
         }
@@ -718,12 +828,11 @@ pub fn run() {
             app.manage(AppState {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
+                history: Mutex::new(history::History::new(&app.handle())),
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
             }
-            println!("Onboarding status: {}", onboarding);
-            print!("Theme: {}", theme);
 
             let win_builder = WebviewWindowBuilder::new(
                 app,
@@ -765,7 +874,6 @@ pub fn run() {
             get_workspace_files,
             update_user_config,
             import_image,
-            save_changes,
             save_frame_changes,
             get_frames,
             remove_files,
@@ -775,7 +883,9 @@ pub fn run() {
             rename_files,
             check_update,
             clean_up_file_names,
-            update_app
+            update_app,
+            undo,
+            redo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

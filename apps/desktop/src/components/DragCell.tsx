@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { Cell, flexRender } from "@tanstack/react-table";
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, useEffect, useState } from "react";
 import { CSS as CSSUtil } from "@dnd-kit/utilities";
 import { File } from "@/ui/types";
 
@@ -18,6 +18,7 @@ export default function DragCell({ cell }: Props): ReactNode {
     zIndex: isDragging ? 1 : 0,
   };
 
+  const [doubleClicked, setDoubleClicked] = useState(false);
   return (
     <div
       className="flex items-center font-light text-sm"
@@ -27,8 +28,30 @@ export default function DragCell({ cell }: Props): ReactNode {
         minWidth: `${cell.column.columnDef.minSize}px`,
       }}
       ref={setNodeRef}
+      onClick={(e) => {
+        if (e.detail === 2) {
+          e.stopPropagation();
+          if (!cell.column.getCanSort()) return;
+
+          setDoubleClicked(true);
+        }
+      }}
     >
-      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      {doubleClicked ? (
+        <input
+          type="text"
+          defaultValue={cell.getValue() as string}
+          autoFocus
+          onBlur={() => setDoubleClicked(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "Escape") {
+              setDoubleClicked(false);
+            }
+          }}
+        />
+      ) : (
+        <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+      )}
     </div>
   );
 }
