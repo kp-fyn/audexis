@@ -7,6 +7,8 @@ import {
   getSortedRowModel,
   SortingState,
 } from "@tanstack/react-table";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+
 import { Event, listen } from "@tauri-apps/api/event";
 import { AllTags, File, TagPicture } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
@@ -177,10 +179,10 @@ function App() {
           if ((tag as any).type === "Picture") {
             const pic = tag as TagPicture;
             const count = Array.isArray(
-              (row.original as any)._frames?.attachedPicture
+              (row.original as any)._frames?.attachedPicture,
             )
               ? ((row.original as any)._frames.attachedPicture as any[]).filter(
-                  (v) => v && v.type === "Picture"
+                  (v) => v && v.type === "Picture",
                 ).length
               : 0;
             return (
@@ -302,7 +304,7 @@ function App() {
             </div>
           );
         },
-      }
+      },
     ) as ColumnDef<File, any>;
   });
 
@@ -310,7 +312,7 @@ function App() {
 
   const columns: ColumnDef<File>[] = [...helpers];
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    columns.map((c) => c.id ?? "")
+    columns.map((c) => c.id ?? ""),
   );
 
   useEffect(() => {
@@ -350,6 +352,22 @@ function App() {
       unlisten.then((f) => f());
     };
   }, []);
+  useEffect(() => {
+    const unlisten = getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === "over") {
+        console.log("User hovering", event.payload.position);
+      } else if (event.payload.type === "drop") {
+        invoke("import_paths", {
+          paths: event.payload.paths,
+        });
+      } else {
+        console.log("File drop cancelled");
+      }
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  });
 
   useEffect(() => {
     //  invoke doesn't work immediately on page load or reload
@@ -391,7 +409,7 @@ function App() {
         },
       },
     ],
-    [files]
+    [files],
   );
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -421,7 +439,7 @@ function App() {
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
+    useSensor(KeyboardSensor, {}),
   );
 
   if (isLoading) {
@@ -479,13 +497,13 @@ function App() {
                 width: Math.max(
                   config.columns.reduce(
                     (sum, col) => sum + (col.size || 200),
-                    0
+                    0,
                   ) +
                     config.columns.length * 16 +
                     (config.columns.length - 1) * 16 +
                     12 +
                     170,
-                  600
+                  600,
                 ),
                 minWidth: "100%",
               }}

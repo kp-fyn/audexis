@@ -39,12 +39,7 @@ export const metadata: Metadata = {
       "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, manage album art, and organize your music library.",
     siteName: "Audexis",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Audexis - Audio Metadata Editor for macOS",
-    description:
-      "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, manage album art, and organize your music library.",
-  },
+
   robots: {
     index: true,
     follow: true,
@@ -86,6 +81,12 @@ export default async function RootLayout({
                   className="hover:text-foreground transition-colors"
                 >
                   Documentation
+                </Link>{" "}
+                <Link
+                  href="/blog"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Blog
                 </Link>
                 <a
                   href="https://github.com/kp-fyn/audexis"

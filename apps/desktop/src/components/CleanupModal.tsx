@@ -1,42 +1,11 @@
 // TODO: Add preview of changes before applying
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-// import { useChanges } from "@/ui/hooks/useChanges";
-// import type { File } from "@/ui/types";
+
 import { invoke } from "@tauri-apps/api/core";
 import { useCleanup } from "../hooks/useCleanup";
 import { Checkbox } from "./Checkbox";
 
-// function sanitizeFilename(name: string) {
-//   const invalid = /[\\/:*?"<>|]/g;
-//   return name
-//     .trim()
-//     .replace(invalid, "_")
-//     .replace(/\s+/g, " ")
-//     .replace(/^\.+|\.+$/g, "");
-// }
-
-// function applyPatternFrontend(file: File, pattern: string): string {
-//   const map: Record<string, string> = {};
-//   const tags = file.tags as any;
-//   Object.keys(tags).forEach((k) => {
-//     const v = tags[k];
-//     if (v && typeof v === "object" && "type" in v && v.type === "Text") {
-//       map[k] = String(v.value ?? "");
-//     }
-//   });
-//   const ext = file.path.split(".").pop() || "";
-//   map["ext"] = ext;
-
-//   const replaced = pattern.replace(/\{([^}]+)\}/g, (_m, key) => {
-//     const k = String(key);
-//     return map[k] ?? "";
-//   });
-
-//   const s = sanitizeFilename(replaced);
-//   if (s.toLowerCase().endsWith(`.${ext.toLowerCase()}`)) return s;
-//   return ext ? `${s}.${ext}` : s;
-// }
 const cleanupOptions = [
   {
     id: "replaceUnderscores",
@@ -214,7 +183,7 @@ export function CleanupModal() {
                       setOptions((prev) => [...prev, option.key]);
                     } else {
                       setOptions((prev) =>
-                        prev.filter((k) => k !== option.key),
+                        prev.filter((k) => k !== option.key)
                       );
                     }
                   }}
@@ -309,6 +278,6 @@ export function CleanupModal() {
       </div>
       <span tabIndex={0} aria-hidden="true" />
     </div>,
-    portalNode,
+    portalNode
   );
 }

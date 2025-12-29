@@ -117,7 +117,7 @@ export default function SearchBar({ groups }: SearchProps) {
           setIsOpen(true);
           setTimeout(() => inputRef.current?.focus(), 100);
         }}
-        className="group flex items-center gap-3 md:px-4 px-2 py-2 md:bg-muted/50 md:hover:bg-muted/80 border border-border rounded-lg transition-all duration-150 text-left md:w-full w-auto"
+        className="group flex items-center gap-3 lg:px-4 px-2 py-2 lg:bg-muted/50 lg:hover:bg-muted/80 border border-border rounded-lg transition-all duration-150 text-left lg:w-full w-auto"
       >
         <svg
           className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0"
@@ -132,10 +132,10 @@ export default function SearchBar({ groups }: SearchProps) {
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
-        <span className="hidden md:inline text-sm text-muted-foreground group-hover:text-foreground flex-1">
-          Search documentation...
+        <span className="hidden lg:inline text-sm text-muted-foreground group-hover:text-foreground flex-1">
+          Search...
         </span>
-        <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground bg-background border border-border rounded">
+        <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground bg-background border border-border rounded">
           <span className="text-xs">⌘</span>K
         </kbd>
       </button>
@@ -169,7 +169,7 @@ export default function SearchBar({ groups }: SearchProps) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search documentation..."
+                placeholder="Search..."
                 className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
               />
               <button
@@ -252,7 +252,7 @@ export default function SearchBar({ groups }: SearchProps) {
               {!query && (
                 <div className="px-4 py-8 text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Start typing to search documentation...
+                    Start typing to search...
                   </p>
                   <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">

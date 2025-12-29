@@ -5,8 +5,13 @@ import { usePathname } from "next/navigation";
 
 export function EditOnGitHub() {
   let pathname = usePathname();
+  const parts = pathname.split("/");
+  if (parts.length < 3) return <div />;
   if (pathname === "/docs" || pathname === "/docs/") {
     pathname = "/docs/page";
+  }
+  if (pathname.startsWith("/blog")) {
+    pathname = `/blog/(blogPages)${parts[parts.length - 1]}`;
   }
   const githubPath = `apps/www/app${pathname}.mdx`;
   const githubUrl = `https://github.com/kp-fyn/audexis/edit/main/${githubPath}`;

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { pages, slugs } from "../registry";
+import Head from "next/head";
 
 type Props = { params: Promise<{ slug: string[] }> };
 
@@ -16,24 +17,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const loader = pages[key];
   if (!loader) return {};
   const mod = await loader();
-  if (!mod.metadata) return {};
+  const title = mod.metadata?.title as string | undefined;
 
-  const title = mod.metadata.title as string;
-  const description = mod.metadata.description as string;
   if (!mod.metadata) return {};
   const metadata = mod.metadata;
-  return title
-    ? {
-        title,
-        description: description,
+  return {
+    title,
+    description: metadata.description,
 
-        openGraph: {
-          title: metadata.title,
-          description: description,
-          url: `https://www.audexis.app/docs/${key}`,
-        },
-      }
-    : {};
+    alternates: {
+      canonical: `https://www.audexis.app/blog/${key}`,
+    },
+    openGraph: {
+      title: metadata.title,
+      description: metadata.description,
+      modifiedTime: new Date(metadata.date).toISOString(),
+      url: `https://www.audexis.app/blog/${key}`,
+      type: "article",
+    },
+  };
 }
 
 export default async function DocPage({ params }: Props) {
@@ -45,8 +47,10 @@ export default async function DocPage({ params }: Props) {
   const mod = await loader();
   const MDX = mod.default;
   return (
-    <article className="prose max-w-none dark:prose-invert">
-      <MDX />
-    </article>
+    <>
+      <article className="prose max-w-none dark:prose-invert">
+        <MDX />
+      </article>
+    </>
   );
 }

@@ -5,12 +5,12 @@
 @import "./shared.css";
 
 @font-face {
-  font-family: "Reddit Sans";
-  src: url("/fonts/Reddit_Sans/RedditSans-VariableFont_wght.ttf")
-    format("truetype");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+    font-family: "Reddit Sans";
+    src: url("/fonts/Reddit_Sans/RedditSans-VariableFont_wght.ttf")
+        format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
 }
 
 main.docs h1,
@@ -19,132 +19,168 @@ main.docs h3,
 main.docs h4,
 main.docs h5,
 main.docs h6 {
-  color: var(--color-foreground);
+    color: var(--color-foreground);
 }
 
 main.docs p,
 main.docs li,
 main.docs span,
 main.docs div {
-  color: var(--color-muted-foreground);
+    color: var(--color-muted-foreground);
 }
 
 html,
 body {
-  background-color: var(--background);
-  height: 100%;
-  width: 100%;
-  position: relative;
-  font-family: "Reddit Sans", sans-serif;
-  box-sizing: border-box;
-  color: var(--foreground);
-  border-color: var(--border) !important;
-  outline-color: var(--primary) !important;
+    background-color: var(--background);
+    height: 100%;
+    width: 100%;
+    position: relative;
+    font-family: "Reddit Sans", sans-serif;
+    box-sizing: border-box;
+    color: var(--foreground);
+    border-color: var(--border) !important;
+    outline-color: var(--primary) !important;
 }
 :root {
-  --radius: 0.5rem;
+    --radius: 0.5rem;
 }
 
 [data-theme="light"] {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+    --background: #f8fafc;
+    --foreground: #0f172a;
 
-  --card: #ffffff;
-  --card-foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
 
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
 
-  --primary: #e11d48;
-  --primary-foreground: #ffffff;
+    --primary: #e11d48;
+    --primary-foreground: #ffffff;
 
-  --secondary: #92979e;
-  --secondary-foreground: #0f172a;
+    --secondary: #92979e;
+    --secondary-foreground: #0f172a;
 
-  --muted: #e5e7eb;
-  --muted-foreground: #64748b;
+    --muted: #e5e7eb;
+    --muted-foreground: #64748b;
 
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
 
-  --border: #d4d4d8;
-  --input: #d4d4d8;
+    --border: #d4d4d8;
+    --input: #d4d4d8;
 
-  --accent: #fecdd3;
-  --accent-foreground: #831843;
+    --accent: #fecdd3;
+    --accent-foreground: #831843;
 
-  --hover: #fdf2f6;
-  --hover-foreground: #0f172a;
+    --hover: #fdf2f6;
+    --hover-foreground: #0f172a;
 
-  --ring: #e11d48;
+    --ring: #e11d48;
 
-  --scrollbar-track: #f3f4f6;
-  --scrollbar-thumb: #e11d48;
+    --scrollbar-track: #f3f4f6;
+    --scrollbar-thumb: #e11d48;
 }
 
 [data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #f8fafc;
+    --background: #0a0a0a;
+    --foreground: #f8fafc;
 
-  --card: #111827;
-  --card-foreground: #f8fafc;
+    --card: #111827;
+    --card-foreground: #f8fafc;
 
-  --popover: #111827;
-  --popover-foreground: #f8fafc;
+    --popover: #111827;
+    --popover-foreground: #f8fafc;
 
-  --primary: #fb7185;
-  --primary-foreground: #0b0f13;
+    --primary: #fb7185;
+    --primary-foreground: #0b0f13;
 
-  --secondary: #1e293b;
-  --secondary-foreground: #f1f5f9;
+    --secondary: #1e293b;
+    --secondary-foreground: #f1f5f9;
 
-  --muted: #141a26c7;
-  --muted-foreground: #9ca3af;
+    --muted: #141a26c7;
+    --muted-foreground: #9ca3af;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #0b0f13;
+    --destructive: #ef4444;
+    --destructive-foreground: #0b0f13;
 
-  --border: #272e38;
-  --input: #272e38;
+    --border: #272e38;
+    --input: #272e38;
 
-  --accent: #4c0f23;
-  --accent-foreground: #f8fafc;
+    --accent: #4c0f23;
+    --accent-foreground: #f8fafc;
 
-  --hover: #30121c;
-  --hover-foreground: #ffffff;
+    --hover: #30121c;
+    --hover-foreground: #ffffff;
 
-  --ring: #fb7185;
+    --ring: #fb7185;
 
-  --scrollbar-track: #0b0f13;
-  --scrollbar-thumb: #fb7185;
+    --scrollbar-track: #0b0f13;
+    --scrollbar-thumb: #fb7185;
 }
 
 @theme {
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-background: var(--background);
-  --color-hover: var(--hover);
-  --color-foreground: var(--foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-background: var(--background);
+    --color-hover: var(--hover);
+    --color-foreground: var(--foreground);
 
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
 
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+}
+@keyframes drawerSlideIn {
+    from {
+        transform: translateX(-8%);
+        opacity: 0.01;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+@keyframes drawerSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(-8%);
+        opacity: 0.01;
+    }
+}
+@keyframes backdropFadeIn {
+    from {
+        opacity: 0.01;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes backdropFadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0.01;
+    }
 }

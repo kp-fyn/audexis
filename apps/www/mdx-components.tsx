@@ -30,7 +30,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     p: (props) => (
       <p
-        className="leading-7 text-muted-foreground my-4 text-[15px]"
+        className="leading-7 text-muted-foreground my-2 text-[15px]"
         {...props}
       />
     ),
@@ -47,10 +47,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     li: (props) => {
       return (
         <li
-          className="flex gap-3 text-muted-foreground text-[15px] leading-7 items-start"
+          className=" marker:text-primary gap-3 list-disc text-muted-foreground text-[15px] leading-7 items-start"
           {...props}
         >
-          <span className="text-primary  flex-shrink-0">●</span>
           <span className="">{props.children}</span>
         </li>
       );
@@ -76,7 +75,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     blockquote: (props) => (
       <blockquote
-        className="border-l-4 border-primary/30 bg-muted/30 rounded-r-lg pl-4 pr-4 py-3 my-6 text-muted-foreground italic"
+        className="border-l-4 border-primary 0 bg-muted/30 rounded-r-lg pl-4 pr-4 py-1 my-6 text-muted-foreground italic"
         {...props}
       />
     ),

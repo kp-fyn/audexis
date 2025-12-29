@@ -649,7 +649,24 @@ fn open(path: &str) {
 fn open_default(app_handle: AppHandle, path: &str) {
     let _ = app_handle.opener().open_path(path, None::<&str>);
 }
-
+#[tauri::command]
+fn import_paths(app_handle: AppHandle, paths: Vec<String>, state: State<'_, AppState>) {
+    let mut ws = state.workspace.lock().unwrap();
+    for path in paths {
+        ws.import(PathBuf::from(path));
+    }
+    println!("done");
+    let serializable_files: Vec<SerializableFile> = {
+        ws.files
+            .clone()
+            .into_iter()
+            .map(SerializableFile::from)
+            .collect()
+    };
+    app_handle
+        .emit("workspace-updated", serializable_files)
+        .unwrap();
+}
 #[tauri::command]
 fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppState>) {
     let home_dir: String = match env::home_dir() {
@@ -879,6 +896,7 @@ pub fn run() {
             remove_files,
             get_all_columns,
             open,
+            import_paths,
             open_default,
             rename_files,
             check_update,

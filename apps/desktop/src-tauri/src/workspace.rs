@@ -129,15 +129,15 @@ impl Workspace {
         self.files.iter_mut().find(|f| f.path == path)
     }
 
-    pub fn import(&mut self, file: PathBuf) -> bool {
+    pub fn import(&mut self, file: PathBuf) {
         if let Some(_) = self.files.iter().position(|f| f.path == file) {
-            return false;
+            return;
         }
         let md = match metadata(&file) {
             Ok(m) => m,
             Err(e) => {
                 eprintln!("Could not read metadata: {}", e);
-                return false;
+                return;
             }
         };
         println!("{}", md.is_file());
@@ -146,20 +146,36 @@ impl Workspace {
             match detected {
                 Ok(f) => {
                     self.files.push(f);
-
-                    return true;
+                    println!("Imported file: {}\n", file.display());
+                    return;
                 }
                 Err(BackendError::UnsupportedFormat(_)) => {
                     println!("Unsupported format for file: {}", file.display());
-                    return false;
+                    return;
                 }
                 Err(e) => {
                     eprintln!("Failed to import {}: {:?}", file.display(), e);
-                    return false;
+                    return;
                 }
             }
         } else {
-            return false;
+            let entries = fs::read_dir(file);
+            if entries.is_ok() {
+                let entries = entries.unwrap();
+                for entry in entries {
+                    if entry.is_ok() {
+                        let entry = entry.unwrap();
+                        let path = entry.path();
+                        print!("Importing from dir: {}\n", path.clone().display());
+                        self.import(path);
+
+                        continue;
+                    }
+                }
+                return;
+            } else {
+                return;
+            }
         }
     }
     pub fn get_file(&self, id: Uuid) -> Option<&File> {

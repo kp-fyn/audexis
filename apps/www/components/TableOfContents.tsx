@@ -16,7 +16,7 @@ export default function TableOfContents() {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const article = document.querySelector("main.docs");
+      const article = document.querySelector("article");
       if (!article) return;
 
       const elements = article.querySelectorAll("h2, h3");
@@ -25,6 +25,7 @@ export default function TableOfContents() {
         text: element.textContent || "",
         level: parseInt(element.tagName.charAt(1)),
       }));
+      console.log(items);
 
       setHeadings(items);
       setActiveId("");
@@ -40,7 +41,7 @@ export default function TableOfContents() {
         {
           rootMargin: "-100px 0px -66%",
           threshold: 1.0,
-        }
+        },
       );
 
       elements.forEach((element) => {
@@ -70,13 +71,16 @@ export default function TableOfContents() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="space-y-4 my-4">
+      <div className="flex items-center gap-2 mb-4 ">
         <div className="h-6 w-0.5 bg-primary rounded-full" />
-        <h4 className="text-sm font-semibold text-foreground">On This Page</h4>
+
+        <h4 className="text-sm font-semibold text-foreground ml">
+          On This Page
+        </h4>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-2 ml-4">
         {headings.map((heading) => (
           <button
             key={heading.id}

@@ -1,9 +1,11 @@
 import { MetadataRoute } from "next";
 import { getDocsGroups } from "@/app/docs/registry";
+import { getBlogGroups } from "./blog/registry";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.audexis.app";
   const groups = await getDocsGroups();
+  const blogGroups = await getBlogGroups();
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -28,8 +30,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(),
         changeFrequency: "weekly" as const,
         priority: 0.8,
-      }))
+      })),
   );
-
-  return [...staticPages, ...docPages];
+  const blogPages: MetadataRoute.Sitemap = blogGroups.flatMap((group) =>
+    group.items
+      .filter((item) => item.href !== "/docs")
+      .map((item) => ({
+        url: `${baseUrl}${item.href}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      })),
+  );
+  return [...staticPages, ...docPages, ...blogPages];
 }
