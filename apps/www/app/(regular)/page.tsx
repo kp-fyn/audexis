@@ -49,7 +49,7 @@ export default async function Home() {
       <div className="flex min-h-screen flex-col  bg-background">
         <section className="flex flex-col px-8 lg:px-16  items-center justify-center  ">
           <div className="flex flex-col mt-18 space-y-4 w-full">
-            <h1 className="text-8xl text-center   font-bold tracking-tight text-foreground">
+            <h1 className=" text-4xl sm:text-6xl md:text-8xl text-center   font-bold tracking-tight text-foreground">
               Audio Metadata
               <br />
               <span className="text-primary">Simplified</span>
