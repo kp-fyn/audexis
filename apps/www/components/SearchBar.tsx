@@ -117,6 +117,7 @@ export default function SearchBar({ groups }: SearchProps) {
           setIsOpen(true);
           setTimeout(() => inputRef.current?.focus(), 100);
         }}
+        aria-label="Search"
         className="group flex items-center gap-3 lg:px-4 px-2 py-2 lg:bg-muted/50 lg:hover:bg-muted/80 border border-border rounded-lg transition-all duration-150 text-left lg:w-full w-auto"
       >
         <svg
@@ -173,6 +174,7 @@ export default function SearchBar({ groups }: SearchProps) {
                 className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
               />
               <button
+                aria-label="Close"
                 onClick={() => {
                   setIsOpen(false);
                   setQuery("");
@@ -194,6 +196,7 @@ export default function SearchBar({ groups }: SearchProps) {
                 <div className="py-2">
                   {results.map((result, index) => (
                     <button
+                      aria-label={result.title}
                       key={result.href}
                       onClick={() => handleSelect(result)}
                       onMouseEnter={() => setSelectedIndex(index)}

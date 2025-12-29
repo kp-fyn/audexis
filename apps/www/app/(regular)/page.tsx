@@ -79,6 +79,7 @@ export default async function Home() {
             <div className="lg:ml-auto items-center lg:pl-12">
               <div>
                 <Screenshot
+                  fetchPriority="high"
                   src={`/screenshot`}
                   alt="Audexis Screenshot"
                   width={1200}

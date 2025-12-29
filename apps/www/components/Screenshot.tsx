@@ -1,40 +1,4 @@
-"use client";
-
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { useTheme } from "./ThemeProvider";
-
-export default function Screenshot({
-  src,
-  alt,
-  width,
-  height,
-  className,
-}: ScreenshotProps) {
-  const { theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
-  return (
-    <div className="  h-full w-full   flex">
-      <Image
-        src={`${src}-${theme || "light"}.png`}
-        alt={alt}
-        width={width}
-        height={height}
-        className={className}
-        priority
-      />
-    </div>
-  );
-}
 
 interface ScreenshotProps {
   src: string;
@@ -42,4 +6,39 @@ interface ScreenshotProps {
   width: number;
   height: number;
   className?: string;
+  fetchPriority?: "high" | "low" | "auto";
+}
+
+export default function Screenshot({
+  src,
+  alt,
+  width,
+  height,
+  className,
+  fetchPriority = "auto",
+}: ScreenshotProps) {
+  return (
+    <div className="h-full w-full flex">
+      <Image
+        src={`${src}-light.png`}
+        alt={alt}
+        width={width}
+        height={height}
+        fetchPriority={fetchPriority}
+        className={`${className} dark:hidden`}
+        priority
+        sizes="(min-width: 1280px) 1200px, (min-width: 768px) 90vw, 100vw"
+      />
+      <Image
+        src={`${src}-dark.png`}
+        alt={alt}
+        width={width}
+        height={height}
+        fetchPriority={fetchPriority}
+        className={`${className} hidden dark:block`}
+        priority
+        sizes="(min-width: 1280px) 1200px, (min-width: 768px) 90vw, 100vw"
+      />
+    </div>
+  );
 }
