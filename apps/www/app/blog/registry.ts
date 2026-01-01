@@ -97,20 +97,6 @@ export async function getBlogItems() {
     readingTime: number;
     date: number;
   }[] = [];
-  try {
-    const index = (await import("./page.mdx")) as unknown as MDXModule;
-
-    items.push({
-      href: "/blog",
-      description: index.metadata.description ?? "Blog",
-      title: (index.metadata.title as string) ?? "Overview",
-
-      date: index.metadata.date,
-      readingTime: calcReadingTime(
-        mdxToPlainText(fs.readFileSync(path.join(DOCS_DIR, "page.mdx"), "utf8"))
-      ),
-    });
-  } catch {}
 
   for (const slug of slugs) {
     try {

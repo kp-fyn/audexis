@@ -38,6 +38,22 @@ export const metadata: Metadata = {
     description:
       "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, manage album art, and organize your music library.",
     siteName: "Audexis",
+    images: [
+      {
+        url: "/api/og?type=landing",
+        width: 1200,
+        height: 630,
+        alt: "Audexis - Audio Metadata Simplified",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Audexis - Audio Metadata Editor for macOS",
+    description:
+      "A powerful and intuitive audio metadata editor for macOS. Edit ID3 tags, manage album art, and organize your music library.",
+    images: ["/api/og?type=landing"],
   },
 
   robots: {

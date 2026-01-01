@@ -12,7 +12,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
 
   const key = (slug || []).join("/");
-
   const loader = pages[key];
   if (!loader) return {};
   const mod = await loader();
@@ -22,6 +21,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = mod.metadata.description as string;
   if (!mod.metadata) return {};
   const metadata = mod.metadata;
+  const ogImage = `/api/og?type=docs&title=${encodeURIComponent(
+    String(metadata.title || "")
+  )}&subtitle=${encodeURIComponent(
+    String(description || "")
+  )}&section=${encodeURIComponent(String(key.split("/")[0] || ""))}`;
   return title
     ? {
         title,
@@ -31,6 +35,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           title: metadata.title,
           description: description,
           url: `https://www.audexis.app/docs/${key}`,
+          images: [
+            {
+              url: ogImage,
+              width: 1200,
+              height: 630,
+              alt: String(metadata.title || "Audexis Docs"),
+            },
+          ],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: String(metadata.title || ""),
+          description: String(description || ""),
+          images: [ogImage],
         },
       }
     : {};

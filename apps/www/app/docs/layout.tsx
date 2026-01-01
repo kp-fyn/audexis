@@ -2,6 +2,27 @@ import DocsSidebar from "../../components/DocsSidebar";
 import TableOfContents from "../../components/TableOfContents";
 import { EditOnGitHub } from "../../components/EditOnGitHub";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  openGraph: {
+    images: [
+      {
+        url: "/api/og?type=docs&title=Audexis%20Documentation&subtitle=Guides%2C%20settings%2C%20and%20references%20for%20Audexis.",
+        width: 1200,
+        height: 630,
+        alt: "Audexis Documentation",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [
+      "/api/og?type=docs&title=Audexis%20Documentation&subtitle=Guides%2C%20settings%2C%20and%20references%20for%20Audexis.",
+    ],
+  },
+};
+
 export default function DocsLayout({
   children,
 }: {

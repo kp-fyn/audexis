@@ -21,6 +21,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!mod.metadata) return {};
   const metadata = mod.metadata;
+  const ogImage = `/api/og?type=blog&title=${encodeURIComponent(
+    String(metadata.title || "")
+  )}&subtitle=${encodeURIComponent(
+    String(metadata.description || "")
+  )}&date=${encodeURIComponent(String(metadata.date || ""))}`;
   return {
     title,
     description: metadata.description,
@@ -34,6 +39,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       modifiedTime: new Date(metadata.date).toISOString(),
       url: `https://www.audexis.app/blog/${key}`,
       type: "article",
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: String(metadata.title || "Audexis Blog"),
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: String(metadata.title || ""),
+      description: String(metadata.description || ""),
+      images: [ogImage],
     },
   };
 }
