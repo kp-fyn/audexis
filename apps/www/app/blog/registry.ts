@@ -89,7 +89,15 @@ function calcReadingTime(text: string, wpm = 200): number {
   return minutes;
 }
 
-export async function getBlogItems() {
+export async function getBlogItems(): Promise<
+  {
+    href: string;
+    title: string;
+    description: string;
+    readingTime: number;
+    date: number;
+  }[]
+> {
   const items: {
     href: string;
     title: string;

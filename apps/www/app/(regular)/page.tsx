@@ -144,6 +144,9 @@ export default async function Home() {
               </div>
               <div className="px-6 py-3 bg-muted rounded-lg border border-border">
                 <span className="font-semibold text-foreground">MP4</span>
+              </div>{" "}
+              <div className="px-6 py-3 bg-muted rounded-lg border border-border">
+                <span className="font-semibold text-foreground">FLAC</span>
               </div>
             </div>
           </div>

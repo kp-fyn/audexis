@@ -106,7 +106,11 @@ async fn update_app(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
                 },
             )
             .await?;
+        let user_config_path = get_config_path(&app);
+        let mut user_config = load_config(&user_config_path);
+        user_config.just_updated = true;
 
+        let _ = save_config(&user_config_path, &user_config);
         app.restart();
     }
 
@@ -270,7 +274,7 @@ fn save_frame_changes(
                 let mut fc_map: HashMap<Uuid, history::Frames> = HashMap::new();
                 for p in &frame_changes.paths {
                     if let Some(file) = ws.files.iter().find(|f| f.path.to_string_lossy() == *p) {
-                        let mut before_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
+                        let before_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
                             before_changes
                                 .get(&file.id)
                                 .cloned()
@@ -278,33 +282,33 @@ fn save_frame_changes(
                         let mut after_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
                             HashMap::new();
                         for frame in &frame_changes.frames {
-                            let existing_vals = file
-                                .tags
-                                .get(&frame.key)
-                                .unwrap_or(&Vec::new())
-                                .iter()
-                                .map(|v| match v {
-                                    TagValue::Text(s) => SerializableTagValue::Text(s.clone()),
-                                    TagValue::Picture {
-                                        mime,
-                                        data,
-                                        picture_type,
-                                        description,
-                                    } => SerializableTagValue::Picture {
-                                        mime: mime.clone(),
-                                        data_base64: base64::engine::general_purpose::STANDARD
-                                            .encode(&data),
-                                        picture_type: *picture_type,
-                                        description: description.clone(),
-                                    },
-                                    TagValue::UserText(ut) => {
-                                        SerializableTagValue::UserText(ut.clone())
-                                    }
-                                    TagValue::UserUrl(uu) => {
-                                        SerializableTagValue::UserUrl(uu.clone())
-                                    }
-                                })
-                                .collect::<Vec<SerializableTagValue>>();
+                            // let existing_vals = file
+                            //     .tags
+                            //     .get(&frame.key)
+                            //     .unwrap_or(&Vec::new())
+                            //     .iter()
+                            //     .map(|v| match v {
+                            //         TagValue::Text(s) => SerializableTagValue::Text(s.clone()),
+                            //         TagValue::Picture {
+                            //             mime,
+                            //             data,
+                            //             picture_type,
+                            //             description,
+                            //         } => SerializableTagValue::Picture {
+                            //             mime: mime.clone(),
+                            //             data_base64: base64::engine::general_purpose::STANDARD
+                            //                 .encode(&data),
+                            //             picture_type: *picture_type,
+                            //             description: description.clone(),
+                            //         },
+                            //         TagValue::UserText(ut) => {
+                            //             SerializableTagValue::UserText(ut.clone())
+                            //         }
+                            //         TagValue::UserUrl(uu) => {
+                            //             SerializableTagValue::UserUrl(uu.clone())
+                            //         }
+                            //     })
+                            //     .collect::<Vec<SerializableTagValue>>();
 
                             after_map.insert(frame.key, frame.values.clone());
                         }
@@ -625,7 +629,15 @@ fn get_workspace_files(app_handle: AppHandle, state: State<'_, AppState>) {
     app_handle
         .emit("workspace-updated", serializable_files)
         .unwrap();
-    app_handle.emit("user-config-updated", user_config).unwrap();
+    app_handle
+        .emit("user-config-updated", &user_config)
+        .unwrap();
+    if user_config.just_updated {
+        let user_config_path = get_config_path(&app_handle);
+        let mut config = user_config.clone();
+        config.just_updated = false;
+        let _ = save_config(&user_config_path, &config);
+    }
 }
 #[tauri::command]
 fn open(path: &str) {

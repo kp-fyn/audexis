@@ -179,10 +179,10 @@ function App() {
           if ((tag as any).type === "Picture") {
             const pic = tag as TagPicture;
             const count = Array.isArray(
-              (row.original as any)._frames?.attachedPicture,
+              (row.original as any)._frames?.attachedPicture
             )
               ? ((row.original as any)._frames.attachedPicture as any[]).filter(
-                  (v) => v && v.type === "Picture",
+                  (v) => v && v.type === "Picture"
                 ).length
               : 0;
             return (
@@ -294,7 +294,7 @@ function App() {
           const display =
             typeof tag.value === "string" ? tag.value : String(tag.value ?? "");
           return (
-            <div className="inline-flex items-center gap-1">
+            <div className="inline-flex items-center gap-1 max-w-full">
               <TagValueChip text={display} />
               {count > 1 && (
                 <span className="text-[10px] px-1 rounded bg-muted text-foreground/70">
@@ -304,7 +304,7 @@ function App() {
             </div>
           );
         },
-      },
+      }
     ) as ColumnDef<File, any>;
   });
 
@@ -312,7 +312,7 @@ function App() {
 
   const columns: ColumnDef<File>[] = [...helpers];
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    columns.map((c) => c.id ?? ""),
+    columns.map((c) => c.id ?? "")
   );
 
   useEffect(() => {
@@ -409,7 +409,7 @@ function App() {
         },
       },
     ],
-    [files],
+    [files]
   );
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -439,7 +439,7 @@ function App() {
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {}),
+    useSensor(KeyboardSensor, {})
   );
 
   if (isLoading) {
@@ -497,13 +497,13 @@ function App() {
                 width: Math.max(
                   config.columns.reduce(
                     (sum, col) => sum + (col.size || 200),
-                    0,
+                    0
                   ) +
                     config.columns.length * 16 +
                     (config.columns.length - 1) * 16 +
                     12 +
                     170,
-                  600,
+                  600
                 ),
                 minWidth: "100%",
               }}

@@ -86,14 +86,17 @@ impl Default for ViewMode {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct UserConfig {
     pub theme: Theme,
     pub view: ViewMode,
     pub onboarding: bool,
     pub albums: Vec<Album>,
     pub columns: Vec<Column>,
+
     pub density: Density,
-    #[serde(default)]
+    pub just_updated: bool,
+
     pub show_diff_modal: bool,
 }
 
@@ -104,8 +107,10 @@ impl Default for UserConfig {
             density: Density::Default,
             view: ViewMode::Folder,
             onboarding: true,
+            just_updated: true,
             albums: vec![],
             show_diff_modal: false,
+
             columns: vec![
                 Column {
                     value: "attachedPicture".into(),
@@ -187,6 +192,7 @@ pub struct PartialUserConfig {
     pub columns: Option<Vec<Column>>,
     pub density: Option<Density>,
     pub show_diff_modal: Option<bool>,
+    pub just_updated: Option<bool>,
 }
 pub const CONFIG_FILE: &str = "user_config.json";
 
@@ -229,6 +235,12 @@ pub fn load_config(path: &PathBuf) -> UserConfig {
 }
 
 pub fn save_config(path: &PathBuf, config: &UserConfig) -> std::io::Result<()> {
-    let json = serde_json::to_string_pretty(config)?;
-    fs::write(path, json)
+    let json = serde_json::to_string_pretty(config);
+    if json.is_err() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to serialize config",
+        ));
+    }
+    fs::write(path, json.unwrap())
 }

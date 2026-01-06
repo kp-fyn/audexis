@@ -25,6 +25,7 @@ export default function DragCell({ cell }: Props): ReactNode {
       style={{
         ...style,
         width: `${cell.column.getSize()}px`,
+        maxWidth: `${cell.column.getSize()}px`,
         minWidth: `${cell.column.columnDef.minSize}px`,
       }}
       ref={setNodeRef}
@@ -50,7 +51,9 @@ export default function DragCell({ cell }: Props): ReactNode {
           }}
         />
       ) : (
-        <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+        <span className="truncate">
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </span>
       )}
     </div>
   );

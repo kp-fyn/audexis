@@ -70,6 +70,7 @@ impl DefaultBackend {
 impl TagBackend for DefaultBackend {
     fn read(&self, path: &PathBuf) -> Result<File, BackendError> {
         let fmt = self.resolve_format(path);
+        println!("Detected format: {:?}", fmt);
         let release = self
             .resolve_release(&fmt)
             .ok_or_else(|| BackendError::UnsupportedFormat(fmt.clone()))?;
@@ -188,7 +189,6 @@ pub enum WriteStatus {
     Ok,
     Failed,
     Unsupported,
-    DryRun,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -233,14 +233,4 @@ impl TagDiff {
             after: conv_vec(after),
         }
     }
-}
-
-pub fn summarize(files: &[Result<File, BackendError>]) -> Vec<SerializableFile> {
-    files
-        .iter()
-        .filter_map(|r| match r {
-            Ok(f) => Some(SerializableFile::from(f.clone())),
-            Err(_) => None,
-        })
-        .collect()
 }

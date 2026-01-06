@@ -104,6 +104,12 @@ export default async function RootLayout({
                 >
                   Blog
                 </Link>
+                <Link
+                  href="/blog/releases"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Releases
+                </Link>
                 <a
                   href="https://github.com/kp-fyn/audexis"
                   target="_blank"

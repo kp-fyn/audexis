@@ -10,6 +10,7 @@ import {
 import { UserConfig, Column } from "@/ui/types";
 import { Event, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { ChangelogModal } from "../components/ChangelogModal";
 
 const UserConfigContext = createContext<Config>({
   config: {
@@ -19,6 +20,7 @@ const UserConfigContext = createContext<Config>({
     columns: [],
     albums: [],
     density: "default",
+    just_updated: false,
     show_diff_modal: false,
   },
   allColumns: [],
@@ -33,6 +35,7 @@ const UserConfigContext = createContext<Config>({
 interface Config {
   config: UserConfig;
   allColumns: Column[];
+
   setAllColumns: (columns: Column[]) => void;
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: "simple" | "folder") => void;
@@ -58,7 +61,7 @@ export function UserConfigProvider({
   initialTheme: string;
 }): ReactNode {
   const [hasOpened, setHasOpened] = useState(false);
-
+  const [changelogModalOpen, setChangelogModalOpen] = useState(false);
   const [userConfig, setUserConfig] = useState<UserConfig>({
     theme: initialTheme ? (initialTheme as "light" | "dark") : "light",
     onboarding: false,
@@ -67,6 +70,7 @@ export function UserConfigProvider({
     albums: [],
     density: "default",
     show_diff_modal: false,
+    just_updated: false,
   });
   const [allColumns, setAllColumns] = useState<Column[]>([]);
   useEffect(() => {
@@ -74,7 +78,10 @@ export function UserConfigProvider({
       "user-config-updated",
       (event: Event<UserConfig>) => {
         const config = event.payload;
-
+        if (config.just_updated) {
+          setChangelogModalOpen(true);
+          console.log("opening changelog modal");
+        }
         const params = new URLSearchParams(window.location.search);
         const themeLower = (config.theme as string).toLowerCase() as
           | "light"
@@ -82,7 +89,7 @@ export function UserConfigProvider({
         params.set("theme", themeLower);
         document.documentElement.setAttribute(
           "data-density",
-          config.density.toLowerCase() as string,
+          config.density.toLowerCase() as string
         );
 
         const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -105,7 +112,7 @@ export function UserConfigProvider({
         }
 
         document.documentElement.setAttribute("data-theme", themeLower);
-      },
+      }
     );
     // window.app.onUserConfigUpdate((_e, config) => {
     //     console.log(config);
@@ -160,8 +167,8 @@ export function UserConfigProvider({
                 density === "default"
                   ? "Default"
                   : density === "compact"
-                    ? "Compact"
-                    : "Comfort",
+                  ? "Compact"
+                  : "Comfort",
             },
           });
           document.documentElement.setAttribute("data-density", density);
@@ -176,6 +183,10 @@ export function UserConfigProvider({
         },
       }}
     >
+      <ChangelogModal
+        open={changelogModalOpen}
+        onClose={() => setChangelogModalOpen(false)}
+      />
       {children}
     </UserConfigContext.Provider>
   );

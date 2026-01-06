@@ -20,6 +20,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/blog/releases`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
   ];
 
   const docPages: MetadataRoute.Sitemap = groups.flatMap((group) =>
@@ -30,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(),
         changeFrequency: "weekly" as const,
         priority: 0.8,
-      })),
+      }))
   );
   const blogPages: MetadataRoute.Sitemap = blogGroups.flatMap((group) =>
     group.items
@@ -40,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(),
         changeFrequency: "weekly" as const,
         priority: 0.8,
-      })),
+      }))
   );
   return [...staticPages, ...docPages, ...blogPages];
 }

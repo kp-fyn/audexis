@@ -42,7 +42,7 @@ if (params.get("theme") !== theme) {
 
 function Root() {
   const [showOnboarding, setShowOnboarding] = React.useState(
-    query.onboarding === "true",
+    query.onboarding === "true"
   );
   const { canUndo, canRedo } = useChanges();
 
@@ -66,7 +66,7 @@ function Root() {
         combo: ["mod+f"],
         handler: () => {
           window.dispatchEvent(
-            new CustomEvent("audexis:find-open", { detail: { mode: "find" } }),
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } })
           );
         },
         allowInInputs: true,
@@ -77,7 +77,7 @@ function Root() {
           window.dispatchEvent(
             new CustomEvent("audexis:find-open", {
               detail: { mode: "replace" },
-            }),
+            })
           );
         },
         allowInInputs: true,
@@ -103,7 +103,7 @@ function Root() {
         allowInInputs: true,
       },
     ],
-    [],
+    []
   );
 
   const handleCloseOnboarding = () => {
@@ -113,7 +113,7 @@ function Root() {
       params.delete("onboarding");
       const newUrl = `${window.location.pathname}?${params.toString()}`.replace(
         /\?$/,
-        "",
+        ""
       );
       window.history.replaceState({}, "", newUrl);
     }
@@ -217,5 +217,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         </UserConfigProvider>
       </ContextMenuProvider>
     </ErrorBoundary>
-  </React.StrictMode>,
+  </React.StrictMode>
 );

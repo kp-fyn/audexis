@@ -205,7 +205,7 @@ impl FileWatcher {
                 };
                 let pth = p.0.clone();
 
-                if (p.1.kind.is_create() || p.1.kind.is_modify()) {
+                if p.1.kind.is_create() || p.1.kind.is_modify() {
                     println!("is create");
                     changed = true;
                 } else {

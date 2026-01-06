@@ -68,6 +68,17 @@ export default async function DocPage({ params }: Props) {
   return (
     <>
       <article className="prose max-w-none dark:prose-invert">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4 mt-2 pb-4 border-b border-border/50">
+          {mod.metadata?.title}
+        </h1>
+        <span className="">
+          Last updated on{" "}
+          {new Date(mod?.metadata.date).toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </span>
         <MDX />
       </article>
     </>

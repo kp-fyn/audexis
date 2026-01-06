@@ -249,6 +249,7 @@ export interface UserConfig {
   columns: Column[];
   theme: "light" | "dark";
   albums: Album[];
+  just_updated: boolean;
   onboarding: boolean;
   view: string;
   density: "default" | "compact" | "comfort";

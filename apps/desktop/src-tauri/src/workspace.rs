@@ -7,7 +7,6 @@ use crate::tag_manager::utils::{
     CleanupRule, File, FrameKey, SerializableTagValue, TagValue, UserTextEntry, UserUrlEntry,
 };
 use base64::Engine;
-
 use std::fs;
 use std::fs::metadata;
 use std::path::{Path, PathBuf};

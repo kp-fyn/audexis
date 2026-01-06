@@ -124,7 +124,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Audexis v__VERSION__"
-          releaseBody: "See the CHANGELOG.md for details."
+          releaseBody: "See https://www.audexis.com/blog/releases/v__VERSION__ for details."
           releaseDraft: true
           prerelease: false
           includeRelease: true

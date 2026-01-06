@@ -44,8 +44,10 @@ logs/
 .vscode/
 .idea/
 *.swp
+.zed
 
-# Lock files (using pnpm)
+# Lock files
 package-lock.json
 yarn.lock
-.zed
+
+

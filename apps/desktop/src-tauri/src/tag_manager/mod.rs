@@ -8,14 +8,15 @@ mod riff;
 pub mod tag_backend;
 pub mod traits;
 pub mod utils;
-mod vorbis;
+
+mod vorbis_comments;
 
 #[derive(Debug, Clone)]
 pub struct TagManager {
     id3: id3::Id3,
     itunes: itunes::Itunes,
     flac: flac::Flac,
-    vorbis: vorbis::Vorbis,
+
     riff: riff::Riff,
 }
 
@@ -25,7 +26,7 @@ impl TagManager {
             id3: id3::Id3::new(),
             itunes: itunes::Itunes::new(),
             flac: flac::Flac::new(),
-            vorbis: vorbis::Vorbis::new(),
+
             riff: riff::Riff::new(),
         }
     }
@@ -38,7 +39,7 @@ impl TagManager {
             Formats::Id3v24 => self.id3.get_release_class(&Formats::Id3v24),
             Formats::Itunes => self.itunes.get_release_class(&Formats::Itunes),
             Formats::Flac => self.flac.get_release_class(&Formats::Flac),
-            Formats::Vorbis => self.vorbis.get_release_class(&Formats::Vorbis),
+
             Formats::Riff => self.riff.get_release_class(&Formats::Riff),
             _ => None,
         }
@@ -52,8 +53,8 @@ impl TagManager {
             .map(|s| s.to_ascii_lowercase())
         {
             match ext.as_str() {
-                "m4a" | "mp4" => return Formats::Itunes,
-                "flac" => return Formats::Flac,
+                "m4a" | "mp4" | "m4v" => return Formats::Itunes,
+
                 "ogg" | "opus" => return Formats::Vorbis,
                 "wav" | "aiff" | "aif" => return Formats::Riff,
                 _ => {}
@@ -90,6 +91,9 @@ impl TagManager {
                 };
                 return version;
             }
+        }
+        if buffer.len() >= 4 && &buffer[0..4] == b"fLaC" {
+            return Formats::Flac;
         }
 
         if file_path.extension().and_then(|e| e.to_str()) == Some("mp3") {

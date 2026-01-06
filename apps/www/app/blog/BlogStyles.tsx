@@ -10,7 +10,12 @@ export default function BlogStyles({
 }) {
   const router = useRouter();
   let pathname = usePathname();
-  if (pathname === "/blog" || pathname === "/blog/")
+  if (
+    pathname === "/blog" ||
+    pathname === "/blog/" ||
+    pathname === "/blog/releases" ||
+    pathname === "/blog/releases/"
+  )
     return <div className="mt-24">{children}</div>;
 
   const handleBack = () => {
