@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   openGraph: {
     images: [
       {
-        url: "/api/og?type=blog&title=Blog&subtitle=Insights%2C%20updates%2C%20and%20deep%20dives%20from%20the%20Audexis%20team.",
+        url: "/api/og?type=blog&title=Blog&subtitle=Insights%2C%20updates%2C%20from%20the%20Audexis%20team.",
         width: 1200,
         height: 630,
         alt: "Audexis Blog",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     images: [
-      "/api/og?type=blog&title=Blog&subtitle=Insights%2C%20updates%2C%20and%20deep%20dives%20from%20the%20Audexis%20team.",
+      "/api/og?type=blog&title=Blog&subtitle=Insights%2C%20updates%2C%20from%20the%20Audexis%20team.",
     ],
   },
 };

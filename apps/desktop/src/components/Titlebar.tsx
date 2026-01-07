@@ -193,13 +193,7 @@ export default function Titlebar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              // onClick={() => showAlbumDialog(0)}
-              variant={"link"}
-            >
-              {" "}
-              Manage Albums
-            </Button>
+
             <div className="relative group">
               <button
                 aria-label="Open Settings"

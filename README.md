@@ -1,56 +1,87 @@
-# Audexis
+# <img width="32" height="32" alt="Subject" src="./apps/desktop/src-tauri/icons/32x32.png" /> &nbsp; Audexis
 
-Audexis is an open-source, cross-platform audio metadata editor built with Tauri and React. It provides a clean and efficient interface for editing tags such as title, artist, album, artwork, track numbers, and more. Designed for power users and everyday listeners, Audexis offers batch editing, fast scanning, and broad format support.
+Audexis is a modern, cross-platform audio metadata editor built with Tauri.  
+It lets you edit tags, album artwork, and filenames quickly while staying lightweight and privacy-respecting.
+
+It is designed for people who manage personal music libraries, DJ crates, podcast collections, or archived audio files.
+
+## Screenshots
+
+### Main interface
+
+[![Audexis main interface](apps/www/public/screenshot-dark.png)](https://www.audexis.app)
+
+### Tag and image editing
+
+[![Audexis image editing](apps/www/public/image-editing-dark.png)](https://www.audexis.app)
+
+### Settings
+
+[![Audexis settings](apps/www/public/settings-dark.png)](https://www.audexis.app)
+
+### File renaming
+
+[![Audexis renaming view](apps/www/public/renaming-dark.png)](https://www.audexis.app)
 
 ## Features
 
-- Cross-platform desktop application (Windows, macOS)
-- Modern UI built with React and TailwindCSS
-- Batch edit audio metadata
-- Edit artwork, embedded images
-- Multi-format support: MP3, M4A/MP4
-- Automatic updater (Tauri Updater)
+- Cross-platform (macOS and Windows)
+- Fast, native performance using Tauri
+- Batch editing for large sets of files
+- Edit album artwork and embedded images
+- Supports MP3, M4A/MP4, and FLAC
+- Clean UI built with React and TailwindCSS
+- Automatic updates
 - Open source
 
 ## Installation
 
-Download the latest release for your operating system from the Releases section.
+Download the latest release from:
 
-Windows: `.msi` or `.exe` installer  
-macOS: `.dmg`
+https://github.com/kp-fyn/audexis/releases
+
+Windows:
+
+- `.msi` or `.exe`
+
+macOS:
+
+- `.dmg`
 
 ## Building From Source
 
-Prerequisites:
+### Requirements
 
-- Node.js (18+)
+- Node.js 18+
 - Rust and Cargo
 - npm
 
-Clone the repository:
+### Clone
 
-```
+```bash
 git clone https://github.com/kp-fyn/audexis
 cd audexis/apps/desktop
-```
-
-## Install dependencies
 
 ```
+
+### Install dependencies
+
+```bash
 npm install
 ```
 
-## Build
+### Build
 
-```
-npm run tauri build
+```bash
+ npm run tauri build
 ```
 
 ## Contributing
 
-Contributions are welcome.  
-Feel free to open issues for bugs, feature requests, or questions.
+Contributions, bug reports, and feature suggestions are welcome.
 
-## License
+Feel free to open an issue before submitting a pull request.
 
-This project is licensed under the MIT License.
+## Privacy
+
+Audexis performs all metadata editing locally on your machine.
