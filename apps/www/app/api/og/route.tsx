@@ -71,9 +71,10 @@ export async function GET(request: Request) {
   return new ImageResponse(
     (
       <div
-        tw="w-full h-full flex p-[60px]"
+        tw="w-full h-full flex p-[60px] "
         style={{
           fontFamily: "Reddit Sans",
+          backgroundColor: "#f8fafc",
         }}
       >
         <div
