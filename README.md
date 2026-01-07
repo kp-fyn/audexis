@@ -5,6 +5,10 @@ It lets you edit tags, album artwork, and filenames quickly while staying lightw
 
 It is designed for people who manage personal music libraries, DJ crates, podcast collections, or archived audio files.
 
+## Documentation
+
+You can view the documentation [here](https://www.audexis.app/docs)
+
 ## Screenshots
 
 ### Main interface
