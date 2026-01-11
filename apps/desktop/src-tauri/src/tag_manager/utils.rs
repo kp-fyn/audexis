@@ -1,3 +1,4 @@
+use crate::config::user::ColumnKind;
 use crate::tag_manager::traits::Formats;
 
 use base64::{engine::general_purpose, Engine as _};
@@ -8,6 +9,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FrameKey {
     Title,
     Artist,
@@ -136,7 +138,40 @@ pub enum FrameKey {
     RecordingDate,
     ReleaseDate,
 }
+impl FrameKey {
+    pub fn is_multi_valued(&self) -> bool {
+        match self {
+            FrameKey::AttachedPicture
+            | FrameKey::UserDefinedText
+            | FrameKey::UserDefinedURL
+            | FrameKey::Genre
+            | FrameKey::Artist
+            | FrameKey::AlbumArtist
+            | FrameKey::Composer
+            | FrameKey::Lyricist
+            | FrameKey::Comments => true,
+            _ => false,
+        }
+    }
+    pub fn get_kind(&self) -> ColumnKind {
+        match self {
+            FrameKey::AttachedPicture => ColumnKind::Image,
 
+            FrameKey::PodcastUrl
+            | FrameKey::Website
+            | FrameKey::UserDefinedURL
+            | FrameKey::CommercialURL
+            | FrameKey::CopyrightURL
+            | FrameKey::AudioFileURL
+            | FrameKey::ArtistURL
+            | FrameKey::RadioStationURL
+            | FrameKey::PaymentURL
+            | FrameKey::BitmapImageURL => ColumnKind::URL,
+
+            _ => ColumnKind::Text,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TagValue {
     Text(String),

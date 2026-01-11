@@ -3,6 +3,7 @@ import { useFindReplace } from "@/ui/hooks/useFindReplace";
 import Select from "@/ui/components/Select";
 import { useChanges } from "../hooks/useChanges";
 import { Checkbox } from "./Checkbox";
+import { useUserConfig } from "../hooks/useUserConfig";
 
 export default function FindReplaceBar() {
   const {
@@ -57,7 +58,8 @@ export default function FindReplaceBar() {
 
   if (!open) return null;
 
-  const { neededItems } = useChanges();
+  const { config } = useUserConfig();
+  const { sidebar_items } = config;
   return (
     <div
       onKeyDown={onKeyDown}
@@ -81,7 +83,7 @@ export default function FindReplaceBar() {
       <Select
         value={field as string}
         onChange={(v) => setField(v as any)}
-        options={[...neededItems, { value: "all", label: "All (find only)" }]}
+        options={[...sidebar_items, { value: "all", label: "All (find only)" }]}
         placeholder="Field"
         className="w-44"
         size="sm"

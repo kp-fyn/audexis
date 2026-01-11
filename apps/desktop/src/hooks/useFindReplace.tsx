@@ -44,7 +44,7 @@ const FindReplaceContext = createContext<Ctx | null>(null);
 
 function buildMatcher(
   query: string,
-  opts: FindOptions,
+  opts: FindOptions
 ): ((s: string) => boolean) | null {
   if (!query) return null;
   if (opts.regex) {
@@ -60,12 +60,12 @@ function buildMatcher(
   if (opts.wholeWord) {
     const re = new RegExp(
       `\\b${query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
-      opts.caseSensitive ? "" : "i",
+      opts.caseSensitive ? "" : "i"
     );
     return (s: string) => re.test(s ?? "");
   }
   return (s: string) => {
-    const hay = opts.caseSensitive ? (s ?? "") : (s ?? "").toLowerCase();
+    const hay = opts.caseSensitive ? s ?? "" : (s ?? "").toLowerCase();
     return hay.includes(needle);
   };
 }
@@ -74,7 +74,7 @@ function applyReplace(
   orig: string,
   query: string,
   replacement: string,
-  opts: FindOptions,
+  opts: FindOptions
 ): string {
   if (!query) return orig;
   if (opts.regex) {
@@ -88,14 +88,14 @@ function applyReplace(
   if (opts.wholeWord) {
     const re = new RegExp(
       `\\b${query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
-      opts.caseSensitive ? "g" : "gi",
+      opts.caseSensitive ? "g" : "gi"
     );
     return (orig ?? "").replace(re, replacement);
   }
   if (!opts.caseSensitive) {
     const re = new RegExp(
       query.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&"),
-      "gi",
+      "gi"
     );
     return (orig ?? "").replace(re, replacement);
   }
@@ -135,22 +135,24 @@ export function FindReplaceProvider({
     const arr: number[] = [];
     files.forEach((f, idx) => {
       if (field === "all") {
-        const t = f.tags as any;
+        const t = f.frames;
         const any = Object.values(t).some(
           (v: any) =>
             v &&
-            typeof v === "object" &&
-            v.type === "Text" &&
-            match(String(v.value ?? "")),
+            typeof v[0] === "object" &&
+            "type" in v[0] &&
+            v[0].type === "Text" &&
+            match(String(v[0].value ?? ""))
         );
         if (any) arr.push(idx);
       } else {
-        const v = (f.tags as any)[field];
+        const v = f.frames[field];
         if (
           v &&
-          typeof v === "object" &&
-          v.type === "Text" &&
-          match(String(v.value ?? ""))
+          typeof v[0] === "object" &&
+          "type" in v[0] &&
+          v[0].type === "Text" &&
+          match(String(v[0].value ?? ""))
         )
           arr.push(idx);
       }
@@ -173,7 +175,7 @@ export function FindReplaceProvider({
       }
       setSelected([targetPath]);
     },
-    [matches, files, setSelected, hasUnsavedChanges, nudgeSaveBar],
+    [matches, files, setSelected, hasUnsavedChanges, nudgeSaveBar]
   );
 
   const next = useCallback(() => focusMatch(active + 1), [active, focusMatch]);
@@ -185,13 +187,13 @@ export function FindReplaceProvider({
     const idx = matches[active];
     const file = files[idx];
     if (!file) return;
-    const v = (file.tags as any)[field];
-    if (!v || v.type !== "Text") return;
+    const v = (file.frames as any)[field];
+    if (!v || v[0].type !== "Text") return;
     const newVal = applyReplace(
-      String(v.value ?? ""),
+      String(v[0].value ?? ""),
       query,
       replaceWith,
-      options,
+      options
     );
     if (newVal === String(v.value ?? "")) return;
     const key = field.charAt(0).toUpperCase() + field.slice(1);
@@ -211,15 +213,15 @@ export function FindReplaceProvider({
     if (matches.length === 0) return;
     for (const m of matches) {
       const file = files[m];
-      const v = (file.tags as any)[field];
-      if (!v || v.type !== "Text") continue;
+      const v = file.frames[field];
+      if (!v || v[0].type !== "Text") continue;
       const newVal = applyReplace(
-        String(v.value ?? ""),
+        String(v[0].value ?? ""),
         query,
         replaceWith,
-        options,
+        options
       );
-      if (newVal === String(v.value ?? "")) continue;
+      if (newVal === String(v[0].value ?? "")) continue;
       const key = field.charAt(0).toUpperCase() + field.slice(1);
       const frames = [
         {

@@ -16,11 +16,16 @@ function sanitizeFilename(name: string) {
 
 function applyPatternFrontend(file: File, pattern: string): string {
   const map: Record<string, string> = {};
-  const tags = file.tags as any;
+  const tags = file.frames;
   Object.keys(tags).forEach((k) => {
     const v = tags[k];
-    if (v && typeof v === "object" && "type" in v && v.type === "Text") {
-      map[k] = String(v.value ?? "");
+    if (
+      v &&
+      typeof v[0] === "object" &&
+      "type" in v[0] &&
+      v[0].type === "Text"
+    ) {
+      map[k] = String(v[0].value ?? "");
     }
   });
   const ext = file.path.split(".").pop() || "";

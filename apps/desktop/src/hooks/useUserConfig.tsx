@@ -21,10 +21,13 @@ const UserConfigContext = createContext<Config>({
     albums: [],
     density: "default",
     just_updated: false,
+    sidebar_items: [],
     show_diff_modal: false,
   },
+  multiFrameKeys: [],
   allColumns: [],
   setTheme: () => {},
+  setMultiFrameKeys: () => {},
   setView: () => {},
   setColumns: () => {},
   setDensity: () => {},
@@ -35,10 +38,11 @@ const UserConfigContext = createContext<Config>({
 interface Config {
   config: UserConfig;
   allColumns: Column[];
-
+  multiFrameKeys: string[];
   setAllColumns: (columns: Column[]) => void;
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: "simple" | "folder") => void;
+  setMultiFrameKeys: (keys: string[]) => void;
   setColumns: (column: Column[]) => void;
   setDensity: (density: "default" | "compact" | "comfort") => void;
   setShowDiffModal: (enabled: boolean) => void;
@@ -71,13 +75,16 @@ export function UserConfigProvider({
     density: "default",
     show_diff_modal: false,
     just_updated: false,
+    sidebar_items: [],
   });
   const [allColumns, setAllColumns] = useState<Column[]>([]);
+  const [multiFrameKeys, setMultiFrameKeys] = useState<string[]>([]);
   useEffect(() => {
     const unlisten = listen(
       "user-config-updated",
       (event: Event<UserConfig>) => {
         const config = event.payload;
+        console.log({ config });
         if (config.just_updated) {
           setChangelogModalOpen(true);
           console.log("opening changelog modal");
@@ -130,6 +137,8 @@ export function UserConfigProvider({
   return (
     <UserConfigContext.Provider
       value={{
+        multiFrameKeys,
+        setMultiFrameKeys,
         config: userConfig,
         setTheme: (theme: "light" | "dark") => {
           setUserConfig({ ...userConfig, theme });

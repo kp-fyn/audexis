@@ -10,7 +10,6 @@ import {
   ReactNode,
   useEffect,
 } from "react";
-import { useHistoryState } from "@uidotdev/usehooks";
 import toast from "react-hot-toast";
 import { listen, Event } from "@tauri-apps/api/event";
 import {
@@ -20,6 +19,7 @@ import {
   AllTags,
   TagText,
   TagPicture,
+  SerializableTagFrameValue,
 } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -29,9 +29,11 @@ type FileIdentifier = {
 };
 
 interface ChangesContext {
-  changes: Partial<AllTags>;
+  changes: Record<string, SerializableTagFrameValue[]>;
   neededItems: { value: string; label: string; maxLength?: number }[];
-  setChanges: (newPresent: Partial<AllTags>) => void;
+  setChanges: Dispatch<
+    SetStateAction<Record<string, SerializableTagFrameValue[]>>
+  >;
 
   setSelected: Dispatch<SetStateAction<string[]>>;
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
@@ -138,7 +140,9 @@ export function ChangesProvider({
 }: {
   children: ReactNode;
 }): ReactNode {
-  const { state, set, clear } = useHistoryState<Partial<AllTags>>({});
+  const [changes, setChanges] = useState<
+    Record<string, SerializableTagFrameValue[]>
+  >({});
 
   const [files, setFiles] = useState<File[]>([]);
   const [filesToShow, setFilesToShow] = useState<FileIdentifier[]>([]);
@@ -171,11 +175,7 @@ export function ChangesProvider({
   const nudgeSaveBar = () => setSaveBarNudge((n) => n + 1);
 
   const hasUnsavedChanges =
-    Object.keys(state || {}).length > 0 && selected.length > 0;
-
-  const setChanges = (newPresent: Partial<AllTags>) => {
-    set(newPresent);
-  };
+    Object.keys(changes || {}).length > 0 && selected.length > 0;
 
   useEffect(() => {
     if (files.length === 0) {
@@ -238,7 +238,7 @@ export function ChangesProvider({
       (event: Event<HistoryPayload>) => {
         const config = event.payload;
         setHistoryState(config);
-      },
+      }
     );
 
     return () => {
@@ -287,9 +287,7 @@ export function ChangesProvider({
     };
   }, [selected, files, hasUnsavedChanges]);
 
-  const clearAllChanges = () => {
-    clear();
-  };
+  const clearAllChanges = () => {};
 
   function showAlbumDialog(page?: number): void {
     if (page) {
@@ -313,7 +311,7 @@ export function ChangesProvider({
   return (
     <ChangesContext.Provider
       value={{
-        changes: state,
+        changes: changes,
         neededItems: getNeededItems(),
         setChanges,
 
@@ -349,7 +347,7 @@ export function ChangesProvider({
   );
 
   function toSerializableTags(
-    input: Partial<AllTags>,
+    input: Partial<AllTags>
   ): Record<string, TagText | TagPicture> {
     const out: Record<string, TagText | TagPicture> = {};
     Object.entries(input).forEach(([key, val]) => {
@@ -367,24 +365,26 @@ export function ChangesProvider({
   }
 
   async function saveChanges(): Promise<void> {
-    const changes = state;
     if (!changes) return;
     if (!selected || selected.length === 0) return;
 
-    const tags = toSerializableTags(changes);
-    const frames = Object.entries(tags).map(([k, v]) => ({
-      key: k,
-      values: [v as any],
-    }));
+    const frames = [];
+    for (const [key, value] of Object.entries(changes)) {
+      frames.push({
+        key: key,
+        values: value,
+      });
+    }
 
     try {
       await invoke("save_frame_changes", {
         frameChanges: { paths: selected, frames },
       });
 
-      set({});
+      setChanges({});
       toast.success("Changes saved successfully");
     } catch (err: unknown) {
+      console.log(err);
       const message = err instanceof Error ? err.message : "Unknown error";
       toast.error(`Failed to save changes: ${message}`);
     }

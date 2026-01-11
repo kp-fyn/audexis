@@ -67,7 +67,12 @@ export default function DiffModal({
       const fileDiffs: DiffItem[] = [];
 
       for (const [fieldKey, newValue] of Object.entries(changes)) {
-        const oldValue = (file.tags as any)[fieldKey];
+        let val = file.frames[fieldKey];
+        let oldValue = "";
+        if (Array.isArray(val) && val.length > 0 && val[0].type === "Text") {
+          oldValue = val[0].value;
+        }
+
         const before = formatValue(oldValue);
         const after = formatValue(newValue);
 

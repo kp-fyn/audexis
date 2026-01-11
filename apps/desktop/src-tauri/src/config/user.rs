@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+use crate::tag_manager::utils::FrameKey;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AttachedPicture {
     pub buffer: String,
@@ -27,6 +29,7 @@ pub struct Album {
 pub enum ColumnKind {
     Image,
     Text,
+    URL,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,7 +37,8 @@ pub struct Column {
     pub value: String,
     pub label: String,
     pub kind: ColumnKind,
-    pub size: u32,
+
+    pub size: u16,
 }
 
 impl Default for Column {
@@ -43,6 +47,7 @@ impl Default for Column {
             value: "".into(),
             label: "".into(),
             size: 200,
+
             kind: ColumnKind::Text,
         }
     }
@@ -93,13 +98,19 @@ pub struct UserConfig {
     pub onboarding: bool,
     pub albums: Vec<Album>,
     pub columns: Vec<Column>,
-
+    pub sidebar_items: Vec<SidebarItem>,
     pub density: Density,
     pub just_updated: bool,
 
     pub show_diff_modal: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SidebarItem {
+    pub label: String,
+    pub value: FrameKey,
+    pub item_type: ColumnKind,
+}
 impl Default for UserConfig {
     fn default() -> Self {
         Self {
@@ -110,7 +121,64 @@ impl Default for UserConfig {
             just_updated: true,
             albums: vec![],
             show_diff_modal: false,
+            sidebar_items: vec![
+                SidebarItem {
+                    label: "Title".into(),
 
+                    value: FrameKey::Title,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Artist".into(),
+                    value: FrameKey::Artist,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Album".into(),
+                    value: FrameKey::Album,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Year".into(),
+                    value: FrameKey::Year,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Track Number".into(),
+                    value: FrameKey::TrackNumber,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Genre".into(),
+                    value: FrameKey::Genre,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Album Artist".into(),
+                    value: FrameKey::AlbumArtist,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Composer".into(),
+                    value: FrameKey::Composer,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Encoded By".into(),
+                    value: FrameKey::EncodedBy,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Conductor".into(),
+                    value: FrameKey::Conductor,
+                    item_type: ColumnKind::Text,
+                },
+                SidebarItem {
+                    label: "Cover".into(),
+                    value: FrameKey::AttachedPicture,
+                    item_type: ColumnKind::Image,
+                },
+            ],
             columns: vec![
                 Column {
                     value: "attachedPicture".into(),
@@ -187,12 +255,14 @@ impl Default for UserConfig {
 pub struct PartialUserConfig {
     pub theme: Option<Theme>,
     pub view: Option<ViewMode>,
+
     pub onboarding: Option<bool>,
     pub albums: Option<Vec<Album>>,
     pub columns: Option<Vec<Column>>,
     pub density: Option<Density>,
     pub show_diff_modal: Option<bool>,
     pub just_updated: Option<bool>,
+    pub sidebar_items: Option<Vec<SidebarItem>>,
 }
 pub const CONFIG_FILE: &str = "user_config.json";
 

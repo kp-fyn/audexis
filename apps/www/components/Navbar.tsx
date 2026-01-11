@@ -49,7 +49,7 @@ export default async function Navbar() {
             <SearchBar groups={groups} />
           </div>
           <ThemeToggle />
-          <div className="py-6">
+          <div className="py-6 hidden md:block">
             <DownloadButton release={release} />
           </div>
         </div>

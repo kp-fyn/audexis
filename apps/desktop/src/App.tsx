@@ -10,7 +10,7 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { Event, listen } from "@tauri-apps/api/event";
-import { AllTags, File, TagPicture } from "@/ui/types";
+import { AllTags, File, Frames } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserConfig } from "@/ui/hooks/useUserConfig.tsx";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
@@ -47,104 +47,13 @@ function App() {
   } = useChanges();
   const [isLoading, setIsLoading] = useState(true);
 
-  const { config, setColumns, setAllColumns, allColumns } = useUserConfig();
+  const { config, setColumns, setAllColumns, allColumns, setMultiFrameKeys } =
+    useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
 
   function normalizeFilesPayload(payload: any[]): File[] {
-    const toTagText = (value: string) => ({ type: "Text", value });
-    const toTagPicture = (val: any): TagPicture => ({
-      type: "Picture",
-      value: val,
-    });
     return (payload || []).map((sf: any) => {
       const tagsMap = (sf && sf.tags) || {};
-      const out: Partial<AllTags> = {} as any;
-      const getFirst = (key: string) =>
-        Array.isArray(tagsMap[key]) ? tagsMap[key][0] : undefined;
-
-      const textKeys = [
-        "title",
-        "artist",
-        "album",
-        "year",
-        "trackNumber",
-        "genre",
-        "albumArtist",
-        "contentGroup",
-        "composer",
-        "encodedBy",
-        "unsyncedLyrics",
-        "length",
-        "conductor",
-        "comments",
-        "copyright",
-        "private",
-        "relativeVolumeAdjustment",
-        "encryptionMethod",
-        "groupIdRegistration",
-        "generalObject",
-        "commercialUrl",
-        "copyrightUrl",
-        "audioFileUrl",
-        "artistUrl",
-        "radioStationUrl",
-        "paymentUrl",
-        "bitmapImageUrl",
-        "synchronizedLyrics",
-        "tempoCodes",
-        "musicCdIdentifier",
-        "eventTimingCodes",
-        "sequence",
-        "playCount",
-        "audioSeekPointIndex",
-        "mediaType",
-        "commercialFrame",
-        "audioEncryption",
-        "signatureFrame",
-        "softwareEncoder",
-        "audioEncodingMethod",
-        "recommendedBufferSize",
-        "beatsPerMinute",
-        "language",
-        "fileType",
-        "time",
-        "recordingDate",
-        "releaseDate",
-      ];
-      for (const k of textKeys) {
-        const first = getFirst(k);
-        if (!first) continue;
-        if (first.type === "Text")
-          out[k as keyof AllTags] = toTagText(first.value) as any;
-      }
-
-      {
-        const uu = getFirst("userDefinedUrl");
-        if (
-          uu &&
-          uu.type === "UserUrl" &&
-          uu.value &&
-          typeof uu.value.url === "string"
-        ) {
-          (out as any).userDefinedUrl = toTagText(uu.value.url);
-        }
-        const ut = getFirst("userDefinedText");
-        if (
-          ut &&
-          ut.type === "UserText" &&
-          ut.value &&
-          typeof ut.value.value === "string"
-        ) {
-          (out as any).userDefinedText = toTagText(ut.value.value);
-        }
-      }
-
-      {
-        const ap = getFirst("attachedPicture");
-        if (ap && ap.type === "Picture" && ap.value) {
-          (out as any).attachedPicture = toTagPicture(ap.value);
-        }
-      }
 
       const file: File = {
         path: sf.path,
@@ -152,8 +61,8 @@ function App() {
         tag_formats: sf.tag_formats,
         fileName: sf.path?.split("/").pop() || sf.path,
         release: sf.tag_format,
-        tags: out as AllTags,
-        _frames: tagsMap,
+
+        frames: tagsMap,
       } as File;
       return file;
     });
@@ -171,37 +80,38 @@ function App() {
         ),
         enableSorting: false,
         cell: ({ row }) => {
-          const tag = row.original.tags[item.value as keyof AllTags] as
-            | AllTags[keyof AllTags]
-            | undefined;
-          if (!tag || !(tag as any).type)
+          const frame = row.original.frames[item.value as keyof AllTags];
+          if (!frame || !Array.isArray(frame))
             return <div className="text-[11px] italic opacity-40">—</div>;
-          if ((tag as any).type === "Picture") {
-            const pic = tag as TagPicture;
-            const count = Array.isArray(
-              (row.original as any)._frames?.attachedPicture
-            )
-              ? ((row.original as any)._frames.attachedPicture as any[]).filter(
-                  (v) => v && v.type === "Picture"
-                ).length
-              : 0;
-            return (
-              <div className="relative inline-flex items-center">
-                <img
-                  src={`data:${pic.value.mime};base64,${pic.value.data_base64}`}
-                  alt="Attached"
-                  className="max-h-[38px] w-auto rounded-sm border border-border object-cover"
-                />
-                {count > 1 && (
-                  <span className="ml-1 text-[10px] px-1 rounded bg-muted text-foreground/70">
-                    +{count - 1}
-                  </span>
-                )}
-              </div>
-            );
+
+          if (frame[0].type !== "Picture") {
+            return <div className="text-[11px] italic opacity-40">—</div>;
           }
 
-          return <div className="text-[11px] italic opacity-40">—</div>;
+          const tag = frame[0];
+
+          const pic = tag;
+          const count = Array.isArray(
+            (row.original as any).frames?.attachedPicture
+          )
+            ? ((row.original as any).frames.attachedPicture as any[]).filter(
+                (v) => v && v.type === "Picture"
+              ).length
+            : 0;
+          return (
+            <div className="relative inline-flex items-center">
+              <img
+                src={`data:${pic.value.mime};base64,${pic.value.data_base64}`}
+                alt="Attached"
+                className="max-h-9.5 w-auto rounded-sm border border-border object-cover"
+              />
+              {count > 1 && (
+                <span className="ml-1 text-[10px] px-1 rounded bg-muted text-foreground/70">
+                  +{count - 1}
+                </span>
+              )}
+            </div>
+          );
         },
       }) as ColumnDef<File, any>;
     } else if (item.value === "path") {
@@ -259,9 +169,10 @@ function App() {
     }
     return (columnHelper as any).accessor(
       (row: File) => {
-        const tag = (row.tags as any)[item.value];
-        if (!tag || tag.type !== "Text") return "";
-        return String(tag.value ?? "");
+        const tag = row.frames[item.value];
+
+        if (!tag || !tag[0] || tag[0].type !== "Text") return "";
+        return String(tag[0].value ?? "");
       },
       {
         id: item.value,
@@ -274,11 +185,13 @@ function App() {
         sortingFn: "alphanumeric",
         enableSorting: true,
         cell: ({ row }: any) => {
-          const tag = (row.original.tags as AllTags)[
-            item.value as keyof AllTags
-          ] as any;
+          const frame = (row.original.frames as Frames)[item.value];
+          if (!frame || !Array.isArray(frame))
+            return <div className="text-[11px] italic opacity-40">—</div>;
 
-          const frames = (row.original as any)._frames as
+          const tag = frame[0];
+
+          const frames = (row.original as any).frames as
             | Record<string, any[]>
             | undefined;
 
@@ -344,6 +257,7 @@ function App() {
   useEffect(() => {
     const unlisten = listen("workspace-updated", (event: Event<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
+
       setFiles(normalized);
       setIsLoading(false);
     });
@@ -374,6 +288,9 @@ function App() {
     setTimeout(() => {
       invoke("get_workspace_files").catch(() => {
         setIsLoading(false);
+      });
+      invoke("get_multi_frame_keys", {}).then((keys: unknown) => {
+        setMultiFrameKeys(keys as string[]);
       });
       invoke("get_all_columns")
         .then((cols: any) => {

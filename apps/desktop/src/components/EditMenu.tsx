@@ -1,6 +1,11 @@
 import { useChanges } from "../hooks/useChanges";
 import { Input } from "./Input";
-import { AllTags, TagPicture, UserConfig } from "@/ui/types";
+import {
+  AllTags,
+  SerializableTagFrameValue,
+  TagPicture,
+  UserConfig,
+} from "@/ui/types";
 import Img from "../assets/images/unknown.jpg";
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "./Button";
@@ -17,28 +22,21 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
   const [pictures, setPictures] = useState<TagPicture[]>([]);
   const [artworkOpen, setArtworkOpen] = useState(false);
   const [listEditor, setListEditor] = useState<{
-    field: "artist" | "genre" | null;
+    field: string | null;
     open: boolean;
   }>({ field: null, open: false });
-  const { config } = useUserConfig();
+  const { config, multiFrameKeys } = useUserConfig();
 
   const [filteredSuggestions, setFilteredSuggestions] = useState<
     UserConfig["albums"]
   >([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const { files, changes, setChanges, selected, neededItems } = useChanges();
+  const { files, changes, setChanges, selected } = useChanges();
   const [defaultValues, setDefaultValues] = useState<
-    Record<
-      string,
-      | {
-          value: string;
-          type: "Text";
-        }
-      | TagPicture
-      | undefined
-    >
+    Record<string, SerializableTagFrameValue | undefined>
   >({});
-
+  const sidebar_items = config.sidebar_items;
+  console.log(multiFrameKeys);
   const disabled = selected.length === 0 || files.length === 0;
 
   useEffect(() => {
@@ -54,38 +52,41 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       return file;
     });
 
+    console.log(sf);
     const sfs = sf
       .filter((item) => item !== null && item !== undefined)
-      .filter((f) => f?.tags !== null)
+      .filter((f) => f?.frames !== null)
       .filter((f) => f !== undefined || f !== null);
 
-    const selectedFiles = sfs.map((f) => f?.tags);
+    const selectedFiles = sfs.map((f) => f.frames);
 
     if (selectedFiles.length === 0) return;
     if (selectedFiles.length === 1) {
       if (!selectedFiles[0]) return;
 
-      const img = selectedFiles[0].attachedPicture as TagPicture | undefined;
-      const map: Record<string, { value: string; type: "Text" } | TagPicture> =
-        {};
+      const img = selectedFiles[0].attachedPicture[0] as TagPicture | undefined;
+
+      const map: Record<string, SerializableTagFrameValue> = {};
 
       Object.entries(selectedFiles[0]).forEach(([key, value]) => {
-        if (value && typeof value === "object" && "value" in value) {
-          map[key] = value as any;
+        console.log({ value });
+        if (Array.isArray(value) && value.length > 0) {
+          map[key] = value[0];
         }
       });
+
       setDefaultValues(map);
 
       const selectedPath = selected[0];
       const fileObj = files.find((f) => f.path === selectedPath);
       const framePics: TagPicture[] = Array.isArray(
-        (fileObj as any)?._frames?.attachedPicture
+        (fileObj as any)?.frames?.attachedPicture
       )
-        ? ((fileObj as any)._frames.attachedPicture as any[])
+        ? ((fileObj as any).frames.attachedPicture as any[])
             .filter((v) => v && v.type === "Picture" && v.value)
             .map((v) => ({ type: "Picture", value: v.value }))
         : [];
-
+      console.log({ framePics });
       if (framePics.length > 0) {
         setPictures(framePics);
         setImage(framePics[0]);
@@ -99,30 +100,18 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     } else {
       const defaultValue: Record<
         string,
-        | {
-            value: string;
-            type: "Text";
-          }
-        | TagPicture
-        | undefined
-      > = neededItems.reduce<
-        Record<
-          string,
-          | {
-              value: string;
-              type: "Text";
-            }
-          | TagPicture
-          | undefined
-        >
+        SerializableTagFrameValue | undefined
+      > = sidebar_items.reduce<
+        Record<string, SerializableTagFrameValue | undefined>
       >((obj, v) => {
         obj[v.value] = { value: "", type: "Text" };
         return obj;
       }, {});
 
-      neededItems.forEach((item) => {
+      sidebar_items.forEach((item) => {
         const values = selectedFiles.map((f) => f[item.value as keyof AllTags]);
         const first = values[0];
+        console.log({ first });
 
         const same = values.every(
           (v) => first && v && (v as any).value === (first as any).value
@@ -143,9 +132,9 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         const selectedPath = selected[0];
         const fileObj = files.find((f) => f.path === selectedPath);
         const framePics: TagPicture[] = Array.isArray(
-          (fileObj as any)?._frames?.attachedPicture
+          (fileObj as any)?.frames?.attachedPicture
         )
-          ? ((fileObj as any)._frames.attachedPicture as any[])
+          ? ((fileObj as any).frames.attachedPicture as any[])
               .filter((v) => v && v.type === "Picture" && v.value)
               .map((v) => ({ type: "Picture", value: v.value }))
           : [];
@@ -153,7 +142,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           setPictures(framePics);
           setImage(framePics[0]);
         } else {
-          const img = selectedFiles[0].attachedPicture as
+          const img = selectedFiles[0].attachedPicture[0] as
             | TagPicture
             | undefined;
           if (img && img.value) {
@@ -166,7 +155,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         }
       }
     }
-  }, [selected, files, neededItems]);
+  }, [selected, files, sidebar_items]);
 
   return (
     <div className="py-2 px-4">
@@ -224,188 +213,115 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                 : "flex flex-col gap-3 px-2"
             } w-full`}
           >
-            {neededItems.map((item) => {
-              return item.value !== "album" ? (
-                <div
-                  key={item.value}
-                  className={`text-foreground text-md flex flex-col capitalize ${
-                    disabled ? "opacity-50" : ""
-                  }`}
-                >
-                  {item.label}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={item.label}
-                      disabled={disabled}
-                      maxLength={item.maxLength}
-                      minLength={item.maxLength}
-                      onFocus={(e) => {
-                        if (e.target.value === "...") {
-                          e.target.select();
-                        }
-                      }}
-                      value={
-                        selected.length > 0
-                          ? (changes[item.value as keyof AllTags]?.value ===
-                              "" ||
-                              changes[item.value as keyof AllTags]) &&
-                            changes[item.value as keyof AllTags] !==
-                              undefined &&
-                            changes[item.value as keyof AllTags] !== null &&
-                            typeof (changes as any)[item.value]?.value ===
-                              "string"
-                            ? ((changes as any)[item.value]?.value as string)
-                            : defaultValues &&
-                              (defaultValues[item.value] as any)?.value &&
-                              typeof (defaultValues[item.value] as any)
-                                ?.value === "string"
-                            ? (defaultValues[item.value] as any).value
-                            : ""
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setChanges({
-                          ...changes,
-                          [item.value]: { value: e.target.value, type: "Text" },
-                        })
-                      }
-                    />
-
-                    {item.value === "album" && (
-                      <div className="text-sm text-muted-foreground items-center flex justify-center px-2  bg-hover hover:bg-opacity-30 rounded">
-                        <ChevronDown size={18} />
-                      </div>
-                    )}
-                    {(item.value === "artist" || item.value === "genre") && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          disabled={disabled || selected.length !== 1}
-                          onClick={() =>
-                            setListEditor({
-                              field: item.value as "artist" | "genre",
-                              open: true,
-                            })
-                          }
-                        >
-                          Edit list
-                        </Button>
-                        {(() => {
-                          if (selected.length !== 1) return null;
-                          const f = files.find((ff) => ff.path === selected[0]);
-                          const arr = f?._frames?.[item.value];
-                          const textCount = Array.isArray(arr)
-                            ? arr.filter((v: any) => v && v.type === "Text")
-                                .length
-                            : 0;
-                          if (textCount > 1)
-                            return (
-                              <span className="text-[10px] px-1 rounded bg-muted text-foreground/70">
-                                +{textCount - 1}
-                              </span>
-                            );
-                          return null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  key={item.value}
-                  className={`text-foreground text-md flex flex-col capitalize ${
-                    disabled ? "opacity-50" : ""
-                  }`}
-                >
-                  {item.label}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={item.label}
-                      disabled={disabled}
-                      maxLength={item.maxLength}
-                      minLength={item.maxLength}
-                      onFocus={(e) => {
-                        if (e.target.value === "...") {
-                          e.target.select();
-                        }
-                        setShowSuggestions(true);
-                      }}
-                      onBlur={() =>
-                        setTimeout(() => setShowSuggestions(false), 100)
-                      }
-                      value={
-                        selected.length > 0
-                          ? (changes as any)[item.value]?.value === "" ||
-                            ((changes as any)[item.value] !== undefined &&
-                              (changes as any)[item.value] !== null &&
-                              typeof (changes as any)[item.value]?.value ===
-                                "string")
-                            ? (changes as any)[item.value]?.value
-                            : defaultValues &&
-                              (defaultValues[item.value] as any)?.value
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setChanges({
-                          ...changes,
-                          [item.value]: { value: value, type: "Text" },
-                        });
-                        const albumNames = config.albums.map((s) =>
-                          s.album.toLowerCase()
-                        );
-                        const filter = albumNames.filter((s) =>
-                          s.toLowerCase().includes(value.toLowerCase())
-                        );
-
-                        const filtered = config.albums.filter((s) =>
-                          filter.includes(s.album.toLowerCase())
-                        );
-                        setFilteredSuggestions(filtered);
-                        setShowSuggestions(true);
-                      }}
-                    />
-
-                    {showSuggestions && filteredSuggestions.length > 0 && (
-                      <div className="absolute  z-10 bg-popover text-foreground shadow-md rounded w-[20%] max-h-40 overflow-auto mt-12 py  x border border-border">
-                        {filteredSuggestions.map((album, i) => (
-                          <div
-                            onMouseDown={() => {
-                              // selected.forEach((s) => {
-                              //     // window.app.addToAlbum({ albumId: album.id, filePath: s });
-                              //     setShowSuggestions(false);
-                              // });
-                            }}
-                            key={i}
-                            className="py-1 hover:bg-accent cursor-pointer flex gap-1 items-center"
+            {sidebar_items.map((item) => {
+              return (
+                item.item_type != "Image" && (
+                  <div
+                    key={item.value}
+                    className={`text-foreground text-md flex flex-col capitalize ${
+                      disabled ? "opacity-50" : ""
+                    }`}
+                  >
+                    {item.label}
+                    <div className="flex gap-2">
+                      {multiFrameKeys.includes(item.value) ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            disabled={disabled || selected.length !== 1}
+                            onClick={() =>
+                              setListEditor({
+                                field: item.value,
+                                open: true,
+                              })
+                            }
                           >
-                            {album.attached_picture && (
-                              <img
-                                className="w-8 h-8 rounded"
-                                src={
-                                  changes.attachedPicture &&
-                                  (changes.attachedPicture as any).type ===
-                                    "Picture"
-                                    ? `data:${
-                                        (changes.attachedPicture as TagPicture)
-                                          .value.mime
-                                      };base64,${
-                                        (changes.attachedPicture as TagPicture)
-                                          .value.data_base64
-                                      }`
-                                    : image
-                                    ? `data:${image.value.mime};base64,${image.value.data_base64}`
-                                    : Img
-                                }
-                              ></img>
-                            )}
-                            {album.album}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                            Edit list
+                          </Button>
+                          {(() => {
+                            if (selected.length !== 1) return null;
+                            const f = files.find(
+                              (ff) => ff.path === selected[0]
+                            );
+                            const arr = f?.frames?.[item.value];
+                            const textCount = Array.isArray(arr)
+                              ? arr.filter((v: any) => v && v.type === "Text")
+                                  .length
+                              : 0;
+                            if (textCount > 0)
+                              return (
+                                <span className="text-[10px] px-1 rounded bg-muted text-foreground/70">
+                                  {textCount} items
+                                </span>
+                              );
+                            return null;
+                          })()}
+                        </div>
+                      ) : (
+                        <Input
+                          placeholder={item.label}
+                          disabled={disabled}
+                          onFocus={(e) => {
+                            if (e.target.value === "...") {
+                              e.target.select();
+                            }
+                            setShowSuggestions(true);
+                          }}
+                          onBlur={() =>
+                            setTimeout(() => setShowSuggestions(false), 100)
+                          }
+                          value={
+                            selected.length > 0
+                              ? changes[item.value as keyof AllTags]?.[0]
+                                  .value === "" ||
+                                (changes[item.value as keyof AllTags] !==
+                                  undefined &&
+                                  changes[item.value as keyof AllTags] !==
+                                    null &&
+                                  typeof changes[
+                                    item.value as keyof AllTags
+                                  ]?.[0].value === "string")
+                                ? changes[item.value as keyof AllTags]?.[0]
+                                    .value
+                                : defaultValues &&
+                                  (defaultValues[item.value] as any)?.value
+                              : ""
+                          }
+                          onChange={(e) => {
+                            console.log(item.value);
+                            const value = e.target.value;
+                            let v = changes[item.value];
+                            if (!v) {
+                              v = [];
+                            }
+
+                            const newItem = {
+                              value: e.target.value,
+                              type: "Text" as const,
+                            };
+                            v[0] = newItem;
+                            setChanges({
+                              ...changes,
+                              [item.value]: v,
+                            });
+                            const albumNames = config.albums.map((s) =>
+                              s.album.toLowerCase()
+                            );
+                            const filter = albumNames.filter((s) =>
+                              s.toLowerCase().includes(value.toLowerCase())
+                            );
+
+                            const filtered = config.albums.filter((s) =>
+                              filter.includes(s.album.toLowerCase())
+                            );
+                            setFilteredSuggestions(filtered);
+                            setShowSuggestions(true);
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
+                )
               );
             })}
           </div>
@@ -416,13 +332,17 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         <>
           <img
             src={(() => {
-              const c = changes.attachedPicture as TagPicture | undefined;
+              if (image) {
+                return `data:${image.value.mime};base64,${image.value.data_base64}`;
+              }
+              if (!changes) return Img;
+              if (!changes.attachedPicture) return Img;
+              const c = changes.attachedPicture[0];
+              if (!c) return Img;
               if (c?.type === "Picture") {
                 return `data:${c.value.mime};base64,${c.value.data_base64}`;
               }
-              return image
-                ? `data:${image.value.mime};base64,${image.value.data_base64}`
-                : Img;
+              return Img;
             })()}
             onClick={async () => {
               const selectedFormats = selected
@@ -490,13 +410,16 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           />
           <ValueListEditor
             open={listEditor.open}
-            title={listEditor.field === "artist" ? "Artists" : "Genres"}
+            title={
+              listEditor.field ? `Edit ${listEditor.field}` : "Edit Values"
+            }
             values={(() => {
               if (!listEditor.open || selected.length !== 1) return [];
               const f = files.find((ff) => ff.path === selected[0]);
-              if (!f || !f._frames) return [];
-              const key = listEditor.field === "artist" ? "artist" : "genre";
-              const arr = (f._frames as any)[key] as Array<any> | undefined;
+              if (!f || !f.frames) return [];
+              const key = listEditor.field;
+              if (!key) return [];
+              const arr = (f.frames as any)[key] as Array<any> | undefined;
               if (!Array.isArray(arr)) return [];
               return arr
                 .filter(
@@ -507,14 +430,13 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             onClose={() => setListEditor({ field: null, open: false })}
             onSave={(vals) => {
               if (!listEditor.field) return;
-              const keyVariant =
-                listEditor.field === "artist" ? "Artist" : "Genre";
+
               invoke("save_frame_changes", {
                 frameChanges: {
                   paths: selected,
                   frames: [
                     {
-                      key: keyVariant,
+                      key: listEditor.field,
                       values: vals
                         .map((s) => s.trim())
                         .filter((s) => s.length > 0)

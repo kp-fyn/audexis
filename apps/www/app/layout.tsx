@@ -82,7 +82,15 @@ export default async function RootLayout({
 
   return (
     <html lang="en" dir="ltr" data-theme={theme} suppressHydrationWarning>
-      <head></head>
+      <head>
+        {process.env.NODE_ENV === "production" && (
+          <script
+            defer
+            src="https://cloud.umami.is/script.js"
+            data-website-id="72c8bbb6-c797-464d-b968-d24b257e98df"
+          ></script>
+        )}
+      </head>
 
       <body>
         <ThemeProvider>

@@ -1,3 +1,4 @@
+import Sidebar from "../components/Sidebar";
 export interface UpdatedPath {
   newPath: string;
   oldPath: string;
@@ -84,11 +85,6 @@ export interface ImgData {
   buffer: Buffer;
   url?: string;
 }
-
-export type Frames = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-};
 
 export interface Tags {
   corrupted: boolean;
@@ -252,10 +248,15 @@ export interface UserConfig {
   just_updated: boolean;
   onboarding: boolean;
   view: string;
+  sidebar_items: SidebarItem[];
   density: "default" | "compact" | "comfort";
   show_diff_modal: boolean;
 }
-
+export interface SidebarItem {
+  value: string;
+  label: string;
+  item_type: string;
+}
 export interface Column {
   value: string;
   label: string;
@@ -328,8 +329,11 @@ export interface FrameChangesPayload {
 
 export interface File {
   path: string;
-  tags: AllTags;
+
   tag_format: string;
   tag_formats?: string[];
-  _frames?: Record<string, SerializableTagFrameValue[]>;
+  frames: Frames;
 }
+export type Frames = {
+  [key: string]: SerializableTagFrameValue[];
+};
