@@ -1,3 +1,4 @@
+// Todo: cleanup this mess & add accessibility labels
 import { useEffect, useRef, useState } from "react";
 import {
   ColumnDef,
@@ -10,7 +11,7 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { Event, listen } from "@tauri-apps/api/event";
-import { AllTags, File, Frames } from "@/ui/types";
+import { AllTags, File, Frames, SidebarItem } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserConfig } from "@/ui/hooks/useUserConfig.tsx";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
@@ -35,6 +36,7 @@ import TagValueChip from "@/ui/components/table/TagValueChip";
 import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
+import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
 
 function App() {
   const {
@@ -45,10 +47,17 @@ function App() {
     hasUnsavedChanges,
     nudgeSaveBar,
   } = useChanges();
+  const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
 
-  const { config, setColumns, setAllColumns, allColumns, setMultiFrameKeys } =
-    useUserConfig();
+  const {
+    config,
+    setColumns,
+    setAllColumns,
+    allColumns,
+    setMultiFrameKeys,
+    setAllSidebarItems,
+  } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
 
   function normalizeFilesPayload(payload: any[]): File[] {
@@ -92,10 +101,10 @@ function App() {
 
           const pic = tag;
           const count = Array.isArray(
-            (row.original as any).frames?.attachedPicture
+            (row.original as any).frames?.attachedPicture,
           )
             ? ((row.original as any).frames.attachedPicture as any[]).filter(
-                (v) => v && v.type === "Picture"
+                (v) => v && v.type === "Picture",
               ).length
             : 0;
           return (
@@ -217,7 +226,7 @@ function App() {
             </div>
           );
         },
-      }
+      },
     ) as ColumnDef<File, any>;
   });
 
@@ -225,7 +234,7 @@ function App() {
 
   const columns: ColumnDef<File>[] = [...helpers];
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    columns.map((c) => c.id ?? "")
+    columns.map((c) => c.id ?? ""),
   );
 
   useEffect(() => {
@@ -267,6 +276,15 @@ function App() {
     };
   }, []);
   useEffect(() => {
+    const unlisten = listen("error", (event: Event<any[]>) => {
+      setErrors((prev) => [[...event.payload], ...prev]);
+    });
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
+  useEffect(() => {
     const unlisten = getCurrentWebview().onDragDropEvent((event) => {
       if (event.payload.type === "over") {
         console.log("User hovering", event.payload.position);
@@ -292,6 +310,7 @@ function App() {
       invoke("get_multi_frame_keys", {}).then((keys: unknown) => {
         setMultiFrameKeys(keys as string[]);
       });
+
       invoke("get_all_columns")
         .then((cols: any) => {
           setAllColumns(cols);
@@ -299,6 +318,9 @@ function App() {
         .catch(() => {
           setIsLoading(false);
         });
+      invoke("get_all_sidebar_items").then((items: unknown) => {
+        setAllSidebarItems(items as SidebarItem[]);
+      });
     }, 500);
   }, []);
 
@@ -326,7 +348,7 @@ function App() {
         },
       },
     ],
-    [files]
+    [files],
   );
 
   function handleDragEnd(event: DragEndEvent): void {
@@ -356,7 +378,7 @@ function App() {
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
+    useSensor(KeyboardSensor, {}),
   );
 
   if (isLoading) {
@@ -414,13 +436,13 @@ function App() {
                 width: Math.max(
                   config.columns.reduce(
                     (sum, col) => sum + (col.size || 200),
-                    0
+                    0,
                   ) +
                     config.columns.length * 16 +
                     (config.columns.length - 1) * 16 +
                     12 +
                     170,
-                  600
+                  600,
                 ),
                 minWidth: "100%",
               }}

@@ -1,10 +1,10 @@
 use super::traits::{Formats, TagFamily, TagFormat};
 use super::utils::{FrameKey, TagValue};
+use crate::tag_manager::tag_backend::{BackendError, TagError};
 use crate::tag_manager::vorbis_comments::utils;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs;
-use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -48,7 +48,6 @@ impl From<u8> for FlacBlockType {
         }
     }
 }
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct FlacFormat;
 
@@ -59,16 +58,25 @@ impl TagFormat for FlacFormat {
     fn get_tags(
         &self,
         file_path: &PathBuf,
-    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, std::io::Error> {
+    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, BackendError> {
         let mut data: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
         let b = fs::read(file_path);
         if b.is_err() {
-            return Err(Error::new(ErrorKind::Other, "Unable to open"));
+            print!("I guess");
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Could not read file".to_string(),
+                internal_message: "Failed to read file".to_string(),
+            }));
         }
         let b = b.unwrap();
 
         if b.len() < 4 || &b[0..4] != b"fLaC" {
-            return Err(Error::new(ErrorKind::Other, "Not a FLAC file"));
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Not a FLAC file".to_string(),
+                internal_message: "File does not start with fLaC signature".to_string(),
+            }));
         }
         let pos = 4;
         let mut offset = pos;
@@ -82,10 +90,11 @@ impl TagFormat for FlacFormat {
                 | (b[offset + 3] as u32);
             offset += 4;
             if offset + block_length as usize > b.len() {
-                return Err(Error::new(
-                    std::io::ErrorKind::UnexpectedEof,
-                    "Bad flac block length",
-                ));
+                return Err(BackendError::ReadFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "Bad flac block length".to_string(),
+                    internal_message: "Bad flac block length".to_string(),
+                }));
             }
             let block_data = &b[offset..offset + block_length as usize];
 
@@ -93,20 +102,22 @@ impl TagFormat for FlacFormat {
             if let FlacBlockType::VorbisComment = block_type {
                 let tags = utils::parse_comments(block_data);
                 if tags.is_err() {
-                    return Err(Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "Failed to parse vorbis comments",
-                    ));
+                    return Err(BackendError::ReadFailed(TagError {
+                        path: file_path.to_str().unwrap_or("").to_string(),
+                        public_message: "Failed to parse vorbis comments".to_string(),
+                        internal_message: "Failed to parse vorbis comments".to_string(),
+                    }));
                 }
                 let tags = tags.unwrap();
                 data.extend(tags.into_iter());
             } else if FlacBlockType::Picture == block_type {
                 let pic = utils::parse_picture(block_data);
                 if pic.is_err() {
-                    return Err(Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "Failed to parse picture block",
-                    ));
+                    return Err(BackendError::ReadFailed(TagError {
+                        path: file_path.to_str().unwrap_or("").to_string(),
+                        public_message: "Failed to parse picture block".to_string(),
+                        internal_message: "Failed to parse picture block".to_string(),
+                    }));
                 }
                 let pic: TagValue = pic.unwrap();
                 data.entry(FrameKey::AttachedPicture).or_default().push(pic);
@@ -123,20 +134,32 @@ impl TagFormat for FlacFormat {
         &self,
         file_path: &PathBuf,
         updated_tags: HashMap<FrameKey, Vec<TagValue>>,
-    ) -> Result<(), ()> {
-        let b = fs::read(file_path);
+    ) -> Result<(), BackendError> {
+        let b = fs::read(&file_path);
         if b.is_err() {
-            return Err(());
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Could not read file".to_string(),
+                internal_message: "Failed to read file".to_string(),
+            }));
         }
         let old_tags = self.get_tags(file_path);
         if old_tags.is_err() {
-            return Err(());
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Could not read tags".to_string(),
+                internal_message: "Failed to read tags".to_string(),
+            }));
         }
         let old_tags = old_tags.unwrap();
         let b = b.unwrap();
 
         if b.len() < 4 || &b[0..4] != b"fLaC" {
-            return Err(());
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Not a FLAC file".to_string(),
+                internal_message: "File does not start with fLaC header".to_string(),
+            }));
         }
         let mut tags: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
 
@@ -147,10 +170,8 @@ impl TagFormat for FlacFormat {
                 tags.insert(k, v);
             }
         });
-        let payload = utils::build_comments(&tags);
+        let payload = utils::build_comments(&tags, false);
 
-        let pos: usize = 4 as usize;
-        let mut offset = pos;
         let mut all_blocks: Vec<FlacBlock> = vec![];
         let mut seen_vorbis = false;
         let mut offset = 4;
@@ -166,7 +187,11 @@ impl TagFormat for FlacFormat {
 
             offset += 4;
             if offset + block_length as usize > b.len() {
-                return Err(());
+                return Err(BackendError::ReadFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "Invalid block length".to_string(),
+                    internal_message: "Block length exceeds file size".to_string(),
+                }));
             }
             let block_data = &b[offset..offset + block_length as usize];
             offset += block_length as usize;
@@ -201,7 +226,11 @@ impl TagFormat for FlacFormat {
                 .position(|b| b.block_type == FlacBlockType::StreamInfo);
 
             if index.is_none() {
-                return Err(());
+                return Err(BackendError::ReadFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "Not a valid FLAC file".to_string(),
+                    internal_message: "No STREAMINFO block found in FLAC file".to_string(),
+                }));
             }
             let index = index.unwrap();
             all_blocks.insert(
@@ -252,8 +281,14 @@ impl TagFormat for FlacFormat {
 
         out.extend(audio_data);
         let write_result = fs::write(file_path, out);
+
         if write_result.is_err() {
-            return Err(());
+            println!("err");
+            return Err(BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Could not write tags".to_string(),
+                internal_message: "Failed to write tags".to_string(),
+            }));
         }
         Ok(())
     }

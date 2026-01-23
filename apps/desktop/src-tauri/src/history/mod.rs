@@ -83,7 +83,7 @@ impl History {
             can_redo: (self.cursor + 1) <= self.changes.len() as isize - 1,
             can_undo: self.cursor >= 0,
         };
-        self.app_handle.emit("history_update", payload);
+        let _ = self.app_handle.emit("history_update", payload);
     }
     pub fn add(&mut self, change: Action) {
         if (self.cursor) < self.changes.len() as isize - 1 {
@@ -97,7 +97,7 @@ impl History {
             can_redo: (self.cursor + 1) <= self.changes.len() as isize - 1,
             can_undo: self.cursor >= 0,
         };
-        self.app_handle.emit("history_update", payload);
+        let _ = self.app_handle.emit("history_update", payload);
     }
     pub fn undo(&mut self, app: &State<'_, AppState>) {
         if self.cursor >= 0 {
@@ -108,11 +108,10 @@ impl History {
                 can_redo: (self.cursor + 1) <= self.changes.len() as isize - 1,
                 can_undo: self.cursor >= 0,
             };
-            self.app_handle.emit("history_update", payload);
+            let _ = self.app_handle.emit("history_update", payload);
         }
     }
     pub fn redo(&mut self, app: &State<'_, AppState>) {
-        println!("Redo requested at cursor position: {}", self.cursor);
         if (self.cursor + 1) <= self.changes.len() as isize - 1 {
             self.cursor += 1;
             let action = &self.changes[self.cursor as usize];
@@ -121,7 +120,7 @@ impl History {
                 can_redo: (self.cursor + 1) <= self.changes.len() as isize - 1,
                 can_undo: self.cursor >= 0,
             };
-            self.app_handle.emit("history_update", payload);
+            let _ = self.app_handle.emit("history_update", payload);
         }
     }
 }

@@ -1,10 +1,13 @@
+use serde::Serialize;
+
+use crate::tag_manager::tag_backend::BackendError;
 use crate::tag_manager::utils::{FrameKey, FreeformTag, TagValue};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::path::PathBuf;
 use std::{fmt, write};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum Formats {
     Id3v22,
     Id3v23,
@@ -13,7 +16,8 @@ pub enum Formats {
     Id3v10,
     Itunes,
     Flac,
-    Vorbis,
+    Ogg,
+
     Riff,
     Unknown,
 }
@@ -26,8 +30,8 @@ impl Display for Formats {
             Formats::Id3v23 => "id3v2.3",
             Formats::Id3v24 => "id3v2.4",
             Formats::Itunes => "Itunes",
+            Formats::Ogg => "Ogg",
             Formats::Flac => "FLAC",
-            Formats::Vorbis => "Vorbis",
             Formats::Riff => "RIFF",
             Formats::Unknown => "Unknown",
         };
@@ -50,15 +54,15 @@ pub trait TagFormat: Debug {
     fn get_tags(
         &self,
         file_path: &PathBuf,
-    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, std::io::Error>;
-    fn get_freeforms(&self, _file_path: &PathBuf) -> Result<Vec<FreeformTag>, std::io::Error> {
+    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, BackendError>;
+    fn get_freeforms(&self, _file_path: &PathBuf) -> Result<Vec<FreeformTag>, BackendError> {
         Ok(vec![])
     }
     fn write_tags(
         &self,
         file_path: &PathBuf,
         updated_tags: HashMap<FrameKey, Vec<TagValue>>,
-    ) -> Result<(), ()>;
+    ) -> Result<(), BackendError>;
 }
 
 impl Display for dyn TagFormat {

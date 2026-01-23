@@ -2,7 +2,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import DragCell from "@/ui/components/DragCell";
+import DragCell from "@/ui/components/table/DragCell";
 import { ContextMenuArea } from "@/ui/components/ContextMenu";
 import { File } from "@/ui/types";
 import { useEffect, useRef, useState } from "react";
@@ -170,7 +170,7 @@ export default function DataGrid({
 
   useEffect(() => {
     setFocusedIndex((idx) =>
-      Math.min(Math.max(idx, 0), Math.max(files.length - 1, 0))
+      Math.min(Math.max(idx, 0), Math.max(files.length - 1, 0)),
     );
 
     if (

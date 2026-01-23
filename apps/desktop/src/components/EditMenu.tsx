@@ -9,13 +9,12 @@ import {
 import Img from "../assets/images/unknown.jpg";
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "./Button";
-import { ChevronDown } from "lucide-react";
 
 import { useUserConfig } from "../hooks/useUserConfig";
 import toast from "react-hot-toast";
-import ImageManagerModal from "./ImageManagerModal";
+import ImageManagerModal from "./modals/ImageManagerModal";
 import { invoke } from "@tauri-apps/api/core";
-import ValueListEditor from "./ValueListEditor";
+import ValueListEditor from "./modals/ValueListEditor";
 
 export default function EditMenu({ bottombar }: Props): ReactNode {
   const [image, setImage] = useState<TagPicture | null>(null);
@@ -36,9 +35,11 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     Record<string, SerializableTagFrameValue | undefined>
   >({});
   const sidebar_items = config.sidebar_items;
-  console.log(multiFrameKeys);
-  const disabled = selected.length === 0 || files.length === 0;
 
+  const disabled = false;
+  useEffect(() => {
+    console.log({ disabled });
+  }, [disabled]);
   useEffect(() => {
     setDefaultValues({});
 
@@ -62,10 +63,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
     if (selectedFiles.length === 0) return;
     if (selectedFiles.length === 1) {
-      if (!selectedFiles[0]) return;
-
-      const img = selectedFiles[0].attachedPicture[0] as TagPicture | undefined;
-
       const map: Record<string, SerializableTagFrameValue> = {};
 
       Object.entries(selectedFiles[0]).forEach(([key, value]) => {
@@ -80,7 +77,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       const selectedPath = selected[0];
       const fileObj = files.find((f) => f.path === selectedPath);
       const framePics: TagPicture[] = Array.isArray(
-        (fileObj as any)?.frames?.attachedPicture
+        (fileObj as any)?.frames?.attachedPicture,
       )
         ? ((fileObj as any).frames.attachedPicture as any[])
             .filter((v) => v && v.type === "Picture" && v.value)
@@ -90,7 +87,16 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       if (framePics.length > 0) {
         setPictures(framePics);
         setImage(framePics[0]);
-      } else if (selectedFiles[0].attachedPicture && img && img.value) {
+      } else if (selectedFiles[0].attachedPicture) {
+        if (!selectedFiles[0]) return;
+        if (!selectedFiles[0].attachedPicture) return;
+
+        const img = selectedFiles[0].attachedPicture[0] as
+          | TagPicture
+          | undefined;
+        if (!img) return;
+        if (!img.value) return;
+
         setPictures([img]);
         setImage(img);
       } else {
@@ -114,7 +120,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         console.log({ first });
 
         const same = values.every(
-          (v) => first && v && (v as any).value === (first as any).value
+          (v) => first && v && (v as any).value === (first as any).value,
         );
 
         if (!same) {
@@ -126,13 +132,13 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
       setDefaultValues(defaultValue as any);
       const picTheSame = selectedFiles.every(
-        (f) => f.attachedPicture === selectedFiles[0].attachedPicture
+        (f) => f.attachedPicture === selectedFiles[0].attachedPicture,
       );
       if (picTheSame) {
         const selectedPath = selected[0];
         const fileObj = files.find((f) => f.path === selectedPath);
         const framePics: TagPicture[] = Array.isArray(
-          (fileObj as any)?.frames?.attachedPicture
+          (fileObj as any)?.frames?.attachedPicture,
         )
           ? ((fileObj as any).frames.attachedPicture as any[])
               .filter((v) => v && v.type === "Picture" && v.value)
@@ -169,42 +175,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             )}
       </div>
       <div className={`flex px-6`}>
-        {/* {bottombar && (
-          <img
-            src={(() => {
-              const c = changes.attachedPicture as TagPicture | undefined;
-              if (c?.type === "Picture") {
-                return `data:${c.value.mime};base64,${c.value.data_base64}`;
-              }
-              return image
-                ? `data:${image.value.mime};base64,${image.value.data_base64}`
-                : Img;
-            })()}
-            onDoubleClick={async () => {
-              // const img = await window.app.uploadImage();
-              //
-              // if (!img) return;
-              // if (!img.buffer) return;
-              // setChanges({
-              //     ...changes,
-              //     attachedPicture: {
-              //         mime: img.mime,
-              //         buffer: img.buffer,
-              //         type: img.type,
-              //         description: img.description,
-              //     },
-              // });
-              //
-              // const blob = new Blob([img.buffer as BlobPart]);
-              // const url = URL.createObjectURL(blob);
-              // const fullImage = { ...img, url };
-              //
-              // setImage(fullImage);
-            }}
-            className="aspect-square h-48"
-            alt={"artwork"}
-          ></img>
-        )} */}
         {defaultValues && (
           <div
             className={`${
@@ -241,7 +211,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                           {(() => {
                             if (selected.length !== 1) return null;
                             const f = files.find(
-                              (ff) => ff.path === selected[0]
+                              (ff) => ff.path === selected[0],
                             );
                             const arr = f?.frames?.[item.value];
                             const textCount = Array.isArray(arr)
@@ -305,14 +275,14 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                               [item.value]: v,
                             });
                             const albumNames = config.albums.map((s) =>
-                              s.album.toLowerCase()
+                              s.album.toLowerCase(),
                             );
                             const filter = albumNames.filter((s) =>
-                              s.toLowerCase().includes(value.toLowerCase())
+                              s.toLowerCase().includes(value.toLowerCase()),
                             );
 
                             const filtered = config.albums.filter((s) =>
-                              filter.includes(s.album.toLowerCase())
+                              filter.includes(s.album.toLowerCase()),
                             );
                             setFilteredSuggestions(filtered);
                             setShowSuggestions(true);
@@ -352,11 +322,11 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               const anyV1 = selectedFormats.some(
                 (fmt) =>
                   typeof fmt === "string" &&
-                  fmt.toLowerCase().startsWith("id3v1")
+                  fmt.toLowerCase().startsWith("id3v1"),
               );
               if (anyV1) {
                 toast.error(
-                  "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images."
+                  "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images.",
                 );
                 return;
               }
@@ -377,7 +347,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                     paths: selected,
                     frames: [
                       {
-                        key: "AttachedPicture",
+                        key: "attachedPicture",
                         values: [],
                       },
                     ],
@@ -385,7 +355,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                 })
                   .then(() => toast.success("Artwork removed"))
                   .catch((e) =>
-                    toast.error(`Failed to save artwork: ${String(e)}`)
+                    toast.error(`Failed to save artwork: ${String(e)}`),
                   );
                 return;
               }
@@ -396,7 +366,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                   paths: selected,
                   frames: [
                     {
-                      key: "AttachedPicture",
+                      key: "attachedPicture",
                       values: nextList,
                     },
                   ],
@@ -404,7 +374,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               })
                 .then(() => toast.success("Artwork updated"))
                 .catch((e) =>
-                  toast.error(`Failed to save artwork: ${String(e)}`)
+                  toast.error(`Failed to save artwork: ${String(e)}`),
                 );
             }}
           />
@@ -423,7 +393,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               if (!Array.isArray(arr)) return [];
               return arr
                 .filter(
-                  (v) => v && v.type === "Text" && typeof v.value === "string"
+                  (v) => v && v.type === "Text" && typeof v.value === "string",
                 )
                 .map((v) => v.value as string);
             })()}

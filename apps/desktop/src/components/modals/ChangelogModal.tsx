@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { getVersion } from "@tauri-apps/api/app";
+import { Modal, useAnimatedModalClose } from "./Modal";
 const markdownComponents = {
   h1: (props: any) => (
     <h1
@@ -107,56 +107,17 @@ interface OnboardingModalProps {
 }
 
 export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   const [version, setVersion] = useState<string>("");
   const [content, setContent] = useState<string>("");
-  const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    let root = document.getElementById("modal-root");
-    if (!root) {
-      root = document.createElement("div");
-      root.id = "modal-root";
-      document.body.appendChild(root);
-    }
-    setPortalNode(root);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleClose();
-      }
-    };
-    document.addEventListener("keydown", handleKey);
-    setTimeout(() => firstFocusableRef.current?.focus(), 30);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open]);
-
-  const handleClose = useCallback(() => {
-    setTimeout(() => {
-      onClose();
-    }, 160);
-  }, [onClose]);
+  const { closing, requestClose } = useAnimatedModalClose(onClose, 160);
   useEffect(() => {
     getVersion().then((ver) => setVersion(ver));
   }, []);
   useEffect(() => {
     if (!open) return;
     fetch(
-      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/app/blog/(blogPages)/releases/v${version}.mdx`
+      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/app/blog/(blogPages)/releases/v${version}.mdx`,
     )
       .then((res) => res.text())
       .then((text) => {
@@ -167,55 +128,21 @@ export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
       .catch(() => setContent("No changelog available."));
   }, [version, open]);
 
-  if (!open || !portalNode) return null;
-
-  return createPortal(
-    <div
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby="onboarding-modal-title"
-      className="fixed inset-0 z-1200 flex items-center justify-center p-4 md:p-8"
+  return (
+    <Modal
+      open={open}
+      onClose={requestClose}
+      closing={closing}
+      title={`Release notes • v${version}`}
+      description="What's new in this version"
+      bodyClassName="p-0"
     >
-      <div
-        className="absolute inset-0 bg-background/70 backdrop-blur-sm border-t border-border animate-in fade-in"
-        onClick={handleClose}
-      />
-      <div
-        className={` px-2 flex flex-col relative w-full max-w-5xl rounded-lg border border-border bg-linear-to-b from-background/95 to-background/40 shadow-xl ring-1 ring-border/50  animate-in duration-150 h-[80vh] max-h-[80vh] fade-in scale-in-90 overflow-scroll`}
-      >
-        <div className="ml-auto">
-          <button
-            ref={firstFocusableRef}
-            onClick={handleClose}
-            className="p-3 m-3 rounded-md hover:bg-accent/50 transition-colors outline-none"
-            aria-label="Close changelog modal"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-6 h-6 text-foreground/70 hover:text-foreground transition-colors"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="px-32  prose prose-slate dark:prose-invert max-w-none mb-16">
-          <h1>Release notes for v{version} 🎉</h1>
+      <div className="px-8 md:px-20 py-8 prose prose-slate dark:prose-invert max-w-none">
+        <h1>Release notes for v{version}</h1>
 
-          <ReactMarkdown components={markdownComponents}>
-            {content}
-          </ReactMarkdown>
-        </div>
+        <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
       </div>
-    </div>,
-    portalNode
+    </Modal>
   );
 }
 

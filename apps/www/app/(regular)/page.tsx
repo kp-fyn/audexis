@@ -9,6 +9,23 @@ import Image from "next/image";
 import Features from "./Features";
 
 export default async function Home() {
+  const supportedFiles = [
+    "m4a",
+    "mp4",
+    "qt",
+    "m4b",
+    "m4v",
+    "mov",
+    "ogg",
+    "opus",
+    "oga",
+    "spx",
+    "ogv",
+    "mp3",
+    "mp2",
+    "mp1",
+    "flac",
+  ];
   const release = await getLatestRelease();
 
   const jsonLd = {
@@ -136,18 +153,16 @@ export default async function Home() {
               Works with the most popular audio formats
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <div className="px-6 py-3 bg-muted rounded-lg border border-border">
-                <span className="font-semibold text-foreground">MP3</span>
-              </div>
-              <div className="px-6 py-3 bg-muted rounded-lg border border-border">
-                <span className="font-semibold text-foreground">M4A</span>
-              </div>
-              <div className="px-6 py-3 bg-muted rounded-lg border border-border">
-                <span className="font-semibold text-foreground">MP4</span>
-              </div>{" "}
-              <div className="px-6 py-3 bg-muted rounded-lg border border-border">
-                <span className="font-semibold text-foreground">FLAC</span>
-              </div>
+              {supportedFiles.map((format) => (
+                <div
+                  key={format}
+                  className="px-6 py-3 bg-muted rounded-lg border border-border"
+                >
+                  <span className="font-semibold text-foreground">
+                    {format.toUpperCase()}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </section>

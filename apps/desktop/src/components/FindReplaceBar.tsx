@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useFindReplace } from "@/ui/hooks/useFindReplace";
 import Select from "@/ui/components/Select";
-import { useChanges } from "../hooks/useChanges";
 import { Checkbox } from "./Checkbox";
 import { useUserConfig } from "../hooks/useUserConfig";
 
@@ -53,7 +52,7 @@ export default function FindReplaceBar() {
         }
       }
     },
-    [close, next, prev, mode, field, replaceOne]
+    [close, next, prev, mode, field, replaceOne],
   );
 
   if (!open) return null;
@@ -63,7 +62,7 @@ export default function FindReplaceBar() {
   return (
     <div
       onKeyDown={onKeyDown}
-      className="fixed right-3 top-[52px] z-[1100] rounded-md border border-border bg-background/95 shadow-lg p-2 flex items-center gap-2"
+      className="fixed right-3 top-13 z-1100 rounded-md border border-border bg-background/95 shadow-lg p-2 flex items-center gap-2"
     >
       <input
         ref={findRef}

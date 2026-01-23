@@ -5,16 +5,19 @@ import ErrorPage from "./error";
 import { ErrorBoundary } from "react-error-boundary";
 
 import "./assets/main.css";
-import Titlebar from "./components/Titlebar";
+import Titlebar from "@/ui/components/Titlebar";
 import queryString from "query-string";
 import { UserConfigProvider } from "@/ui/hooks/useUserConfig";
 import { SidebarWidthProvider } from "@/ui/hooks/useSidebarWidth";
 import { ChangesProvider } from "@/ui/hooks/useChanges";
-import { OnboardingModal } from "@/ui/components/OnboardingModal";
+import { OnboardingModal } from "@/ui/components/modals/OnboardingModal";
 import { Toaster } from "react-hot-toast";
 import { useAutoUpdater } from "@/ui/hooks/useAutoUpdater";
 import { invoke } from "@tauri-apps/api/core";
-import { ContextMenuArea, ContextMenuProvider } from "./components/ContextMenu";
+import {
+  ContextMenuArea,
+  ContextMenuProvider,
+} from "@/ui/components/ContextMenu";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import SaveBar from "@/ui/components/SaveBar";
 import { RenameProvider } from "@/ui/hooks/useRename";
@@ -22,8 +25,10 @@ import RenameModal from "@/ui/components/RenameModal";
 import { FindReplaceProvider } from "@/ui/hooks/useFindReplace";
 import FindReplaceBar from "@/ui/components/FindReplaceBar";
 import { useChanges } from "@/ui/hooks/useChanges";
-import { CleanupModal } from "./components/CleanupModal";
+import { CleanupModal } from "@/ui/components/modals/CleanupModal";
+import { TagEditorError } from "@/ui/components/modals/TagEditorError";
 import { CleanupProvider } from "./hooks/useCleanup";
+import { TagEditorErrorsProvider } from "./hooks/useTagEditorErrors";
 const query = queryString.parse(window.location.search);
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
@@ -42,7 +47,7 @@ if (params.get("theme") !== theme) {
 
 function Root() {
   const [showOnboarding, setShowOnboarding] = React.useState(
-    query.onboarding === "true"
+    query.onboarding === "true",
   );
   const { canUndo, canRedo } = useChanges();
 
@@ -66,7 +71,7 @@ function Root() {
         combo: ["mod+f"],
         handler: () => {
           window.dispatchEvent(
-            new CustomEvent("audexis:find-open", { detail: { mode: "find" } })
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } }),
           );
         },
         allowInInputs: true,
@@ -77,7 +82,7 @@ function Root() {
           window.dispatchEvent(
             new CustomEvent("audexis:find-open", {
               detail: { mode: "replace" },
-            })
+            }),
           );
         },
         allowInInputs: true,
@@ -103,7 +108,7 @@ function Root() {
         allowInInputs: true,
       },
     ],
-    []
+    [],
   );
 
   const handleCloseOnboarding = () => {
@@ -113,7 +118,7 @@ function Root() {
       params.delete("onboarding");
       const newUrl = `${window.location.pathname}?${params.toString()}`.replace(
         /\?$/,
-        ""
+        "",
       );
       window.history.replaceState({}, "", newUrl);
     }
@@ -167,6 +172,7 @@ function Root() {
           className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
         >
           <App />
+          <TagEditorError />
           <FindReplaceBar />
           <SaveBar />
           <RenameModal />
@@ -188,34 +194,36 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ErrorBoundary FallbackComponent={ErrorPage}>
       <ContextMenuProvider>
         <UserConfigProvider initialTheme={theme}>
-          <ChangesProvider>
-            <CleanupProvider>
-              <RenameProvider>
-                <FindReplaceProvider>
-                  <SidebarWidthProvider>
-                    <Root />
-                    <Toaster
-                      position="top-right"
-                      containerStyle={{
-                        marginTop: "64px",
-                      }}
-                      toastOptions={{
-                        className:
-                          "!bg-background !text-foreground !border !border-border",
-                        style: {
-                          background: "var(--background)",
-                          color: "var(--foreground)",
-                          border: "1px solid var(--border)",
-                        },
-                      }}
-                    />
-                  </SidebarWidthProvider>
-                </FindReplaceProvider>
-              </RenameProvider>
-            </CleanupProvider>
-          </ChangesProvider>
+          <TagEditorErrorsProvider>
+            <ChangesProvider>
+              <CleanupProvider>
+                <RenameProvider>
+                  <FindReplaceProvider>
+                    <SidebarWidthProvider>
+                      <Root />
+                      <Toaster
+                        position="top-right"
+                        containerStyle={{
+                          marginTop: "64px",
+                        }}
+                        toastOptions={{
+                          className:
+                            "!bg-background !text-foreground !border !border-border",
+                          style: {
+                            background: "var(--background)",
+                            color: "var(--foreground)",
+                            border: "1px solid var(--border)",
+                          },
+                        }}
+                      />
+                    </SidebarWidthProvider>
+                  </FindReplaceProvider>
+                </RenameProvider>
+              </CleanupProvider>
+            </ChangesProvider>
+          </TagEditorErrorsProvider>
         </UserConfigProvider>
       </ContextMenuProvider>
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

@@ -2,7 +2,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import DraggableHeader from "@/ui/components/DraggableHeader";
+import DraggableHeader from "@/ui/components/table/DraggableHeader";
 import { ContextMenuArea } from "@/ui/components/ContextMenu";
 import { useRef } from "react";
 
@@ -37,7 +37,7 @@ export default function TableHeaderRow({
 
   const startResizing = (
     columnId: string,
-    event: React.MouseEvent<HTMLDivElement>
+    event: React.MouseEvent<HTMLDivElement>,
   ): void => {
     const column = config.columns.find((c) => c.value === columnId);
     if (!column) return;
@@ -86,7 +86,7 @@ export default function TableHeaderRow({
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border h-[36px] shadow-sm">
+    <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border h-9 shadow-sm">
       {headerGroups.map((headerGroup) => (
         <div className="flex gap-4 h-full" key={headerGroup.id}>
           <SortableContext
@@ -98,7 +98,7 @@ export default function TableHeaderRow({
               <ContextMenuArea
                 items={() => {
                   const available = allColumns.filter(
-                    (c) => !config.columns.find((col) => col.value === c.value)
+                    (c) => !config.columns.find((col) => col.value === c.value),
                   );
                   if (!available.length) {
                     return [
@@ -136,7 +136,7 @@ export default function TableHeaderRow({
                       label: "Remove Column",
                       onSelect: () => {
                         const newCols = config.columns.filter(
-                          (col) => col.value !== header.id
+                          (col) => col.value !== header.id,
                         );
                         setColumns(newCols);
                       },
@@ -152,7 +152,7 @@ export default function TableHeaderRow({
                       e.preventDefault();
                       startResizing(header.id, e);
                     }}
-                    className="absolute top-0 right-0 h-full w-[3px] cursor-col-resize bg-transparent hover:bg-primary/40 transition"
+                    className="absolute top-0 right-0 h-full w-0.75 cursor-col-resize bg-transparent hover:bg-primary/40 transition"
                   >
                     <div className="border-r border-border h-full" />
                   </div>

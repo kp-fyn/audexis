@@ -5,56 +5,86 @@ use std::collections::HashMap;
 
 pub fn itunes_code(key: FrameKey) -> &'static str {
     match key {
-        FrameKey::Title => "©nam",                    // Name/Title
-        FrameKey::Artist => "©ART",                   // Artist
-        FrameKey::Album => "©alb",                    // Album
-        FrameKey::Year => "©day",                     // Year/Date
-        FrameKey::TrackNumber => "trkn",              // Track number
-        FrameKey::Genre => "©gen", // Genre (can also be "gnre" for standard genres)
-        FrameKey::AlbumArtist => "aART", // Album artist
-        FrameKey::ContentGroup => "©grp", // Grouping
-        FrameKey::Composer => "©wrt", // Composer/Writer
-        FrameKey::EncodedBy => "©too", // Encoded by (tool)
-        FrameKey::UnsyncedLyrics => "©lyr", // Lyrics
-        FrameKey::Length => "----", // Custom freeform field
-        FrameKey::Conductor => "----", // Custom freeform field
-        FrameKey::AttachedPicture => "covr", // Cover art
-        FrameKey::UserDefinedURL => "----", // Custom freeform field
-        FrameKey::Comments => "©cmt", // Comment
-        FrameKey::Private => "----", // Custom freeform field
-        FrameKey::RelativeVolumeAdjustment => "----", // Custom freeform
-        FrameKey::EncryptionMethod => "----", // Custom freeform
-        FrameKey::GroupIdRegistration => "----", // Custom freeform
-        FrameKey::GeneralObject => "----", // Custom freeform
-        FrameKey::CommercialURL => "----", // Custom freeform
-        FrameKey::CopyrightURL => "cprt", // Copyright
-        FrameKey::AudioFileURL => "----", // Custom freeform
-        FrameKey::ArtistURL => "----", // Custom freeform
-        FrameKey::RadioStationURL => "----", // Custom freeform
-        FrameKey::PaymentURL => "----", // Custom freeform
-        FrameKey::BitmapImageURL => "----", // Custom freeform
-        FrameKey::UserDefinedText => "----", // Custom freeform
-        FrameKey::SynchronizedLyrics => "----", // Custom freeform
-        FrameKey::TempoCodes => "----", // Custom freeform
-        FrameKey::MusicCDIdentifier => "----", // Custom freeform
-        FrameKey::EventTimingCodes => "----", // Custom freeform
-        FrameKey::Sequence => "----", // Custom freeform
-        FrameKey::PlayCount => "pcnt", // Play count (non-user-editable)
-        FrameKey::AudioSeekPointIndex => "----", // Custom freeform
-        FrameKey::MediaType => "stik", // Media type
-        FrameKey::CommercialFrame => "----", // Custom freeform
-        FrameKey::AudioEncryption => "----", // Custom freeform
-        FrameKey::SignatureFrame => "----", // Custom freeform
-        FrameKey::SoftwareEncoder => "©too", // Same as EncodedBy
-        FrameKey::AudioEncodingMethod => "----", // Custom freeform
-        FrameKey::RecommendedBufferSize => "----", // Custom freeform
-        FrameKey::BeatsPerMinute => "tmpo", // BPM/Tempo
-        FrameKey::Language => "----", // Custom freeform
-        FrameKey::FileType => "----", // Custom freeform
-        FrameKey::Time => "----",  // Custom freeform
-        FrameKey::RecordingDate => "----", // Same as Year
-        FrameKey::ReleaseDate => "----", // Same as Year
+        FrameKey::Title => "©nam",
+        FrameKey::Artist => "©ART",
+        FrameKey::Album => "©alb",
+        FrameKey::AlbumArtist => "aART",
+        FrameKey::Composer => "©wrt",
+        FrameKey::ContentGroup => "©grp",
+        FrameKey::Genre => "©gen",
+        FrameKey::TrackNumber => "trkn",
+        FrameKey::BeatsPerMinute => "tmpo",
+        FrameKey::AttachedPicture => "covr",
+        FrameKey::Comments => "©cmt",
+        FrameKey::UnsyncedLyrics => "©lyr",
+        FrameKey::EncodedBy => "©too",
+        FrameKey::SoftwareEncoder => "©too",
+        FrameKey::CopyrightURL => "cprt",
+        FrameKey::MediaType => "stik",
+        FrameKey::PlayCount => "pcnt",
+        FrameKey::Length => "©len",
+
+        FrameKey::Year => "©day",
+        FrameKey::RecordingDate => "©day",
+        FrameKey::ReleaseDate => "©day",
+
+        FrameKey::UserDefinedText => "----",
+        FrameKey::UserDefinedURL => "----",
+        FrameKey::Private => "----",
+        FrameKey::RelativeVolumeAdjustment => "----",
+        FrameKey::EncryptionMethod => "----",
+        FrameKey::GroupIdRegistration => "----",
+        FrameKey::GeneralObject => "----",
+        FrameKey::CommercialURL => "----",
+        FrameKey::AudioFileURL => "----",
+        FrameKey::ArtistURL => "----",
+        FrameKey::RadioStationURL => "----",
+        FrameKey::PaymentURL => "----",
+        FrameKey::BitmapImageURL => "----",
+        FrameKey::SynchronizedLyrics => "----",
+        FrameKey::TempoCodes => "----",
+        FrameKey::MusicCDIdentifier => "----",
+        FrameKey::EventTimingCodes => "----",
+        FrameKey::Sequence => "----",
+        FrameKey::AudioSeekPointIndex => "----",
+        FrameKey::CommercialFrame => "----",
+        FrameKey::AudioEncryption => "----",
+        FrameKey::SignatureFrame => "----",
+        FrameKey::AudioEncodingMethod => "----",
+        FrameKey::RecommendedBufferSize => "----",
+        FrameKey::Language => "----",
+        FrameKey::FileType => "----",
+        FrameKey::Time => "----",
+
         _ => "----",
+    }
+}
+
+pub fn itunes_key(code: &str) -> Option<FrameKey> {
+    match code {
+        "©nam" => Some(FrameKey::Title),
+        "©ART" => Some(FrameKey::Artist),
+        "©alb" => Some(FrameKey::Album),
+        "aART" => Some(FrameKey::AlbumArtist),
+        "©wrt" => Some(FrameKey::Composer),
+        "©grp" => Some(FrameKey::ContentGroup),
+        "©gen" => Some(FrameKey::Genre),
+        "trkn" => Some(FrameKey::TrackNumber),
+        "tmpo" => Some(FrameKey::BeatsPerMinute),
+        "covr" => Some(FrameKey::AttachedPicture),
+        "©cmt" => Some(FrameKey::Comments),
+        "©lyr" => Some(FrameKey::UnsyncedLyrics),
+        "©too" => Some(FrameKey::EncodedBy),
+        "cprt" => Some(FrameKey::CopyrightURL),
+        "stik" => Some(FrameKey::MediaType),
+        "pcnt" => Some(FrameKey::PlayCount),
+        "©len" => Some(FrameKey::Length),
+
+        "©day" => Some(FrameKey::RecordingDate),
+
+        "----" => Some(FrameKey::UserDefinedText),
+
+        _ => None,
     }
 }
 #[derive(Debug, Clone)]
@@ -62,7 +92,9 @@ pub struct AtomFlag {
     pub name: &'static str,
     pub flag: [u8; 4],
     pub size: Option<u32>,
+    #[allow(dead_code)]
     pub boolean: bool,
+    #[allow(dead_code)]
     pub no_size_limit: bool,
 }
 
@@ -1030,7 +1062,7 @@ pub fn raw_to_tags(raw: &[(String, TagValue)]) -> HashMap<FrameKey, Vec<TagValue
                         if text.contains('\u{0}') {
                             text.split('\u{0}').collect()
                         } else {
-                            text.split('/').collect()
+                            text.split(';').collect()
                         }
                     };
                     for part in splitter(s) {
@@ -1058,8 +1090,8 @@ pub fn raw_to_tags(raw: &[(String, TagValue)]) -> HashMap<FrameKey, Vec<TagValue
                     if let TagValue::Text(s) = v {
                         let parts: Vec<&str> = if s.contains('\u{0}') {
                             s.split('\u{0}').collect()
-                        } else if s.contains('/') {
-                            s.split('/').collect()
+                        } else if s.contains(';') {
+                            s.split(';').collect()
                         } else {
                             vec![s.as_str()]
                         };
@@ -1086,42 +1118,4 @@ pub fn raw_to_tags(raw: &[(String, TagValue)]) -> HashMap<FrameKey, Vec<TagValue
     }
 
     result
-}
-
-pub fn tags_to_raw(tags: &HashMap<FrameKey, TagValue>) -> HashMap<String, TagValue> {
-    let mut out: HashMap<String, TagValue> = HashMap::new();
-    for (k, v) in tags.iter() {
-        match k {
-            FrameKey::UserDefinedText => {
-                if let TagValue::UserText(it) = v {
-                    let key = format!("----:{}:{}", "com.apple.iTunes", it.description);
-                    out.insert(key, TagValue::Text(it.value.clone()));
-                } else if let TagValue::Text(s) = v {
-                    let key = format!("----:{}:{}", "com.apple.iTunes", "TXXX");
-                    out.insert(key, TagValue::Text(s.clone()));
-                }
-            }
-            FrameKey::UserDefinedURL => {
-                if let TagValue::UserUrl(it) = v {
-                    let key = format!("----:{}:{}", "com.apple.iTunes", it.description);
-                    out.insert(key, TagValue::Text(it.url.clone()));
-                }
-            }
-            FrameKey::Artists => {
-                out.insert("©ART".to_string(), v.clone());
-            }
-            _ => {
-                let code = itunes_code(*k);
-                if code == "----" {
-                    if let Some(spec) = itunes_freeform_spec(*k) {
-                        let key = format!("----:{}:{}", spec.mean, spec.name);
-                        out.insert(key, v.clone());
-                    }
-                } else {
-                    out.insert(code.to_string(), v.clone());
-                }
-            }
-        }
-    }
-    out
 }

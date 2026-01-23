@@ -1,6 +1,8 @@
 // Generic utils for handling vorbis for multiple formats
 use crate::tag_manager::utils::{FrameKey, TagValue};
+use base64::{engine::general_purpose as b64_gp, Engine as _};
 use once_cell::sync::Lazy;
+
 use std::collections::HashMap;
 use std::io::Error;
 
@@ -68,7 +70,6 @@ pub fn raw_to_tags(raw: &HashMap<String, Vec<TagValue>>) -> HashMap<FrameKey, Ve
 
     for (raw_key, values) in raw.iter() {
         let norm = normalize_vorbis_key(raw_key);
-
         let key_opt =
             VORBIS_REVERSE_MAP
                 .get(norm.as_str())
@@ -79,6 +80,8 @@ pub fn raw_to_tags(raw: &HashMap<String, Vec<TagValue>>) -> HashMap<FrameKey, Ve
                     "DISCNUMBER" => Some(FrameKey::DiscNumber),
                     "LABEL" => Some(FrameKey::Label),
                     "ISRC" => Some(FrameKey::Isrc),
+                    "METADATA_BLOCK_PICTURE" => Some(FrameKey::AttachedPicture),
+
                     _ => None,
                 });
 
@@ -144,9 +147,19 @@ pub fn parse_comments(data: &[u8]) -> Result<HashMap<FrameKey, Vec<TagValue>>, E
         };
         let (k, v_with_eq) = comment_str.split_at(eq_pos);
         let v = &v_with_eq[1..];
-        println!("Vorbis comment key: {}, value: {}", k, v);
 
         let norm_key = normalize_vorbis_key(k);
+        if norm_key == "METADATA_BLOCK_PICTURE".to_string() {
+            let pic_data = b64_gp::STANDARD.decode(v).map_err(|_| {
+                Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to decode base64 picture data",
+                )
+            })?;
+            let pic_tag = parse_picture(&pic_data)?;
+            raw.entry(norm_key).or_default().push(pic_tag);
+            continue;
+        }
         raw.entry(norm_key)
             .or_default()
             .push(TagValue::Text(v.to_string()));
@@ -235,7 +248,8 @@ pub fn parse_picture(buf: &[u8]) -> Result<TagValue, Error> {
         data,
     })
 }
-pub fn build_comments(tags: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<u8> {
+
+pub fn build_comments(tags: &HashMap<FrameKey, Vec<TagValue>>, needs_picture: bool) -> Vec<u8> {
     let mut out: Vec<u8> = Vec::new();
     let vendor_string = "Audexis"; // cheeky boy
     let vendor_bytes = vendor_string.as_bytes();
@@ -258,6 +272,26 @@ pub fn build_comments(tags: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<u8> {
                 comment_entry.extend(comment_bytes);
 
                 comment_list.push(comment_entry);
+            } else if needs_picture {
+                if let TagValue::Picture {
+                    picture_type: _,
+                    mime: _,
+                    description: _,
+                    data: _,
+                } = value
+                {
+                    let pic_comment = build_picture_comment(value);
+                    if let Some(pic_bytes) = pic_comment {
+                        let encoded = b64_gp::STANDARD.encode(&pic_bytes);
+                        let comment_str = format!("METADATA_BLOCK_PICTURE={}", encoded);
+                        let comment_bytes = comment_str.as_bytes();
+                        let comment_length = comment_bytes.len() as u32;
+                        let mut comment_entry: Vec<u8> = Vec::new();
+                        comment_entry.extend(&comment_length.to_le_bytes());
+                        comment_entry.extend(comment_bytes);
+                        comment_list.push(comment_entry);
+                    }
+                }
             }
         }
     }
@@ -270,6 +304,39 @@ pub fn build_comments(tags: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<u8> {
     }
 
     out
+}
+pub fn build_picture_comment(tag: &TagValue) -> Option<Vec<u8>> {
+    if let TagValue::Picture {
+        picture_type,
+        mime,
+        description,
+        data,
+    } = tag
+    {
+        let mut out = Vec::new();
+
+        out.extend(&(picture_type.unwrap_or(3) as u32).to_be_bytes());
+
+        let mime_bytes = mime.as_bytes();
+        out.extend(&(mime_bytes.len() as u32).to_be_bytes());
+        out.extend(mime_bytes);
+
+        let desc_bytes = description.as_deref().unwrap_or("").as_bytes();
+        out.extend(&(desc_bytes.len() as u32).to_be_bytes());
+        out.extend(desc_bytes);
+
+        out.extend(&0u32.to_be_bytes());
+        out.extend(&0u32.to_be_bytes());
+        out.extend(&0u32.to_be_bytes());
+        out.extend(&0u32.to_be_bytes());
+
+        out.extend(&(data.len() as u32).to_be_bytes());
+        out.extend(data);
+
+        Some(out)
+    } else {
+        None
+    }
 }
 pub fn build_picture_tag(tags: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<Vec<u8>> {
     let mut pictures = Vec::new();

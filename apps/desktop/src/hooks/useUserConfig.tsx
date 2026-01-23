@@ -6,11 +6,13 @@ import {
   ReactNode,
   useEffect,
   useState,
+  Dispatch,
+  SetStateAction,
 } from "react";
-import { UserConfig, Column } from "@/ui/types";
+import { UserConfig, Column, SidebarItem } from "@/ui/types";
 import { Event, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { ChangelogModal } from "../components/ChangelogModal";
+import { ChangelogModal } from "../components/modals/ChangelogModal";
 
 const UserConfigContext = createContext<Config>({
   config: {
@@ -24,6 +26,9 @@ const UserConfigContext = createContext<Config>({
     sidebar_items: [],
     show_diff_modal: false,
   },
+  allSidebarItems: [],
+  setAllSidebarItems: () => {},
+  setSidebarItems: () => {},
   multiFrameKeys: [],
   allColumns: [],
   setTheme: () => {},
@@ -38,14 +43,17 @@ const UserConfigContext = createContext<Config>({
 interface Config {
   config: UserConfig;
   allColumns: Column[];
+  allSidebarItems: SidebarItem[];
   multiFrameKeys: string[];
   setAllColumns: (columns: Column[]) => void;
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: "simple" | "folder") => void;
-  setMultiFrameKeys: (keys: string[]) => void;
+  setSidebarItems: (items: SidebarItem[]) => void;
   setColumns: (column: Column[]) => void;
   setDensity: (density: "default" | "compact" | "comfort") => void;
   setShowDiffModal: (enabled: boolean) => void;
+  setMultiFrameKeys: Dispatch<SetStateAction<string[]>>;
+  setAllSidebarItems: Dispatch<SetStateAction<SidebarItem[]>>;
 }
 
 export function useUserConfig(): Config {
@@ -78,6 +86,7 @@ export function UserConfigProvider({
     sidebar_items: [],
   });
   const [allColumns, setAllColumns] = useState<Column[]>([]);
+  const [allSidebarItems, setAllSidebarItems] = useState<SidebarItem[]>([]);
   const [multiFrameKeys, setMultiFrameKeys] = useState<string[]>([]);
   useEffect(() => {
     const unlisten = listen(
@@ -85,7 +94,7 @@ export function UserConfigProvider({
       (event: Event<UserConfig>) => {
         const config = event.payload;
         console.log({ config });
-        if (config.just_updated) {
+        if (config.just_updated && config.onboarding === false) {
           setChangelogModalOpen(true);
           console.log("opening changelog modal");
         }
@@ -96,7 +105,7 @@ export function UserConfigProvider({
         params.set("theme", themeLower);
         document.documentElement.setAttribute(
           "data-density",
-          config.density.toLowerCase() as string
+          config.density.toLowerCase() as string,
         );
 
         const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -115,18 +124,11 @@ export function UserConfigProvider({
         if (config.onboarding) {
           setHasOpened(true);
           if (hasOpened) return;
-          // window.app.openOnboarding();
         }
 
         document.documentElement.setAttribute("data-theme", themeLower);
-      }
+      },
     );
-    // window.app.onUserConfigUpdate((_e, config) => {
-    //     console.log(config);
-    //     setUserConfig(config);
-
-    // });
-    // window.app.test();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => {
@@ -139,6 +141,8 @@ export function UserConfigProvider({
       value={{
         multiFrameKeys,
         setMultiFrameKeys,
+        allSidebarItems,
+        setAllSidebarItems,
         config: userConfig,
         setTheme: (theme: "light" | "dark") => {
           setUserConfig({ ...userConfig, theme });
@@ -154,6 +158,17 @@ export function UserConfigProvider({
 
         setView: (view: "simple" | "folder") => {
           setUserConfig({ ...userConfig, view });
+        },
+        setSidebarItems: (items: SidebarItem[]) => {
+          setUserConfig((prev) => {
+            const updated: UserConfig = { ...prev, sidebar_items: items };
+            invoke("update_user_config", {
+              patch: {
+                sidebar_items: items,
+              },
+            });
+            return updated;
+          });
         },
         setColumns: (c) => {
           setUserConfig((prev) => {
@@ -176,8 +191,8 @@ export function UserConfigProvider({
                 density === "default"
                   ? "Default"
                   : density === "compact"
-                  ? "Compact"
-                  : "Comfort",
+                    ? "Compact"
+                    : "Comfort",
             },
           });
           document.documentElement.setAttribute("data-density", density);

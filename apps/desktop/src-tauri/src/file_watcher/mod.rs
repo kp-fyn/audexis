@@ -69,7 +69,9 @@ impl FileWatcher {
                 let _ = debouncer.cache().add_root(&root, RecursiveMode::Recursive);
             }
         }
-
+        if let Some(old_debouncer) = self.debouncer.take() {
+            old_debouncer.stop();
+        }
         self.debouncer = Some(debouncer);
         Ok(())
     }

@@ -30,7 +30,6 @@ type FileIdentifier = {
 
 interface ChangesContext {
   changes: Record<string, SerializableTagFrameValue[]>;
-  neededItems: { value: string; label: string; maxLength?: number }[];
   setChanges: Dispatch<
     SetStateAction<Record<string, SerializableTagFrameValue[]>>
   >;
@@ -86,7 +85,7 @@ const ChangesContext = createContext<ChangesContext>({
   closeAlbumDialog: () => {
     throw new Error("closeAlbumDialog function must be overridden");
   },
-  neededItems: [],
+
   clearChanges: () => {
     throw new Error("clearChanges function must be overridden");
   },
@@ -238,7 +237,7 @@ export function ChangesProvider({
       (event: Event<HistoryPayload>) => {
         const config = event.payload;
         setHistoryState(config);
-      }
+      },
     );
 
     return () => {
@@ -312,7 +311,7 @@ export function ChangesProvider({
     <ChangesContext.Provider
       value={{
         changes: changes,
-        neededItems: getNeededItems(),
+
         setChanges,
 
         saveChanges,
@@ -347,7 +346,7 @@ export function ChangesProvider({
   );
 
   function toSerializableTags(
-    input: Partial<AllTags>
+    input: Partial<AllTags>,
   ): Record<string, TagText | TagPicture> {
     const out: Record<string, TagText | TagPicture> = {};
     Object.entries(input).forEach(([key, val]) => {
@@ -389,25 +388,6 @@ export function ChangesProvider({
       toast.error(`Failed to save changes: ${message}`);
     }
   }
-}
-
-function getNeededItems(): {
-  value: string;
-  label: string;
-  maxLength?: number;
-}[] {
-  return [
-    { value: "title", label: "Title" },
-    { value: "artist", label: "Artist" },
-    { value: "album", label: "Album" },
-    { value: "year", label: "Year", maxLength: 4 },
-    { value: "trackNumber", label: "Track Number" },
-    { value: "genre", label: "Genre" },
-    { value: "albumArtist", label: "Album Artist" },
-    { value: "composer", label: "Composer" },
-    { value: "encodedBy", label: "Encoded By" },
-    { value: "conductor", label: "Conductor" },
-  ];
 }
 
 interface HistoryPayload {

@@ -74,7 +74,7 @@ export default function DocsSidebarClient({
           open &&
           createPortal(
             <div
-              className="fixed inset-0 z-[1000]"
+              className="fixed inset-0 z-1000"
               role="dialog"
               aria-modal="true"
             >
@@ -168,13 +168,12 @@ export default function DocsSidebarClient({
                 </div>
               </div>
             </div>,
-            document.body
+            document.body,
           )}
       </>
     );
   }
 
-  // Default: desktop/large screens sidebar list
   return (
     <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-8rem)]">
       {groups.map((group) => (

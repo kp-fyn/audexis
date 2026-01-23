@@ -3,6 +3,66 @@ use crate::tag_manager::utils::TagValue;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
+pub fn id3v22_code(key: FrameKey) -> &'static str {
+    match key {
+        FrameKey::Title => "TT2",
+        FrameKey::Artist => "TP1",
+        FrameKey::Album => "TAL",
+        FrameKey::Year => "TYE",
+        FrameKey::TrackNumber => "TRK",
+        FrameKey::Genre => "TCO",
+        FrameKey::AlbumArtist => "TP2",
+        FrameKey::ContentGroup => "TT1",
+        FrameKey::Composer => "TCM",
+        FrameKey::EncodedBy => "TEN",
+        FrameKey::SoftwareEncoder => "TSS",
+        FrameKey::Length => "TLE",
+        FrameKey::BeatsPerMinute => "TBP",
+        FrameKey::Language => "TLA",
+        FrameKey::FileType => "TFT",
+        FrameKey::Time => "TIM",
+
+        FrameKey::RecordingDate => "TRD",
+        FrameKey::ReleaseDate => "TOR",
+
+        FrameKey::UnsyncedLyrics => "ULT",
+        FrameKey::SynchronizedLyrics => "SLT",
+        FrameKey::Comments => "COM",
+        FrameKey::AttachedPicture => "PIC",
+
+        FrameKey::CommercialURL => "WCM",
+        FrameKey::CopyrightURL => "WCP",
+        FrameKey::AudioFileURL => "WAF",
+        FrameKey::ArtistURL => "WAR",
+        FrameKey::UserDefinedURL => "WXX",
+
+        FrameKey::RelativeVolumeAdjustment => "RVA",
+
+        FrameKey::EventTimingCodes => "ETC",
+        FrameKey::TempoCodes => "STC",
+        FrameKey::MusicCDIdentifier => "MCI",
+        FrameKey::PlayCount => "CNT",
+        FrameKey::AudioSeekPointIndex => "MLL",
+
+        FrameKey::MediaType => "TMT",
+
+        FrameKey::GeneralObject => "GEO",
+        FrameKey::AudioEncryption => "CRA",
+        FrameKey::RecommendedBufferSize => "BUF",
+        FrameKey::EncryptionMethod => "CRM",
+
+        FrameKey::Private
+        | FrameKey::GroupIdRegistration
+        | FrameKey::CommercialFrame
+        | FrameKey::SignatureFrame
+        | FrameKey::AudioEncodingMethod => "TXX",
+
+        FrameKey::RadioStationURL | FrameKey::PaymentURL | FrameKey::BitmapImageURL => "WXX",
+
+        FrameKey::UserDefinedText => "TXX",
+        _ => "TXX",
+    }
+}
 pub fn id3v23_code(key: FrameKey) -> &'static str {
     match key {
         FrameKey::Title => "TIT2",
@@ -15,110 +75,152 @@ pub fn id3v23_code(key: FrameKey) -> &'static str {
         FrameKey::ContentGroup => "TIT1",
         FrameKey::Composer => "TCOM",
         FrameKey::EncodedBy => "TENC",
-        FrameKey::UnsyncedLyrics => "USLT",
-        FrameKey::Length => "TLEN",
-        FrameKey::Conductor => "TPE3",
-        FrameKey::AttachedPicture => "APIC",
-        FrameKey::UserDefinedURL => "WXXX",
-        FrameKey::Comments => "COMM",
-        FrameKey::Private => "PRIV",
-        FrameKey::RelativeVolumeAdjustment => "RVA2",
-        FrameKey::EncryptionMethod => "ENCR",
-        FrameKey::GroupIdRegistration => "GRID",
-        FrameKey::GeneralObject => "GEOB",
-        FrameKey::CommercialURL => "WCOM",
-        FrameKey::CopyrightURL => "WCOP",
-        FrameKey::AudioFileURL => "WOAF",
-        FrameKey::ArtistURL => "WOAR",
-        FrameKey::RadioStationURL => "WORS",
-        FrameKey::PaymentURL => "WPAY",
-        FrameKey::BitmapImageURL => "WBMP",
-        FrameKey::UserDefinedText => "TXXX",
-        FrameKey::SynchronizedLyrics => "SYLT",
-        FrameKey::TempoCodes => "SYTC",
-        FrameKey::MusicCDIdentifier => "MCDI",
-        FrameKey::EventTimingCodes => "ETCO",
-        FrameKey::Sequence => "SEQU",
-        FrameKey::PlayCount => "PCNT",
-        FrameKey::AudioSeekPointIndex => "ASPI",
-        FrameKey::MediaType => "STIK",
-        FrameKey::CommercialFrame => "COMR",
-        FrameKey::AudioEncryption => "AENC",
-        FrameKey::SignatureFrame => "SIGN",
         FrameKey::SoftwareEncoder => "TSSE",
-        FrameKey::AudioEncodingMethod => "CART",
-        FrameKey::RecommendedBufferSize => "RBUF",
+        FrameKey::Length => "TLEN",
         FrameKey::BeatsPerMinute => "TBPM",
         FrameKey::Language => "TLAN",
         FrameKey::FileType => "TFLT",
         FrameKey::Time => "TIME",
-        FrameKey::RecordingDate => "TDRC",
-        FrameKey::ReleaseDate => "TDOR",
-
+        FrameKey::RecordingDate => "TRDA",
+        FrameKey::ReleaseDate => "TORY",
+        FrameKey::UnsyncedLyrics => "USLT",
+        FrameKey::SynchronizedLyrics => "SYLT",
+        FrameKey::Comments => "COMM",
+        FrameKey::AttachedPicture => "APIC",
+        FrameKey::CommercialURL => "WCOM",
+        FrameKey::CopyrightURL => "WCOP",
+        FrameKey::AudioFileURL => "WOAF",
+        FrameKey::ArtistURL => "WOAR",
+        FrameKey::UserDefinedURL => "WXXX",
+        FrameKey::Private => "PRIV",
+        FrameKey::GeneralObject => "GEOB",
+        FrameKey::GroupIdRegistration => "GRID",
+        FrameKey::EncryptionMethod => "ENCR",
+        FrameKey::AudioEncryption => "AENC",
+        FrameKey::CommercialFrame => "COMR",
+        FrameKey::RelativeVolumeAdjustment => "RVAD",
+        FrameKey::TempoCodes => "SYTC",
+        FrameKey::EventTimingCodes => "ETCO",
+        FrameKey::PlayCount => "PCNT",
+        FrameKey::AudioSeekPointIndex => "MLLT",
+        FrameKey::MediaType => "TMED",
+        FrameKey::RadioStationURL | FrameKey::PaymentURL | FrameKey::BitmapImageURL => "WXXX",
+        FrameKey::Sequence
+        | FrameKey::SignatureFrame
+        | FrameKey::AudioEncodingMethod
+        | FrameKey::RecommendedBufferSize => "TXXX",
+        FrameKey::UserDefinedText => "TXXX",
         _ => "TXXX",
-    }
-}
-
-pub fn id3v22_code(key: FrameKey) -> &'static str {
-    match key {
-        FrameKey::Title => "TT2",           // Title/Songname/Content description
-        FrameKey::Artist => "TP1",          // Lead performer(s)/Soloist(s)
-        FrameKey::Album => "TAL",           // Album/Movie/Show title
-        FrameKey::Year => "TYE",            // Year
-        FrameKey::TrackNumber => "TRK",     // Track number/Position in set
-        FrameKey::Genre => "TCO",           // Content type
-        FrameKey::AlbumArtist => "TP2",     // Band/orchestra/accompaniment
-        FrameKey::ContentGroup => "TIT",    // Content group description (approximation)
-        FrameKey::Composer => "TCM",        // Composer
-        FrameKey::EncodedBy => "TEN",       // Encoded by
-        FrameKey::UnsyncedLyrics => "ULT",  // Unsynchronized lyric/text transcription
-        FrameKey::Length => "TLE",          // Length
-        FrameKey::Conductor => "TP3",       // Conductor/performer refinement
-        FrameKey::AttachedPicture => "PIC", // Attached picture (different structure)
-        FrameKey::UserDefinedURL => "WXX",  // Not really existing in v2.2; placeholder.
-        FrameKey::Comments => "COM",        // Comments
-        FrameKey::Private => "PRIV",        // No direct v2.2, placeholder
-        FrameKey::RelativeVolumeAdjustment => "RVA", // v2.2 uses RVA
-        FrameKey::EncryptionMethod => "CRM", // Encrypted meta frame (approx)
-        FrameKey::GroupIdRegistration => "GRID", // Placeholder
-        FrameKey::GeneralObject => "GEOB",  // Placeholder
-        FrameKey::CommercialURL => "WCM",   // Commercial information
-        FrameKey::CopyrightURL => "WCP",    // Copyright/Legal information
-        FrameKey::AudioFileURL => "WAF",    // Official audio file webpage
-        FrameKey::ArtistURL => "WAR",       // Official artist/performer webpage
-        FrameKey::RadioStationURL => "WORS", // Placeholder
-        FrameKey::PaymentURL => "WPAY",     // Placeholder
-        FrameKey::BitmapImageURL => "WBMP", // Placeholder
-        FrameKey::UserDefinedText => "TXX", // User defined text (approx)
-        FrameKey::SynchronizedLyrics => "SLT", // Synchronized lyric/text
-        FrameKey::TempoCodes => "STC",      // Placeholder
-        FrameKey::MusicCDIdentifier => "MCI", // Music CD Identifier
-        FrameKey::EventTimingCodes => "ETC", // Event timing codes
-        FrameKey::Sequence => "SEQ",        // Placeholder
-        FrameKey::PlayCount => "CNT",       // Play counter
-        FrameKey::AudioSeekPointIndex => "ASPI", // Placeholder
-        FrameKey::MediaType => "STIK",      // Placeholder
-        FrameKey::CommercialFrame => "COMR", // Placeholder
-        FrameKey::AudioEncryption => "AENC", // Placeholder
-        FrameKey::SignatureFrame => "SIGN", // Placeholder
-        FrameKey::SoftwareEncoder => "TSS", // Software/Hardware and settings used for encoding
-        FrameKey::AudioEncodingMethod => "CART", // Placeholder
-        FrameKey::RecommendedBufferSize => "RBUF", // Placeholder
-        FrameKey::BeatsPerMinute => "TBP",  // BPM (approx TBPM)
-        FrameKey::Language => "TLA",        // Language(s)
-        FrameKey::FileType => "TFT",        // File type
-        FrameKey::Time => "TIM",            // Time
-        FrameKey::RecordingDate => "TRD",   // Recording dates (approx)
-        FrameKey::ReleaseDate => "TRD",     // Approx reuse
-        _ => "TXX",                         // Fallback for extended keys
     }
 }
 
 pub fn id3v24_code(key: FrameKey) -> &'static str {
     match key {
-        FrameKey::Year => "TDRC",
+        FrameKey::Year | FrameKey::RecordingDate => "TDRC",
         FrameKey::ReleaseDate => "TDOR",
+
+        FrameKey::RelativeVolumeAdjustment => "RVA2",
+        FrameKey::AudioSeekPointIndex => "ASPI",
+
         other => id3v23_code(other),
+    }
+}
+pub fn id3v22_key(code: &str) -> Option<FrameKey> {
+    match code {
+        "TT2" => Some(FrameKey::Title),
+        "TP1" => Some(FrameKey::Artist),
+        "TAL" => Some(FrameKey::Album),
+        "TYE" => Some(FrameKey::Year),
+        "TRK" => Some(FrameKey::TrackNumber),
+        "TCO" => Some(FrameKey::Genre),
+        "TP2" => Some(FrameKey::AlbumArtist),
+        "TIT" => Some(FrameKey::ContentGroup),
+        "TCM" => Some(FrameKey::Composer),
+        "TEN" => Some(FrameKey::EncodedBy),
+        "ULT" => Some(FrameKey::UnsyncedLyrics),
+        "TLE" => Some(FrameKey::Length),
+        "TP3" => Some(FrameKey::Conductor),
+        "PIC" => Some(FrameKey::AttachedPicture),
+        "WXX" => Some(FrameKey::UserDefinedURL),
+        "COM" => Some(FrameKey::Comments),
+        "RVA" => Some(FrameKey::RelativeVolumeAdjustment),
+        "WCM" => Some(FrameKey::CommercialURL),
+        "WCP" => Some(FrameKey::CopyrightURL),
+        "WAF" => Some(FrameKey::AudioFileURL),
+        "WAR" => Some(FrameKey::ArtistURL),
+        "TXX" => Some(FrameKey::UserDefinedText),
+        "SLT" => Some(FrameKey::SynchronizedLyrics),
+        "MCI" => Some(FrameKey::MusicCDIdentifier),
+        "ETC" => Some(FrameKey::EventTimingCodes),
+        "CNT" => Some(FrameKey::PlayCount),
+        "TSS" => Some(FrameKey::SoftwareEncoder),
+        "TBP" => Some(FrameKey::BeatsPerMinute),
+        "TLA" => Some(FrameKey::Language),
+        "TFT" => Some(FrameKey::FileType),
+        "TIM" => Some(FrameKey::Time),
+        "TRD" => Some(FrameKey::RecordingDate),
+        _ => None,
+    }
+}
+pub fn id3v23_key(code: &str) -> Option<FrameKey> {
+    match code {
+        "TIT2" => Some(FrameKey::Title),
+        "TPE1" => Some(FrameKey::Artist),
+        "TALB" => Some(FrameKey::Album),
+        "TYER" => Some(FrameKey::Year),
+        "TRCK" => Some(FrameKey::TrackNumber),
+        "TCON" => Some(FrameKey::Genre),
+        "TPE2" => Some(FrameKey::AlbumArtist),
+        "TIT1" => Some(FrameKey::ContentGroup),
+        "TCOM" => Some(FrameKey::Composer),
+        "TENC" => Some(FrameKey::EncodedBy),
+        "USLT" => Some(FrameKey::UnsyncedLyrics),
+        "TLEN" => Some(FrameKey::Length),
+        "TPE3" => Some(FrameKey::Conductor),
+        "APIC" => Some(FrameKey::AttachedPicture),
+        "WXXX" => Some(FrameKey::UserDefinedURL),
+        "COMM" => Some(FrameKey::Comments),
+        "PRIV" => Some(FrameKey::Private),
+        "RVA2" => Some(FrameKey::RelativeVolumeAdjustment),
+        "ENCR" => Some(FrameKey::EncryptionMethod),
+        "GRID" => Some(FrameKey::GroupIdRegistration),
+        "GEOB" => Some(FrameKey::GeneralObject),
+        "WCOM" => Some(FrameKey::CommercialURL),
+        "WCOP" => Some(FrameKey::CopyrightURL),
+        "WOAF" => Some(FrameKey::AudioFileURL),
+        "WOAR" => Some(FrameKey::ArtistURL),
+        "WORS" => Some(FrameKey::RadioStationURL),
+        "WPAY" => Some(FrameKey::PaymentURL),
+        "WBMP" => Some(FrameKey::BitmapImageURL),
+        "TXXX" => Some(FrameKey::UserDefinedText),
+        "SYLT" => Some(FrameKey::SynchronizedLyrics),
+        "SYTC" => Some(FrameKey::TempoCodes),
+        "MCDI" => Some(FrameKey::MusicCDIdentifier),
+        "ETCO" => Some(FrameKey::EventTimingCodes),
+        "SEQU" => Some(FrameKey::Sequence),
+        "PCNT" => Some(FrameKey::PlayCount),
+        "ASPI" => Some(FrameKey::AudioSeekPointIndex),
+        "STIK" => Some(FrameKey::MediaType),
+        "COMR" => Some(FrameKey::CommercialFrame),
+        "AENC" => Some(FrameKey::AudioEncryption),
+        "SIGN" => Some(FrameKey::SignatureFrame),
+        "TSSE" => Some(FrameKey::SoftwareEncoder),
+        "CART" => Some(FrameKey::AudioEncodingMethod),
+        "RBUF" => Some(FrameKey::RecommendedBufferSize),
+        "TBPM" => Some(FrameKey::BeatsPerMinute),
+        "TLAN" => Some(FrameKey::Language),
+        "TFLT" => Some(FrameKey::FileType),
+        "TIME" => Some(FrameKey::Time),
+        "TDRC" => Some(FrameKey::RecordingDate),
+        "TDOR" => Some(FrameKey::ReleaseDate),
+        _ => None,
+    }
+}
+pub fn id3v24_key(code: &str) -> Option<FrameKey> {
+    match code {
+        "TDRC" => Some(FrameKey::RecordingDate),
+        "TDOR" => Some(FrameKey::ReleaseDate),
+        other => id3v23_key(other),
     }
 }
 
@@ -304,9 +406,9 @@ pub fn raw_to_tags(raw: &HashMap<String, Vec<TagValue>>) -> HashMap<FrameKey, Ve
             for v in values.iter() {
                 match v {
                     TagValue::Text(s)
-                        if matches!(key, FrameKey::Artist | FrameKey::Genre) && s.contains('/') =>
+                        if matches!(key, FrameKey::Artist | FrameKey::Genre) && s.contains(';') =>
                     {
-                        for part in s.split('/') {
+                        for part in s.split(';').map(|s| s.trim()) {
                             let seg = part.trim();
                             if !seg.is_empty() {
                                 expanded.push(TagValue::Text(seg.to_string()));
@@ -366,10 +468,7 @@ pub fn id3v24_raw_to_tags(
             let mut expanded: Vec<TagValue> = Vec::new();
             for v in values.iter() {
                 match v {
-                    TagValue::Text(s)
-                        if matches!(k, FrameKey::Artist | FrameKey::Genre)
-                            && s.contains('\u{0}') =>
-                    {
+                    TagValue::Text(s) if k.is_multi_valued() && s.contains('\u{0}') => {
                         for part in s.split('\u{0}') {
                             let seg = part.trim();
                             if !seg.is_empty() {

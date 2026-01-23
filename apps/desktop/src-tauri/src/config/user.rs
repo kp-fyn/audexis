@@ -261,7 +261,6 @@ pub struct PartialUserConfig {
     pub columns: Option<Vec<Column>>,
     pub density: Option<Density>,
     pub show_diff_modal: Option<bool>,
-    pub just_updated: Option<bool>,
     pub sidebar_items: Option<Vec<SidebarItem>>,
 }
 pub const CONFIG_FILE: &str = "user_config.json";

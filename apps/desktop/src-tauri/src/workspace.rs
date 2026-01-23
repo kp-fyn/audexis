@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 use tauri::AppHandle;
 
-use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend};
-// use crate::tag_manager::traits::Formats;
-use crate::tag_manager::utils::{
-    CleanupRule, File, FrameKey, SerializableTagValue, TagValue, UserTextEntry, UserUrlEntry,
-};
+use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend, TagError};
+use crate::tag_manager::utils::{CleanupRule, File, FrameKey, SerializableTagValue, TagValue};
 use base64::Engine;
 use std::fs;
 use std::fs::metadata;
@@ -128,33 +125,39 @@ impl Workspace {
         self.files.iter_mut().find(|f| f.path == path)
     }
 
-    pub fn import(&mut self, file: PathBuf) {
+    pub fn import(&mut self, file: PathBuf) -> Result<(), BackendError> {
         if let Some(_) = self.files.iter().position(|f| f.path == file) {
-            return;
+            return Ok(());
         }
         let md = match metadata(&file) {
             Ok(m) => m,
             Err(e) => {
-                eprintln!("Could not read metadata: {}", e);
-                return;
+                return Err(BackendError::ReadFailed(TagError {
+                    public_message: format!(
+                        "Failed to read metadata for {}: {}",
+                        file.display(),
+                        e
+                    ),
+                    internal_message: format!(
+                        "Failed to read metadata for {}: {}",
+                        file.display(),
+                        e
+                    ),
+                    path: file.display().to_string(),
+                }))
             }
         };
-        println!("{}", md.is_file());
+
         if md.is_file() {
             let detected = self.backend.read(&file);
             match detected {
                 Ok(f) => {
                     self.files.push(f);
                     println!("Imported file: {}\n", file.display());
-                    return;
-                }
-                Err(BackendError::UnsupportedFormat(_)) => {
-                    println!("Unsupported format for file: {}", file.display());
-                    return;
+                    return Ok(());
                 }
                 Err(e) => {
-                    eprintln!("Failed to import {}: {:?}", file.display(), e);
-                    return;
+                    return Err(e);
                 }
             }
         } else {
@@ -166,14 +169,14 @@ impl Workspace {
                         let entry = entry.unwrap();
                         let path = entry.path();
                         print!("Importing from dir: {}\n", path.clone().display());
-                        self.import(path);
+                        let _ = self.import(path)?;
 
                         continue;
                     }
                 }
-                return;
+                return Ok(());
             } else {
-                return;
+                return Ok(());
             }
         }
     }

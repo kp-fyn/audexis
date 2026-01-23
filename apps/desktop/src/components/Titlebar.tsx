@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./Button";
 import { Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { SettingsModal } from "@/ui/components/SettingsModal";
+import { SettingsModal } from "@/ui/components/modals/SettingsModal";
 import useShortcuts from "@/ui/hooks/useShortcuts";
 import toast from "react-hot-toast";
 
@@ -176,7 +176,7 @@ export default function Titlebar() {
                 <DropdownMenuItem
                   onClick={() => {
                     invoke("import_files", { fileType: "file" }).catch((err) =>
-                      toast.error(`Failed to import files: ${err}`)
+                      toast.error(`Failed to import files: ${err}`),
                     );
                   }}
                 >
@@ -185,7 +185,7 @@ export default function Titlebar() {
                 <DropdownMenuItem
                   onClick={() => {
                     invoke("import_files", { fileType: "folder" }).catch(
-                      (err) => toast.error(`Failed to import folder: ${err}`)
+                      (err) => toast.error(`Failed to import folder: ${err}`),
                     );
                   }}
                 >

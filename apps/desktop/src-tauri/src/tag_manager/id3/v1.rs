@@ -1,3 +1,4 @@
+use crate::tag_manager::tag_backend::{BackendError, TagError};
 use crate::tag_manager::traits::TagFormat;
 use crate::tag_manager::utils::{FrameKey, TagValue};
 use std::collections::HashMap;
@@ -111,9 +112,18 @@ impl TagFormat for V1 {
         Self {}
     }
 
-    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, Vec<TagValue>>> {
+    fn get_tags(
+        &self,
+        file_path: &PathBuf,
+    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, BackendError> {
         let mut map: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
-        if let Some(buf) = Self::read_tail(file_path)? {
+        if let Some(buf) = Self::read_tail(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read ID3v1 tag".to_string(),
+                internal_message: "Failed to read ID3v1 tag".to_string(),
+            })
+        })? {
             let is_v11 = buf[125] == 0;
             let title = Self::trim_text(&buf[3..33]);
             let artist = Self::trim_text(&buf[33..63]);
@@ -176,7 +186,7 @@ impl TagFormat for V1 {
         &self,
         file_path: &PathBuf,
         updated_tags: HashMap<FrameKey, Vec<TagValue>>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), BackendError> {
         let supported_keys = [
             FrameKey::Title,
             FrameKey::Artist,
@@ -195,7 +205,13 @@ impl TagFormat for V1 {
             }
         }
 
-        let existing_buf = Self::read_tail(file_path).map_err(|_| ())?;
+        let existing_buf = Self::read_tail(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read ID3v1 tag".to_string(),
+                internal_message: "Failed to read ID3v1 tag".to_string(),
+            })
+        })?;
         let existing_map = self.get_tags(file_path).unwrap_or_default();
 
         if !touches_supported {
@@ -231,6 +247,12 @@ impl TagFormat for V1 {
         let is_existing_v11 = existing_buf.map(|b| b[125] == 0).unwrap_or(false);
         let is_v11 = wants_track || is_existing_v11;
 
-        Self::write_tag(file_path, &merged, existing_buf, is_v11)
+        Self::write_tag(file_path, &merged, existing_buf, is_v11).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to write ID3v1 tag".to_string(),
+                internal_message: "Failed to write ID3v1 tag".to_string(),
+            })
+        })
     }
 }

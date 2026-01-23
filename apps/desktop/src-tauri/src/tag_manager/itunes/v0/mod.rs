@@ -1,11 +1,11 @@
 use crate::tag_manager::itunes::utils::{
-    get_atom_flag, raw_to_tags, tags_to_raw, FREEFORM_REVERSE_MAP,
+    get_atom_flag, itunes_key, raw_to_tags, FREEFORM_REVERSE_MAP,
 };
+use crate::tag_manager::tag_backend::{BackendError, TagError};
 use crate::tag_manager::traits::TagFormat;
 use crate::tag_manager::utils::{FreeformTag, TagValue};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Error;
 
 #[derive(Debug, Clone)]
 pub struct V0 {}
@@ -789,14 +789,21 @@ impl TagFormat for V0 {
     fn get_tags(
         &self,
         file_path: &std::path::PathBuf,
-    ) -> Result<HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>, std::io::Error> {
-        let buffer = fs::read(file_path)?;
+    ) -> Result<HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>, BackendError> {
+        let buffer = fs::read(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                internal_message: "Failed to open file".to_string(),
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Unable to read file.".to_string(),
+            })
+        })?;
         let ilst_atom = V0::ensure_ilst_atom(&buffer);
         if ilst_atom.is_err() {
-            return Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                "File is messed up dud",
-            ));
+            return Err(BackendError::ReadFailed(TagError {
+                internal_message: "Failed to find 'ilst' atom".to_string(),
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "The file is missing required metadata.".to_string(),
+            }));
         }
         let ilst_atom = ilst_atom.unwrap();
         let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
@@ -909,7 +916,19 @@ impl TagFormat for V0 {
                 .chars()
                 .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
                 .collect::<String>();
-                raw_entries.push((atom.atom_type.clone(), TagValue::Text(text)));
+                let key = itunes_key(&atom.atom_type);
+
+                if let Some(_) = key {
+                    for part in text.split(';').map(|s| s.trim()) {
+                        let seg = part.trim();
+                        if !seg.is_empty() {
+                            raw_entries
+                                .push((atom.atom_type.clone(), TagValue::Text(seg.to_string())));
+                        }
+                    }
+                } else {
+                    raw_entries.push((atom.atom_type.clone(), TagValue::Text(text)));
+                }
             }
         }
         let vec_map = raw_to_tags(&raw_entries);
@@ -919,7 +938,7 @@ impl TagFormat for V0 {
         &self,
         file_path: &std::path::PathBuf,
         updated_tags: HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), BackendError> {
         let mut updated_entries: Vec<(String, TagValue)> = Vec::new();
         let mut updated_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -971,7 +990,7 @@ impl TagFormat for V0 {
                             _ => None,
                         })
                         .collect::<Vec<_>>()
-                        .join("/");
+                        .join("; ");
                     if !joined.is_empty() {
                         let key = "©ART".to_string();
                         updated_entries.push((key.clone(), TagValue::Text(joined)));
@@ -1000,7 +1019,7 @@ impl TagFormat for V0 {
                                 _ => None,
                             })
                             .collect::<Vec<_>>()
-                            .join("/");
+                            .join("; ");
                         let key = code.to_string();
                         if !text_joined.is_empty() {
                             updated_entries.push((key.clone(), TagValue::Text(text_joined)));
@@ -1014,7 +1033,13 @@ impl TagFormat for V0 {
             }
         }
 
-        let old_vec = self.get_tags(file_path).map_err(|_| ())?;
+        let old_vec = self.get_tags(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read tags from file".to_string(),
+                internal_message: "Failed to read tags from file".to_string(),
+            })
+        })?;
         let mut old_entries: Vec<(String, TagValue)> = Vec::new();
         for (k, vals) in old_vec.iter() {
             match k {
@@ -1076,19 +1101,45 @@ impl TagFormat for V0 {
         let mut all_entries = updated_entries;
         all_entries.extend(old_entries);
 
-        let buffer = fs::read(file_path).map_err(|_| ())?;
+        let buffer = fs::read(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read file".to_string(),
+                internal_message: "Failed to read file".to_string(),
+            })
+        })?;
         let ilst_atom = V0::ensure_ilst_atom(&buffer);
 
         let rebuilt_file = if let Ok(ilst_atom) = ilst_atom {
             let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
             let updated_ilst_buffer = V0::encode_ilst(all_entries, ilst_sub_atoms);
-            V0::rebuild_file(updated_ilst_buffer, &buffer).ok_or(())?
+            V0::rebuild_file(updated_ilst_buffer, &buffer)
+                .ok_or(())
+                .map_err(|_| {
+                    BackendError::WriteFailed(TagError {
+                        path: file_path.to_str().unwrap_or("").to_string(),
+                        public_message: "Failed to write tags to file".to_string(),
+                        internal_message: "Failed to write tags to file".to_string(),
+                    })
+                })?
         } else {
             let updated_ilst_buffer = V0::encode_ilst(all_entries, Vec::new());
-            V0::rebuild_file_insert_ilst(updated_ilst_buffer, &buffer).ok_or(())?
+            V0::rebuild_file_insert_ilst(updated_ilst_buffer, &buffer).ok_or(
+                BackendError::WriteFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "Failed to write tags to file".to_string(),
+                    internal_message: "Failed to insert ilst atom".to_string(),
+                }),
+            )?
         };
 
-        fs::write(file_path, &rebuilt_file).map_err(|_| ())?;
+        fs::write(file_path, &rebuilt_file).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to write tags to file".to_string(),
+                internal_message: "Failed to write tags to file".to_string(),
+            })
+        })?;
 
         Ok(())
     }
@@ -1096,10 +1147,21 @@ impl TagFormat for V0 {
     fn get_freeforms(
         &self,
         file_path: &std::path::PathBuf,
-    ) -> Result<Vec<FreeformTag>, std::io::Error> {
-        let buffer = std::fs::read(file_path)?;
-        let ilst_atom = V0::ensure_ilst_atom(&buffer)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "missing ilst"))?;
+    ) -> Result<Vec<FreeformTag>, BackendError> {
+        let buffer = std::fs::read(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                internal_message: "Unable to open and read file".to_string(),
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Unable to read file.".to_string(),
+            })
+        })?;
+        let ilst_atom = V0::ensure_ilst_atom(&buffer).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                internal_message: "Failed to find 'ilst' atom".to_string(),
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "The file is missing required metadata.".to_string(),
+            })
+        })?;
         let ilst_sub_atoms = V0::parse_atoms(&ilst_atom.buffer, 8, ilst_atom.size);
         let mut out: Vec<FreeformTag> = Vec::new();
         for atom in &ilst_sub_atoms {

@@ -39,7 +39,7 @@ type Ctx = {
     x: number,
     y: number,
     items: CMItem[],
-    target: HTMLElement | null
+    target: HTMLElement | null,
   ) => void;
   close: () => void;
 };
@@ -66,7 +66,7 @@ export function ContextMenuProvider({
     (x: number, y: number, items: CMItem[], target: HTMLElement | null) => {
       setState({ open: true, x, y, items, target });
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export function ContextMenuProvider({
             items={state.items}
             onClose={close}
           />,
-          document.body
+          document.body,
         )}
     </Context.Provider>
   );
@@ -136,7 +136,7 @@ export function ContextMenuArea({
       const list = typeof items === "function" ? items(e) : items;
       openAt(e.clientX, e.clientY, list, e.target as HTMLElement | null);
     },
-    [items, openAt]
+    [items, openAt],
   );
   if (asChild && React.isValidElement(children)) {
     const child = children as React.ReactElement<any>;
@@ -253,7 +253,7 @@ const MenuOverlay = React.forwardRef<
                 cancelable: true,
                 inputType: "insertFromPaste",
                 data: text,
-              })
+              }),
             );
           } else if (isEditableElement(target)) {
             (target as HTMLElement).focus();
@@ -278,8 +278,8 @@ const MenuOverlay = React.forwardRef<
         }}
         style={{ left: pos.left, top: pos.top, position: "fixed" }}
         className={cn(
-          "bg-background text-popover-foreground z-[1000] min-w-48 max-w-72 rounded-md border border-border p-1 shadow-md",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-h-96 overflow-auto"
+          "bg-background text-popover-foreground z-1000 min-w-48 max-w-72 rounded-md border border-border p-1 shadow-md",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-h-96 overflow-auto",
         )}
       >
         {newItems.map((it, idx) => {
@@ -307,7 +307,7 @@ const MenuOverlay = React.forwardRef<
                 key={it.id ?? `submenu-${idx}`}
                 className={cn(
                   "relative flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left outline-hidden select-none",
-                  "hover:bg-muted/70"
+                  "hover:bg-muted/70",
                 )}
                 onMouseEnter={(e) => {
                   const rect = (
@@ -325,7 +325,7 @@ const MenuOverlay = React.forwardRef<
                 <span className="ml-auto text-muted-foreground">›</span>
                 {openSub && openSub.index === idx ? (
                   <div
-                    className="fixed z-[1001] min-w-[10rem] max-w-[20rem] rounded-md border border-border p-1 shadow-md bg-background max-h-96 overflow-auto"
+                    className="fixed z-1001 min-w-40 max-w-[20rem] rounded-md border border-border p-1 shadow-md bg-background max-h-96 overflow-auto"
                     style={{ left: openSub.pos.left, top: openSub.pos.top }}
                     onMouseEnter={() =>
                       setOpenSub({ index: idx, pos: openSub.pos })
@@ -371,7 +371,7 @@ const MenuOverlay = React.forwardRef<
                               : "",
                             (sub as any).disabled
                               ? "opacity-50 pointer-events-none"
-                              : ""
+                              : "",
                           )}
                           onClick={onClick}
                         >
@@ -405,7 +405,7 @@ const MenuOverlay = React.forwardRef<
                 "relative flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left outline-hidden select-none",
                 "hover:bg-hover",
                 it.danger ? "text-destructive hover:bg-destructive/10" : "",
-                it.disabled ? "opacity-50 pointer-events-none" : ""
+                it.disabled ? "opacity-50 pointer-events-none" : "",
               )}
               onClick={onClick}
             >
@@ -427,7 +427,7 @@ MenuOverlay.displayName = "MenuOverlay";
 function parseShortcut(shortcut: string) {
   shortcut = shortcut.replace(
     "mod",
-    navigator.platform.includes("Mac") ? "⌘" : "Ctrl"
+    navigator.platform.includes("Mac") ? "⌘" : "Ctrl",
   );
   shortcut = shortcut.replace("cmd", "⌘");
   shortcut = shortcut.replace("ctrl", "Ctrl");

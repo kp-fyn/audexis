@@ -14,9 +14,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+
     "paths": {
-      "@/ui/*": ["src/*"]
+      "@/ui/*": ["./src/*"]
     },
     "strict": true,
     "noUnusedLocals": true,

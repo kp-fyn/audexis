@@ -1,4 +1,5 @@
-use crate::tag_manager::id3::utils::{raw_to_tags, tags_to_raw};
+use crate::tag_manager::id3::utils::{id3v23_key, raw_to_tags, tags_to_raw};
+use crate::tag_manager::tag_backend::{BackendError, TagError};
 use crate::tag_manager::traits::TagFormat;
 use crate::tag_manager::utils::{FrameKey, TagMap, TagValue, UserTextEntry, UserUrlEntry};
 use std::collections::HashMap;
@@ -24,28 +25,56 @@ impl TagFormat for V2_3 {
         Self {}
     }
 
-    fn get_tags(&self, file_path: &PathBuf) -> std::io::Result<HashMap<FrameKey, Vec<TagValue>>> {
+    fn get_tags(
+        &self,
+        file_path: &PathBuf,
+    ) -> Result<HashMap<FrameKey, Vec<TagValue>>, BackendError> {
         let has_header = utils::ensure_header(&file_path);
 
         match has_header {
-            Err(e) => return Err(e),
+            Err(_) => {
+                return Err(BackendError::ReadFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "File does not contain ID3 tag".to_string(),
+                    internal_message: "File does not contain ID3 tag".to_string(),
+                }))
+            }
             _ => {}
         }
-        let mut file = File::open(file_path)?;
+        let mut file = File::open(file_path).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Unable to open and read file".to_string(),
+                internal_message: "Unable to open and read file".to_string(),
+            })
+        })?;
 
         let mut header = [0u8; 10];
-        file.read_exact(&mut header)?;
+        file.read_exact(&mut header).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Unable to read ID3 header".to_string(),
+                internal_message: "Unable to read ID3 header".to_string(),
+            })
+        })?;
 
         if &header[0..3] != b"ID3" {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Not a valid ID3v2.3 file",
-            ));
+            return Err(BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "File does not contain ID3 tag".to_string(),
+                internal_message: "File does not contain ID3 tag".to_string(),
+            }));
         }
 
         let tag_size = from_synchsafe([header[6], header[7], header[8], header[9]]);
         let mut tag_data = vec![0u8; tag_size];
-        file.read_exact(&mut tag_data)?;
+        file.read_exact(&mut tag_data).map_err(|_| {
+            BackendError::ReadFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read tag data".to_string(),
+                internal_message: "Failed to read tag data".to_string(),
+            })
+        })?;
 
         let mut tags: TagMap = HashMap::new();
         let mut pos = 0;
@@ -133,8 +162,12 @@ impl TagFormat for V2_3 {
                         }
                         _ => "<Unknown Encoding>".to_string(),
                     };
-                    if (frame_id == "TPE1" || frame_id == "TCON") && raw_string.contains('/') {
-                        for part in raw_string.split('/') {
+
+                    let key = id3v23_key(&frame_id);
+
+                    if (key.is_some() && key.unwrap().is_multi_valued()) && raw_string.contains(';')
+                    {
+                        for part in raw_string.split(';').map(|s| s.trim()) {
                             let seg = part.trim();
                             if !seg.is_empty() {
                                 tags.entry(frame_id.clone())
@@ -202,24 +235,46 @@ impl TagFormat for V2_3 {
         &self,
         file_path: &PathBuf,
         updated_tags: HashMap<FrameKey, Vec<TagValue>>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), BackendError> {
         use std::io::{Read, Seek, SeekFrom, Write};
 
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
             .open(file_path)
-            .map_err(|_| ())?;
+            .map_err(|_| {
+                BackendError::WriteFailed(TagError {
+                    path: file_path.to_str().unwrap_or("").to_string(),
+                    public_message: "Failed to open file for writing".to_string(),
+                    internal_message: "Failed to open file for writing".to_string(),
+                })
+            })?;
 
         let mut header = [0u8; 10];
-        file.read_exact(&mut header).map_err(|_| ())?;
+        file.read_exact(&mut header).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read ID3 header".to_string(),
+                internal_message: "Failed to read ID3 header".to_string(),
+            })
+        })?;
         if &header[0..3] != b"ID3" || header[3] != 3 {
-            return Err(());
+            return Err(BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Unsupported ID3 version".to_string(),
+                internal_message: "Unsupported ID3 version".to_string(),
+            }));
         }
 
         let tag_size = from_synchsafe([header[6], header[7], header[8], header[9]]);
         let mut tag_data = vec![0u8; tag_size];
-        file.read_exact(&mut tag_data).map_err(|_| ())?;
+        file.read_exact(&mut tag_data).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read ID3 tag data".to_string(),
+                internal_message: "Failed to read ID3 tag data".to_string(),
+            })
+        })?;
 
         let mut pos: usize = 0;
         let mut raw_frames: Vec<(String, Vec<u8>)> = Vec::new();
@@ -277,7 +332,7 @@ impl TagFormat for V2_3 {
                         _ => None,
                     })
                     .collect::<Vec<_>>()
-                    .join("/");
+                    .join("; ");
                 flattened.insert(k, TagValue::Text(joined));
             } else {
                 flattened.insert(k, vec_vals[0].clone());
@@ -374,13 +429,49 @@ impl TagFormat for V2_3 {
         }
 
         let mut audio_data = Vec::new();
-        file.read_to_end(&mut audio_data).map_err(|_| ())?;
+        file.read_to_end(&mut audio_data).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to read audio data".to_string(),
+                internal_message: "Failed to read audio data".to_string(),
+            })
+        })?;
 
-        file.seek(SeekFrom::Start(0)).map_err(|_| ())?;
-        file.set_len(0).map_err(|_| ())?;
-        file.write_all(&id3_tag).map_err(|_| ())?;
-        file.write_all(&audio_data).map_err(|_| ())?;
-        file.flush().map_err(|_| ())?;
+        file.seek(SeekFrom::Start(0)).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to seek audio data".to_string(),
+                internal_message: "Failed to seek audio data".to_string(),
+            })
+        })?;
+        file.set_len(0).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to set file length".to_string(),
+                internal_message: "Failed to set file length".to_string(),
+            })
+        })?;
+        file.write_all(&id3_tag).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to write ID3 tag".to_string(),
+                internal_message: "Failed to write ID3 tag".to_string(),
+            })
+        })?;
+        file.write_all(&audio_data).map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to write audio data".to_string(),
+                internal_message: "Failed to write audio data".to_string(),
+            })
+        })?;
+        file.flush().map_err(|_| {
+            BackendError::WriteFailed(TagError {
+                path: file_path.to_str().unwrap_or("").to_string(),
+                public_message: "Failed to flush file".to_string(),
+                internal_message: "Failed to flush file".to_string(),
+            })
+        })?;
 
         Ok(())
     }

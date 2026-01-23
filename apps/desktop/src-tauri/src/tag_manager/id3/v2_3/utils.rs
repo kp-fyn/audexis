@@ -51,13 +51,6 @@ pub fn to_synchsafe(size: u32) -> [u8; 4] {
     ]
 }
 
-// pub fn from_synchsafe(bytes: &[u8]) -> u32 {
-//     ((bytes[0] as u32) << 21)
-//         | ((bytes[1] as u32) << 14)
-//         | ((bytes[2] as u32) << 7)
-//         | (bytes[3] as u32)
-// }
-
 fn is_latin1(s: &str) -> bool {
     s.chars().all(|c| (c as u32) <= 0xFF)
 }
@@ -99,18 +92,6 @@ pub fn encode_img_payload(
 
     payload
 }
-
-// fn encode_url_payload(url: &str) -> Vec<u8> {
-//     url.chars()
-//         .map(|c| {
-//             if (c as u32) <= 0xFF {
-//                 (c as u32) as u8
-//             } else {
-//                 b'?'
-//             }
-//         })
-//         .collect()
-// }
 
 pub fn build_frame(id: &str, payload: &[u8]) -> Vec<u8> {
     let mut frame = Vec::with_capacity(10 + payload.len());

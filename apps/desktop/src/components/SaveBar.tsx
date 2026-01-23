@@ -3,7 +3,7 @@ import { useChanges } from "@/ui/hooks/useChanges";
 import { useUserConfig } from "@/ui/hooks/useUserConfig";
 import { Button } from "@/ui/components/Button";
 import { cn } from "@/ui/lib/utils";
-import DiffModal from "@/ui/components/DiffModal";
+import DiffModal from "@/ui/components/modals/DiffModal";
 
 export default function SaveBar() {
   const { changes, saveChanges, clearChanges, selected, saveBarNudge, files } =
@@ -18,7 +18,7 @@ export default function SaveBar() {
 
   const countChanged = useMemo(
     () => Object.keys(changes || {}).length,
-    [changes]
+    [changes],
   );
 
   const selectedFiles = useMemo(() => {
@@ -62,7 +62,7 @@ export default function SaveBar() {
           "transition-all duration-200 ease-out",
           hasChanges
             ? "bottom-12 opacity-100"
-            : "bottom-6 opacity-0 pointer-events-none"
+            : "bottom-6 opacity-0 pointer-events-none",
         )}
         aria-hidden={!hasChanges}
       >
@@ -70,7 +70,7 @@ export default function SaveBar() {
           className={cn(
             "flex items-center gap-3 rounded-md border border-border bg-background/95 backdrop-blur px-3 py-2 shadow-lg",
             "w-full",
-            attention ? "ring-2 ring-primary/40 animate-vibrate" : ""
+            attention ? "ring-2 ring-primary/40 animate-vibrate" : "",
           )}
         >
           <div className="flex-1 text-[12px] leading-tight text-foreground/80">

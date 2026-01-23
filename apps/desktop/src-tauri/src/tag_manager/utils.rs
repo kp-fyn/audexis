@@ -5,7 +5,8 @@ use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -206,8 +207,6 @@ pub struct UserUrlEntry {
 
 pub type TagMap = HashMap<String, Vec<TagValue>>;
 
-// pub type RawTagMap = HashMap<String, Vec<u8>>;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FreeformTag {
     pub mean: String,
@@ -267,14 +266,6 @@ pub enum CleanupRule {
     NormalizeFeat,
     RemoveBrackets,
 }
-
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct SerializablePicture {
-//     pub mime: String,
-//     pub data_base64: String,
-//     pub picture_type: Option<u8>,
-//     pub description: Option<String>,
-// }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializableFreeform {
@@ -504,32 +495,6 @@ impl From<File> for SerializableFile {
     }
 }
 
-// pub fn is_multi_value(format: &Formats, key: FrameKey) -> bool {
-//     use Formats::*;
-//     match format {
-//         Id3v23 | Id3v24 => matches!(
-//             key,
-//             FrameKey::AttachedPicture
-//                 | FrameKey::UserDefinedText
-//                 | FrameKey::UserDefinedURL
-//                 | FrameKey::Genre
-//                 | FrameKey::Artist
-//                 | FrameKey::Comments
-//         ),
-//         Itunes => matches!(
-//             key,
-//             FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist
-//         ),
-//         Flac | Vorbis => matches!(
-//             key,
-//             FrameKey::AttachedPicture | FrameKey::Genre | FrameKey::Artist | FrameKey::Comments
-//         ),
-//         Riff => matches!(key, FrameKey::AttachedPicture),
-//         Id3v22 => matches!(key, FrameKey::AttachedPicture),
-//         Id3v10 | Id3v11 | Unknown => false,
-//     }
-// }
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TagFrame {
@@ -545,4 +510,38 @@ pub fn map_to_frames(map: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<TagFrame> {
             values: v.clone(),
         })
         .collect()
+}
+pub fn temp_path_for(target: &Path) -> PathBuf {
+    let mut p = target.to_path_buf();
+    let file_name = target
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+    p.set_file_name(format!(".{}.tmp", file_name));
+    p
+}
+
+pub fn replace_tmp(tmp: &Path, target: &Path) -> Result<(), ()> {
+    #[cfg(not(windows))]
+    {
+        let ez = fs::remove_file(target);
+        if ez.is_err() {
+            return Err(());
+        }
+        let rename_result = fs::rename(tmp, target);
+        if rename_result.is_err() {
+            return Err(());
+        }
+        Ok(())
+    }
+    #[cfg(windows)]
+    {
+        let _ = fs::remove_file(target);
+        let rename_result = fs::rename(tmp, target);
+        if rename_result.is_err() {
+            return Err(());
+        }
+        Ok(())
+    }
 }
