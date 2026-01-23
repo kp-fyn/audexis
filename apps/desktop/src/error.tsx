@@ -1,12 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
+import type { FallbackProps } from "react-error-boundary";
 
-export default function ErrorPage({
-  error,
-}: {
-  error: Error & { digest?: string };
-}) {
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+}
+
+function getErrorDigest(error: unknown): string | undefined {
+  const digest = (error as { digest?: unknown } | null)?.digest;
+  return typeof digest === "string" ? digest : undefined;
+}
+
+export default function ErrorPage({ error }: FallbackProps) {
+  const message = getErrorMessage(error);
+  const digest = getErrorDigest(error);
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -55,12 +70,12 @@ export default function ErrorPage({
           <div className="text-xs font-mono text-destructive mb-2">
             Error Details
           </div>
-          <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap break-words">
-            {error.message}
+          <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap wrap-break-word">
+            {message}
           </pre>
-          {error.digest && (
+          {digest && (
             <div className="text-xs text-muted-foreground/70 mt-2">
-              Digest: {error.digest}
+              Digest: {digest}
             </div>
           )}
         </div>

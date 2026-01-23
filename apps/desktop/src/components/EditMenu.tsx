@@ -1,11 +1,6 @@
 import { useChanges } from "../hooks/useChanges";
 import { Input } from "./Input";
-import {
-  AllTags,
-  SerializableTagFrameValue,
-  TagPicture,
-  UserConfig,
-} from "@/ui/types";
+import { AllTags, SerializableTagFrameValue, TagPicture } from "@/ui/types";
 import Img from "../assets/images/unknown.jpg";
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "./Button";
@@ -26,10 +21,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
   }>({ field: null, open: false });
   const { config, multiFrameKeys } = useUserConfig();
 
-  const [filteredSuggestions, setFilteredSuggestions] = useState<
-    UserConfig["albums"]
-  >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const { files, changes, setChanges, selected } = useChanges();
   const [defaultValues, setDefaultValues] = useState<
     Record<string, SerializableTagFrameValue | undefined>
@@ -235,11 +226,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                             if (e.target.value === "...") {
                               e.target.select();
                             }
-                            setShowSuggestions(true);
                           }}
-                          onBlur={() =>
-                            setTimeout(() => setShowSuggestions(false), 100)
-                          }
                           value={
                             selected.length > 0
                               ? changes[item.value as keyof AllTags]?.[0]
@@ -258,8 +245,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                               : ""
                           }
                           onChange={(e) => {
-                            console.log(item.value);
-                            const value = e.target.value;
                             let v = changes[item.value];
                             if (!v) {
                               v = [];
@@ -274,18 +259,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                               ...changes,
                               [item.value]: v,
                             });
-                            const albumNames = config.albums.map((s) =>
-                              s.album.toLowerCase(),
-                            );
-                            const filter = albumNames.filter((s) =>
-                              s.toLowerCase().includes(value.toLowerCase()),
-                            );
-
-                            const filtered = config.albums.filter((s) =>
-                              filter.includes(s.album.toLowerCase()),
-                            );
-                            setFilteredSuggestions(filtered);
-                            setShowSuggestions(true);
                           }}
                         />
                       )}
