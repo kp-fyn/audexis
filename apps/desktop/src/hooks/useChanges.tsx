@@ -16,9 +16,6 @@ import {
   RootFileTree,
   Tags,
   File,
-  AllTags,
-  TagText,
-  TagPicture,
   SerializableTagFrameValue,
 } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
@@ -344,24 +341,6 @@ export function ChangesProvider({
       {children}
     </ChangesContext.Provider>
   );
-
-  function toSerializableTags(
-    input: Partial<AllTags>,
-  ): Record<string, TagText | TagPicture> {
-    const out: Record<string, TagText | TagPicture> = {};
-    Object.entries(input).forEach(([key, val]) => {
-      if (val === undefined || val === null) return;
-      if (typeof val === "object" && "type" in val && "value" in val) {
-        out[key.charAt(0).toUpperCase() + key.slice(1)] = val as any;
-      } else if (typeof val === "string") {
-        out[key.charAt(0).toUpperCase() + key.slice(1)] = {
-          type: "Text",
-          value: val,
-        };
-      }
-    });
-    return out;
-  }
 
   async function saveChanges(): Promise<void> {
     if (!changes) return;
