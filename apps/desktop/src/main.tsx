@@ -12,7 +12,7 @@ import { SidebarWidthProvider } from "@/ui/hooks/useSidebarWidth";
 import { ChangesProvider } from "@/ui/hooks/useChanges";
 import { OnboardingModal } from "@/ui/components/modals/OnboardingModal";
 import { Toaster } from "react-hot-toast";
-import { useAutoUpdater } from "@/ui/hooks/useAutoUpdater";
+import { AutoUpdaterProvider } from "@/ui/hooks/useAutoUpdater";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ContextMenuArea,
@@ -24,7 +24,6 @@ import { RenameProvider } from "@/ui/hooks/useRename";
 import RenameModal from "@/ui/components/RenameModal";
 import { FindReplaceProvider } from "@/ui/hooks/useFindReplace";
 import FindReplaceBar from "@/ui/components/FindReplaceBar";
-import { useChanges } from "@/ui/hooks/useChanges";
 import { CleanupModal } from "@/ui/components/modals/CleanupModal";
 import { TagEditorError } from "@/ui/components/modals/TagEditorError";
 import { CleanupProvider } from "./hooks/useCleanup";
@@ -49,9 +48,6 @@ function Root() {
   const [showOnboarding, setShowOnboarding] = React.useState(
     query.onboarding === "true",
   );
-  const { canUndo, canRedo } = useChanges();
-
-  useAutoUpdater();
 
   useHotkeys(
     [
@@ -133,14 +129,14 @@ function Root() {
           type: "item",
           label: "Undo",
           shortcut: "mod+Z",
-          disabled: !canUndo,
+          disabled: false,
           onSelect: () => invoke("undo"),
         },
         {
           type: "item",
           label: "Redo",
           shortcut: "mod+shift+Z",
-          disabled: !canRedo,
+          disabled: false,
           onSelect: () => invoke("redo"),
         },
         { type: "separator" },
@@ -196,30 +192,32 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <UserConfigProvider initialTheme={theme}>
           <TagEditorErrorsProvider>
             <ChangesProvider>
-              <CleanupProvider>
-                <RenameProvider>
-                  <FindReplaceProvider>
-                    <SidebarWidthProvider>
-                      <Root />
-                      <Toaster
-                        position="top-right"
-                        containerStyle={{
-                          marginTop: "64px",
-                        }}
-                        toastOptions={{
-                          className:
-                            "!bg-background !text-foreground !border !border-border",
-                          style: {
-                            background: "var(--background)",
-                            color: "var(--foreground)",
-                            border: "1px solid var(--border)",
-                          },
-                        }}
-                      />
-                    </SidebarWidthProvider>
-                  </FindReplaceProvider>
-                </RenameProvider>
-              </CleanupProvider>
+              <AutoUpdaterProvider>
+                <CleanupProvider>
+                  <RenameProvider>
+                    <FindReplaceProvider>
+                      <SidebarWidthProvider>
+                        <Root />
+                        <Toaster
+                          position="top-right"
+                          containerStyle={{
+                            marginTop: "64px",
+                          }}
+                          toastOptions={{
+                            className:
+                              "!bg-background !text-foreground !border !border-border",
+                            style: {
+                              background: "var(--background)",
+                              color: "var(--foreground)",
+                              border: "1px solid var(--border)",
+                            },
+                          }}
+                        />
+                      </SidebarWidthProvider>
+                    </FindReplaceProvider>
+                  </RenameProvider>
+                </CleanupProvider>
+              </AutoUpdaterProvider>
             </ChangesProvider>
           </TagEditorErrorsProvider>
         </UserConfigProvider>

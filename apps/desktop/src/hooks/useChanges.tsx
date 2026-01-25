@@ -283,7 +283,9 @@ export function ChangesProvider({
     };
   }, [selected, files, hasUnsavedChanges]);
 
-  const clearAllChanges = () => {};
+  const clearAllChanges = () => {
+    setChanges({});
+  };
 
   function showAlbumDialog(page?: number): void {
     if (page) {

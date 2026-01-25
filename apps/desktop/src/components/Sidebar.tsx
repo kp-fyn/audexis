@@ -23,6 +23,7 @@ export default function Sidebar(): ReactNode {
       const newWidth = event.clientX;
       const minWidth = 0;
       const maxWidth = window.innerWidth - 200;
+      document.body.style.userSelect = "none";
 
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         setSidebarWidth(newWidth);
@@ -51,13 +52,13 @@ export default function Sidebar(): ReactNode {
         // minWidth: "300px",
         maxWidth: `${width - 200}px`,
       }}
-      className="fixed select-none pb-12 top-12 left-0 h-screen z-[50] bg-background  border-r border-border text-foreground overflow-y-auto overflow-x-clip"
+      className="fixed select-none pb-12 top-12 left-0 h-screen z-50 bg-background  border-r border-border text-foreground overflow-y-auto overflow-x-clip"
     >
       {/*{config.view === "simple" ? <EditMenu/> : <FileTree/>}*/}
       <EditMenu />
       <div
-        style={{ marginLeft: `${sidebarWidth}` }}
-        className={`fixed top-12 bottom-0  h-screen w-[6px] cursor-col-resize  bg-background hover:bg-border `}
+        style={{ left: `${sidebarWidth}px` }}
+        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-3 cursor-col-resize  bg-white hover:bg-border `}
         onMouseDown={startResizing}
       >
         <div className="border-r h-screen border-border "></div>

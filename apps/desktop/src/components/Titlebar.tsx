@@ -17,6 +17,7 @@ import {
 import { MaximizeIcon } from "./icons/maximize";
 import { MinimizeIcon } from "./icons/minimize";
 import { CloseIcon } from "./icons/close";
+import { parseShortcut } from "../lib/utils";
 
 export default function Titlebar() {
   const [hover, setHover] = useState<boolean>(false);
@@ -203,7 +204,7 @@ export default function Titlebar() {
                 <Settings className="h-4 w-4" />
               </button>
               <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute -top-9 right-0 px-2 py-1 rounded-md bg-background/90 border border-border shadow text-[10px] tracking-wide text-foreground/70">
-                Settings (Cmd+,)
+                Settings {parseShortcut("mod+,")}
               </div>
             </div>
           </>

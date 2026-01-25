@@ -1,3 +1,4 @@
+import { parseShortcut } from "@/ui/lib/utils";
 import { SectionHeader } from "../settings/SectionHeader";
 
 interface FinishSectionProps {
@@ -11,7 +12,7 @@ export function FinishSection({ theme, view, preset }: FinishSectionProps) {
     <section className="space-y-4 animate-in fade-in">
       <SectionHeader
         title="All Set"
-        description="You can tweak anything later in Settings (Cmd+,)."
+        description={`You can tweak anything later in Settings ${parseShortcut("mod+,")}.`}
       />
       <div className="space-y-5">
         <div className="text-[12px] leading-relaxed text-foreground/65">
@@ -32,7 +33,7 @@ export function FinishSection({ theme, view, preset }: FinishSectionProps) {
           </div>
         </div>
         <div className="text-[10px] text-foreground/45">
-          Change later via Settings (Cmd+,).
+          Change later via Settings {parseShortcut("mod+,")}.
         </div>
       </div>
     </section>

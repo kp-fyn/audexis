@@ -60,6 +60,7 @@ pub fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, App
             .collect()
     };
     if errs.len() > 0 {
+        println!("import errors: {:?}", errs);
         app_handle.emit("error", errs).unwrap();
     }
     app_handle

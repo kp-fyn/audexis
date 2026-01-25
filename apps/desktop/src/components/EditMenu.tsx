@@ -28,9 +28,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
   const sidebar_items = config.sidebar_items;
 
   const disabled = false;
-  useEffect(() => {
-    console.log({ disabled });
-  }, [disabled]);
+
   useEffect(() => {
     setDefaultValues({});
 
@@ -108,10 +106,9 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       sidebar_items.forEach((item) => {
         const values = selectedFiles.map((f) => f[item.value as keyof AllTags]);
         const first = values[0];
-        console.log({ first });
 
         const same = values.every(
-          (v) => first && v && (v as any).value === (first as any).value,
+          (v) => first && v && (v[0].value as any) === first[0].value,
         );
 
         if (!same) {
@@ -139,6 +136,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           setPictures(framePics);
           setImage(framePics[0]);
         } else {
+          if (!selectedFiles[0].attachedPicture) return;
           const img = selectedFiles[0].attachedPicture[0] as
             | TagPicture
             | undefined;
@@ -185,7 +183,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                   >
                     {item.label}
                     <div className="flex gap-2">
-                      {multiFrameKeys.includes(item.value) ? (
+                      {/* {multiFrameKeys.includes(item.value) ? (
                         <div className="flex items-center gap-1">
                           <Button
                             variant="outline"
@@ -218,50 +216,62 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                             return null;
                           })()}
                         </div>
-                      ) : (
-                        <Input
-                          placeholder={item.label}
-                          disabled={disabled}
-                          onFocus={(e) => {
-                            if (e.target.value === "...") {
-                              e.target.select();
-                            }
-                          }}
-                          value={
-                            selected.length > 0
-                              ? changes[item.value as keyof AllTags]?.[0]
-                                  .value === "" ||
-                                (changes[item.value as keyof AllTags] !==
-                                  undefined &&
-                                  changes[item.value as keyof AllTags] !==
-                                    null &&
-                                  typeof changes[
-                                    item.value as keyof AllTags
-                                  ]?.[0].value === "string")
-                                ? changes[item.value as keyof AllTags]?.[0]
-                                    .value
-                                : defaultValues &&
-                                  (defaultValues[item.value] as any)?.value
-                              : ""
+                      ) : ( */}
+                      <Input
+                        placeholder={item.label}
+                        disabled={disabled}
+                        onFocus={(e) => {
+                          if (e.target.value === "...") {
+                            e.target.select();
                           }
-                          onChange={(e) => {
-                            let v = changes[item.value];
-                            if (!v) {
-                              v = [];
-                            }
+                        }}
+                        value={
+                          selected.length > 0
+                            ? changes[item.value as keyof AllTags]?.[0]
+                                .value === "" ||
+                              (changes[item.value as keyof AllTags] !==
+                                undefined &&
+                                changes[item.value as keyof AllTags] !== null &&
+                                typeof changes[item.value as keyof AllTags]?.[0]
+                                  .value === "string")
+                              ? changes[item.value as keyof AllTags]?.[0].value
+                              : defaultValues &&
+                                (defaultValues[item.value] as any)?.value
+                            : ""
+                        }
+                        onChange={(e) => {
+                          let v = changes[item.value];
+                          if (!v) {
+                            v = [];
+                          }
 
-                            const newItem = {
-                              value: e.target.value,
-                              type: "Text" as const,
-                            };
-                            v[0] = newItem;
-                            setChanges({
-                              ...changes,
-                              [item.value]: v,
-                            });
-                          }}
-                        />
-                      )}
+                          const newItem = {
+                            value: e.target.value,
+                            type: "Text" as const,
+                          };
+                          v[0] = newItem;
+                          setChanges({
+                            ...changes,
+                            [item.value]: v,
+                          });
+                        }}
+                      />
+                      {multiFrameKeys.includes(item.value) &&
+                        selected.length === 1 && (
+                          <Button
+                            variant="outline"
+                            disabled={disabled}
+                            onClick={() =>
+                              setListEditor({
+                                field: item.value,
+                                open: true,
+                              })
+                            }
+                          >
+                            Edit list
+                          </Button>
+                        )}
+                      {/* )} */}
                     </div>
                   </div>
                 )

@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "audexis",
+
   "version": "0.9.5",
   "identifier": "com.audexis",
   "build": {
@@ -9,13 +10,16 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
+
   "app": {
     "macOSPrivateApi": true,
+
     "windows": [],
     "security": {
       "csp": null
     }
   },
+
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
@@ -26,6 +30,71 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "name": "Audexis Audio",
+        "description": "Audexis Audio File",
+        "role": "Editor",
+        "mimeType": "audio/mp4",
+        "ext": ["m4a", "m4b"]
+      },
+      {
+        "name": "Audexis Video",
+        "description": "Audexis Video File",
+        "role": "Editor",
+        "mimeType": "video/mp4",
+        "ext": ["mp4"]
+      },
+      {
+        "name": "Audexis Video",
+        "description": "Audexis Video File",
+        "role": "Editor",
+        "mimeType": "video/x-m4v",
+        "ext": ["m4v"]
+      },
+      {
+        "name": "Audexis QuickTime",
+        "description": "Audexis QuickTime File",
+        "role": "Editor",
+        "mimeType": "video/quicktime",
+        "ext": ["mov", "qt"]
+      },
+      {
+        "name": "Audexis Ogg",
+        "description": "Audexis Ogg File",
+        "role": "Editor",
+        "mimeType": "audio/ogg",
+        "ext": ["ogg", "oga", "spx"]
+      },
+      {
+        "name": "Audexis Opus",
+        "description": "Audexis Opus File",
+        "role": "Editor",
+        "mimeType": "audio/opus",
+        "ext": ["opus"]
+      },
+      {
+        "name": "Audexis Ogg Video",
+        "description": "Audexis Ogg Video File",
+        "role": "Editor",
+        "mimeType": "video/ogg",
+        "ext": ["ogv"]
+      },
+      {
+        "name": "Audexis MP3",
+        "description": "Audexis MPEG Audio File",
+        "role": "Editor",
+        "mimeType": "audio/mpeg",
+        "ext": ["mp3", "mp2", "mp1"]
+      },
+      {
+        "name": "Audexis FLAC",
+        "description": "Audexis FLAC File",
+        "role": "Editor",
+        "mimeType": "audio/flac",
+        "ext": ["flac"]
+      }
     ],
     "macOS": {
       "frameworks": [],

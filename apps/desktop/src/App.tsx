@@ -49,6 +49,7 @@ function App() {
   } = useChanges();
   const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
 
   const {
     config,
@@ -286,20 +287,29 @@ function App() {
   }, []);
   useEffect(() => {
     const unlisten = getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === "over") {
-        console.log("User hovering", event.payload.position);
-      } else if (event.payload.type === "drop") {
-        invoke("import_paths", {
-          paths: event.payload.paths,
-        });
-      } else {
-        console.log("File drop cancelled");
+      switch (event.payload.type) {
+        case "enter":
+        case "over":
+          setIsFileDragOver(true);
+          break;
+        case "leave":
+          setIsFileDragOver(false);
+          break;
+        case "drop":
+          setIsFileDragOver(false);
+          invoke("import_paths", {
+            paths: event.payload.paths,
+          });
+          break;
+        default:
+          setIsFileDragOver(false);
+          console.log("File drop cancelled");
       }
     });
     return () => {
       unlisten.then((f) => f());
     };
-  });
+  }, []);
 
   useEffect(() => {
     //  invoke doesn't work immediately on page load or reload
@@ -399,6 +409,23 @@ function App() {
       onDragEnd={handleDragEnd}
       sensors={sensors}
     >
+      {isFileDragOver && (
+        <div className="fixed inset-0 z-1000 pointer-events-none mt-12">
+          <div className="absolute inset-0 backdrop-blur-sm" />
+          <div className="absolute inset-4 rounded-xl  bg-primary/10  border-2 border-dashed border-primary/60" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="rounded-lg border border-primary/30 bg-background/70 px-6 py-4 shadow-lg">
+              <div className="text-sm font-semibold text-foreground/60">
+                Drop files to import
+              </div>
+              <div className="mt-1 text-[11px] text-foreground/45">
+                Release to add them to the workspace
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Sidebar />
 
       <main

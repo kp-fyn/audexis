@@ -223,7 +223,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
         {header !== undefined ? (
           header
         ) : (
-          <div className="flex items-center gap-4 px-6 h-14 border-b border-border/60 bg-background/70 backdrop-blur-sm">
+          <div className="flex items-center gap-4 py-2 px-6 h-14 border-b border-border/60 bg-background/70 backdrop-blur-sm">
             <div className="min-w-0">
               {title && (
                 <h2

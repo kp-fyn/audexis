@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/ui/lib/utils";
+import { cn, parseShortcut } from "@/ui/lib/utils";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 
 export type CMItem =
@@ -424,14 +424,3 @@ const MenuOverlay = React.forwardRef<
   );
 });
 MenuOverlay.displayName = "MenuOverlay";
-function parseShortcut(shortcut: string) {
-  shortcut = shortcut.replace(
-    "mod",
-    navigator.platform.includes("Mac") ? "⌘" : "Ctrl",
-  );
-  shortcut = shortcut.replace("cmd", "⌘");
-  shortcut = shortcut.replace("ctrl", "Ctrl");
-  shortcut = shortcut.replace("alt", "Alt");
-  shortcut = shortcut.replace("shift", "Shift");
-  return shortcut;
-}

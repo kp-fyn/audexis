@@ -1,8 +1,17 @@
-import { useEffect } from "react";
+import { createContext, useEffect } from "react";
 import toast from "react-hot-toast";
 import { invoke } from "@tauri-apps/api/core";
+import { useChanges } from "./useChanges";
 
-export function useAutoUpdater() {
+export function useAutoUpdater() {}
+const AutoUpdaterContext = createContext<null>(null);
+
+export function AutoUpdaterProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { changes } = useChanges();
   useEffect(() => {
     let checkingForUpdates = false;
 
@@ -24,13 +33,19 @@ export function useAutoUpdater() {
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={async () => {
+                      if (Object.keys(changes).length > 0) {
+                        toast.dismiss(t.id);
+                        toast.error(
+                          "Please save or discard your changes before updating.",
+                        );
+                        return;
+                      }
                       toast.dismiss(t.id);
                       toast.loading("Downloading update...");
 
                       try {
                         await invoke("update_app");
                         toast.dismiss();
-                        toast("", {});
                       } catch (error) {
                         toast.dismiss();
                         toast.error(`Update failed: ${error}`);
@@ -73,4 +88,9 @@ export function useAutoUpdater() {
       delete (window as any).checkForUpdates;
     };
   }, []);
+  return (
+    <AutoUpdaterContext.Provider value={null}>
+      {children}
+    </AutoUpdaterContext.Provider>
+  );
 }

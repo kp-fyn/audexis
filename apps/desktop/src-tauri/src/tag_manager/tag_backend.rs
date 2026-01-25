@@ -165,9 +165,13 @@ impl TagBackend for DefaultBackend {
     fn read(&self, path: &PathBuf) -> Result<File, BackendError> {
         let fmt = self.resolve_format(path);
         println!("Detected format: {:?}", fmt);
-        let release = self
-            .resolve_release(&fmt)
-            .ok_or_else(|| BackendError::UnsupportedFormat(fmt.clone()))?;
+        let release = self.resolve_release(&fmt).ok_or_else(|| {
+            BackendError::ReadFailed(TagError {
+                path: path.to_string_lossy().to_string(),
+                public_message: "Unsupported format".to_string(),
+                internal_message: "Could not resolve tag format for reading".to_string(),
+            })
+        })?;
         let tag_map = release.get_tags(path)?;
         let freeforms = release.get_freeforms(path).unwrap_or_default();
         let tag_formats = self.detect_all_formats(path, &fmt);
@@ -262,7 +266,6 @@ impl TagBackend for DefaultBackend {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum BackendError {
-    UnsupportedFormat(Formats),
     ReadFailed(TagError),
     WriteFailed(TagError),
 }

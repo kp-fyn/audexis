@@ -9,13 +9,12 @@ mod workspace;
 
 use crate::config::user::{load_config, Theme, CONFIG_FILE};
 use crate::file_watcher::FileWatcher;
+use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
 
 use std::env;
 use std::sync::Mutex;
-use tauri::window::Color;
-use tauri::Manager;
-use tauri::{TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
@@ -64,10 +63,6 @@ pub fn run() {
             .title("Audexis")
             .min_inner_size(800.0, 600.0)
             .maximized(true)
-            .background_color(match user_config.theme {
-                Theme::Light => Color(241, 241, 241, 255),
-                Theme::Dark => Color(10, 10, 10, 255),
-            })
             .visible(false);
             let win_builder = win_builder.maximized(true);
             #[cfg(target_os = "macos")]
@@ -76,6 +71,25 @@ pub fn run() {
             let window = win_builder.build().unwrap();
 
             window.show().unwrap();
+
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                let mut files = Vec::new();
+                for maybe_file in std::env::args().skip(1) {
+                    if maybe_file.starts_with('-') {
+                        continue;
+                    }
+                    if let Ok(url) = url::Url::parse(&maybe_file) {
+                        if let Ok(path) = url.to_file_path() {
+                            files.push(path);
+                        }
+                    } else {
+                        files.push(PathBuf::from(maybe_file))
+                    }
+                }
+
+                handle_file_associations(app.handle().clone(), files);
+            }
 
             Ok(())
         })
@@ -103,6 +117,18 @@ pub fn run() {
             commands::get_all_sidebar_items::get_all_sidebar_items,
             commands::redo::redo,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("Error while running Audexis")
+        .run(|app_handle, event| {
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            {
+                if let RunEvent::Opened { urls } = event {
+                    let paths: Vec<std::path::PathBuf> = urls
+                        .into_iter()
+                        .filter_map(|url| url.to_file_path().ok())
+                        .collect::<Vec<_>>();
+                    handle_file_associations(app_handle.clone(), paths);
+                }
+            }
+        });
 }

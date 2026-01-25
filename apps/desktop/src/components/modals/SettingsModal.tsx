@@ -11,6 +11,7 @@ import {
 } from "../settings";
 import { SidebarItemsSection } from "../settings/SidebarItemsSection";
 import { Modal, useAnimatedModalClose } from "./Modal";
+import { parseShortcut } from "@/ui/lib/utils";
 
 interface SettingsModalProps {
   open: boolean;
@@ -165,7 +166,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       footer={
         <>
           <div className="mr-auto text-[10px] text-foreground/40 uppercase tracking-wide">
-            Cmd+, to reopen • Esc to close
+            {parseShortcut("mod+,")} to reopen • Esc to close
           </div>
           <button
             onClick={requestClose}
