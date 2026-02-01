@@ -64,7 +64,7 @@ const url = Astro.url.pathname;
         document.documentElement.setAttribute("data-theme", theme);
       }
     </script>
-    <script is:inline>
+    <script>
       function handleTheme(th: string) {
         let newTheme = th === "dark" ? "dark" : "light";
         let oldTheme = newTheme === "dark" ? "light" : "dark";
@@ -217,7 +217,7 @@ const url = Astro.url.pathname;
           .catch((error) => {
             console.error("Error fetching release data:", error);
           });
-      }, 50);
+      });
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
