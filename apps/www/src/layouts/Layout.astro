@@ -64,7 +64,7 @@ const url = Astro.url.pathname;
         document.documentElement.setAttribute("data-theme", theme);
       }
     </script>
-    <script>
+    <script is:inline>
       function handleTheme(th: string) {
         let newTheme = th === "dark" ? "dark" : "light";
         let oldTheme = newTheme === "dark" ? "light" : "dark";
