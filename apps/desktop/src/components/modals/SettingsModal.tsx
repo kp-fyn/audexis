@@ -166,20 +166,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       footer={
         <>
           <div className="mr-auto text-[10px] text-foreground/40 uppercase tracking-wide">
-            {parseShortcut("mod+,")} to reopen • Esc to close
+            {parseShortcut("mod+,")} to reopen • {"  "}Esc to close
           </div>
-          <button
-            onClick={requestClose}
-            className="text-xs px-3 py-1.5 rounded-md border border-border bg-muted/30 hover:bg-primary/10 hover:border-primary/50 transition-colors"
-          >
-            Close
-          </button>
-          <button
-            disabled
-            className="text-xs px-3 py-1.5 rounded-md border border-border/70 bg-primary/25 text-foreground/60 cursor-not-allowed"
-          >
-            Save (disabled)
-          </button>
         </>
       }
     >

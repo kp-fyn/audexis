@@ -34,6 +34,23 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -45,9 +62,7 @@ jobs:
           workspaces: "./apps/desktop/src-tauri -> target"
 
       - name: Install frontend dependencies
-
-        run: npm install
-        working-directory: ./apps/desktop
+        run: pnpm install --frozen-lockfile
 
       # macOS Certificate Import
       - name: Import signing certificate (macOS only)
@@ -79,7 +94,7 @@ jobs:
       # Windows Build and Signing
       - name: Install Windows dependencies
         if: matrix.platform == 'windows-latest'
-        run:
+        run: |
           rustup target add x86_64-pc-windows-msvc
           # Install additional dependencies if needed
       - name: Install Windows dependencies2
@@ -124,7 +139,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Audexis v__VERSION__"
-          releaseBody: "See https://www.audexis.app/blog/releases/v__VERSION__ for details."
+          releaseBody: "See https://www.audexis.app/releases/v__VERSION__ for details."
           releaseDraft: true
           prerelease: false
           includeRelease: true

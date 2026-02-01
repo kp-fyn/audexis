@@ -5,14 +5,13 @@
   "type": "module",
   "main": "./src/index.css",
   "exports": {
-    "./styles": "./src/styles/index.css",
-    "./theme": "./src/styles/theme.css",
-    "./animations": "./src/styles/animations.css"
+    "./styles": "./src/styles/index.css"
   },
   "files": [
     "src"
   ],
   "peerDependencies": {
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "@tailwindcss/typography": "^0.5.19"
   }
 }

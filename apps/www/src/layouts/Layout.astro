@@ -1,0 +1,251 @@
+---
+interface Props {
+  title: string;
+  description: string;
+}
+import "../styles/global.css";
+import Navbar from "../components/Navbar.astro";
+import { SEO } from "astro-seo";
+const url = Astro.url.pathname;
+
+// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
+// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <SEO
+      title={Astro.props.title}
+      description={Astro.props.description}
+      twitter={{
+        card: "summary_large_image",
+        image: "https://www.audexis.app/og.png",
+        site: "https://www.audexis.app",
+        creator: "kp_fyn1",
+        description: Astro.props.description,
+        title: Astro.props.title,
+      }}
+      openGraph={{
+        basic: {
+          title: Astro.props.title,
+          type: "website",
+          image: "https://www.audexis.app/og.png",
+          url: `https://www.audexis.app${url}`,
+        },
+        optional: {
+          description: Astro.props.description,
+          siteName: "Audexis",
+        },
+        image: {
+          url: "https://www.audexis.app/og.png",
+          alt: "Audexis Image",
+
+          width: 1200,
+          height: 630,
+        },
+      }}
+      titleTemplate="%s — Audexis"
+    />
+    <script is:inline>
+      let theme = localStorage.getItem("theme");
+      if (theme !== "light" && theme !== "dark") {
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        ) {
+          theme = "dark";
+        } else {
+          theme = "light";
+        }
+        localStorage.setItem("theme", theme);
+        document.documentElement.setAttribute("data-theme", theme);
+      } else {
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+    </script>
+    <script>
+      function handleTheme(th: string) {
+        let newTheme = th === "dark" ? "dark" : "light";
+        let oldTheme = newTheme === "dark" ? "light" : "dark";
+        const images = document.getElementsByClassName("theme-img");
+
+        for (let i = 0; i < images.length; i++) {
+          if (images[i].tagName.toLowerCase() === "image") {
+            const img = images[i] as SVGImageElement;
+
+            img.href.baseVal = img.href.baseVal.replace(oldTheme, newTheme);
+
+            img.classList.add("block");
+
+            img.classList.remove("hidden");
+          } else if (images[i].tagName.toLowerCase() === "img") {
+            console.log("imgg!");
+            const img = images[i] as HTMLImageElement;
+
+            img.src = img.src.replace(oldTheme, newTheme);
+
+            img.classList.add("block");
+
+            img.classList.remove("hidden");
+            i;
+          }
+        }
+      }
+      const targetElement = document.documentElement;
+      let thme = targetElement.getAttribute("data-theme");
+      if (!thme || (thme !== "dark" && thme !== "light")) {
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        ) {
+          thme = "dark";
+        } else {
+          thme = "light";
+        }
+        targetElement.setAttribute("data-theme", thme);
+      }
+      handleTheme(thme);
+
+      const config = { attributes: true, attributeFilter: ["data-theme"] };
+
+      const callback: MutationCallback = (mutationsList) => {
+        for (const mutation of mutationsList) {
+          if (
+            mutation.type === "attributes" &&
+            mutation.attributeName === "data-theme"
+          ) {
+            let newTheme = targetElement.getAttribute("data-theme");
+            if (!newTheme || (newTheme !== "light" && newTheme !== "dark")) {
+              if (
+                window.matchMedia &&
+                window.matchMedia("(prefers-color-scheme: dark)").matches
+              ) {
+                newTheme = "dark";
+              } else {
+                newTheme = "light";
+              }
+            }
+            handleTheme(newTheme);
+          }
+        }
+      };
+
+      const observer = new MutationObserver(callback);
+
+      observer.observe(targetElement, config);
+    </script>
+
+    <script is:inline>
+      fetch("https://api.github.com/repos/kp-fyn/audexis/releases/latest")
+        .then((response) => response.json())
+        .then((release) => {
+          let defaultUrl = "https://github.com/kp-fyn/audexis/releases/latest";
+          let macDownloadUrl = defaultUrl;
+          let windowsDownloadUrl = defaultUrl;
+
+          const os = window.navigator.platform.toLowerCase();
+          const dmgAsset = release.assets.find((a) => a.name.endsWith(".dmg"));
+          if (dmgAsset) {
+            macDownloadUrl = dmgAsset.browser_download_url;
+          }
+          const exeAsset = release.assets.find((a) => a.name.endsWith(".exe"));
+          if (exeAsset) {
+            windowsDownloadUrl = exeAsset.browser_download_url;
+          }
+          const downloadButtons = document.getElementsByClassName(
+            "download-latest-release",
+          );
+          const dmgLinkElements = document.querySelectorAll(
+            "[data-dmg-download-link]",
+          );
+          const exeLinkElements = document.querySelectorAll(
+            "[data-exe-download-link]",
+          );
+          for (let i = 0; i < dmgLinkElements.length; i++) {
+            const linkEl = dmgLinkElements[i];
+            linkEl.setAttribute("href", macDownloadUrl);
+          }
+          for (let i = 0; i < exeLinkElements.length; i++) {
+            const linkEl = exeLinkElements[i];
+            linkEl.setAttribute("href", windowsDownloadUrl);
+          }
+          for (let i = 0; i < downloadButtons.length; i++) {
+            const btn = downloadButtons[i];
+
+            if (
+              os.includes("mac") ||
+              os.includes("iphone") ||
+              os.includes("ipad")
+            ) {
+              btn.setAttribute("href", macDownloadUrl);
+              btn.innerHTML = "Download for Mac";
+            } else if (os.includes("win")) {
+              btn.setAttribute("href", windowsDownloadUrl);
+              btn.innerHTML = "Download for Windows";
+            } else {
+              btn.setAttribute("href", defaultUrl);
+              btn.innerHTML = "Download Latest Release";
+            }
+          }
+          const macFileSize = dmgAsset
+            ? (dmgAsset.size / (1024 * 1024)).toFixed(1)
+            : "0";
+          const windowsFileSize = exeAsset
+            ? (exeAsset.size / (1024 * 1024)).toFixed(1)
+            : "0";
+          document.querySelectorAll("[data-latest-dmg-size]").forEach((el) => {
+            el.innerHTML = macFileSize;
+          });
+          document.querySelectorAll("[data-latest-exe-size]").forEach((el) => {
+            el.innerHTML = windowsFileSize;
+          });
+        })
+        .catch((error) => {
+          console.error("Error fetching release data:", error);
+        });
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+
+    <link rel="icon" href="/logo.ico" />
+  </head>
+  <body class="w-full h-full">
+    <Navbar />
+    <div class="min-height-full w-full">
+      <slot class="w-full mt-18" />
+    </div>
+
+    <footer
+      class="px-4 py-8 h-12 items-center text-sm opacity-70 border-t border-border"
+    >
+      <div
+        class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground"
+      >
+        <div>MIT {new Date().getFullYear()} © Audexis</div>
+        <div class="flex items-center gap-6">
+          <a href="/docs" class="hover:text-foreground transition-colors">
+            Documentation
+          </a>{" "}
+          <a href="/blog" class="hover:text-foreground transition-colors">
+            Blog
+          </a>
+          <a
+            href="/blog/releases"
+            class="hover:text-foreground transition-colors"
+          >
+            Releases
+          </a>
+          <a
+            href="https://github.com/kp-fyn/audexis"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-foreground transition-colors"
+          >
+            GitHub
+          </a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

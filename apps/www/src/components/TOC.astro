@@ -1,0 +1,96 @@
+---
+type Heading = {
+  depth: number;
+  slug: string;
+  text: string;
+};
+interface Props {
+  headings: Heading[];
+}
+const { headings } = Astro.props;
+---
+
+<div class="space-y-4 my-4">
+  <div class="flex items-center gap-2 mb-4">
+    <div class="h-6 w-0.5 bg-primary rounded-full"></div>
+
+    <h4 class="text-sm font-semibold text-foreground ml">On This Page</h4>
+  </div>
+
+  <nav class="space-y-2 ml-4">
+    {
+      headings.map((heading) => (
+        <button
+          data-heading-slug={heading.slug}
+          class={`
+            scrollbutton
+              group block w-full text-left text-sm transition-all duration-150
+              ${heading.depth === 3 ? "pl-4" : ""} text-muted-foreground hover:text-foreground
+            `}
+        >
+          <span
+            class={`
+              block py-1.5 border-l-2 pl-3 transition-all duration-150
+                   border-transparent group-hover:border-border 
+            `}
+          >
+            {heading.text}
+          </span>
+        </button>
+      ))
+    }
+  </nav>
+</div>
+<script>
+  const article = document.querySelector("article");
+  if (article) {
+    const elements = article.querySelectorAll("h2, h3");
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const currActive = document.getElementsByClassName("activeButton");
+            for (const ac of currActive) {
+              ac.classList.remove("activeButton");
+            }
+            console.log(entry.target.id);
+            const newActive = document.querySelector(
+              `[data-heading-slug="${entry.target.id}"]`,
+            );
+            if (newActive) {
+              newActive.classList.add("activeButton");
+            }
+          }
+        });
+      },
+      {
+        rootMargin: "-100px 0px -66%",
+        threshold: 1.0,
+      },
+    );
+
+    elements.forEach((element) => {
+      observer.observe(element);
+    });
+  }
+
+  const els = document.querySelectorAll(".scrollbutton");
+  console.log(els);
+  els.forEach((el) => {
+    el.addEventListener("click", () =>
+      scrollToHeading(el as HTMLButtonElement),
+    );
+  });
+  function scrollToHeading(el: HTMLButtonElement) {
+    const id = el.getAttribute("data-heading-slug");
+    console.log({ id });
+    if (id) {
+      const element = document.getElementById(id);
+      if (element) {
+        const top = element.offsetTop - 100;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    }
+  }
+</script>

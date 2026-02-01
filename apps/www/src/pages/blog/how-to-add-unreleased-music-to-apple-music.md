@@ -1,0 +1,160 @@
+---
+layout: "../../layouts/MarkdownLayout.astro"
+title: "How to Add Unreleased or Custom Music to Apple Music"
+description: "Learn how to add custom or unreleased tracks into Apple Music and iCloud, and use Audexis to clean metadata, artwork, and song information before importing."
+keywords: "add unreleased music to apple music, import custom songs apple music, add mp3 to apple music, apple music metadata editor, organize custom music apple music"
+date: 1766966664901
+---
+
+# How to Add Unreleased or Custom Music to Apple Music
+
+Sometimes you discover tracks on YouTube or SoundCloud that are not available on streaming platforms. Maybe it is an unreleased demo, a remix, or a live recording you really like.
+
+You might want that song inside Apple Music, organized with the rest of your library, with proper artwork and tags.
+
+This guide shows you how to:
+
+- prepare custom tracks
+- edit metadata so everything looks right
+- import the songs into Apple Music
+
+- sync them to your devices
+
+> Important reminder: Only use audio files you have permission to download and store. Respect the artist and copyright laws in your country.
+
+---
+
+## Step 1: Get the audio file legally
+
+Before anything else, make sure you have the right to use the music. Examples of legal sources include:
+
+- files you created yourself
+- downloads provided directly by the artist
+- paid releases from online stores
+- tracks released under licenses that allow downloading
+
+Avoid using tools that rip or copy streams without permission. That can lead to account issues, legal problems, or takedowns.
+
+Once you have an MP3 or M4A file, you are ready to clean it.
+
+---
+
+## Step 2: Open the file in Audexis
+
+1. Open Audexis
+2. Drag your song file into the app
+3. Select the track
+
+You will see editable fields on the left.
+
+---
+
+## Step 3: Fill in the metadata
+
+Apple Music relies heavily on metadata for sorting and grouping music.
+
+Make sure to fill:
+
+- **Title**
+- **Artist**
+- **Album**
+- **Album Artist** (useful for compilations)
+- **Genre**
+- **Year**
+- **Track Number**
+
+Keep everything consistent. Apple Music reads exactly what you put here.
+
+---
+
+## Step 4: Add proper album artwork
+
+Unreleased or custom tracks often have no artwork.
+
+To add artwork:
+
+1. Open the Artwork section
+2. Drag an image or select one from your computer
+3. Save your changes
+
+Tips:
+
+- Square images look best
+- Aim for at least 1000x1000 when possible
+- Avoid tiny or pixelated images
+
+Artwork is embedded directly into the file so it travels with it.
+
+---
+
+## Step 5: Import into Apple Music
+
+### On macOS
+
+1. Open Apple Music
+2. Go to **File → Import**
+3. Select your edited file
+
+The track will appear in your library with the metadata you created.
+
+If you organize music in folders, you can also drag the file directly into a playlist.
+
+---
+
+## Step 6: Sync to your other devices (optional)
+
+If you use **Sync Library**:
+
+1. Open Apple Music settings
+2. Enable Sync Library
+3. Wait for Apple to upload your track
+
+After that, your custom song shows up on:
+
+- iPhone
+- iPad
+- other Macs
+
+with the same metadata and artwork.
+
+If something looks wrong, remove the song, fix it again in Audexis, then import once more.
+
+---
+
+## Troubleshooting
+
+### The wrong artwork appears
+
+Remove the song from Apple Music completely, then reimport after fixing artwork in Audexis.
+
+### My file split into a different album
+
+Check:
+
+- Album
+- Album Artist
+- Year
+
+They must match across all songs in the album.
+
+### The track does not sync
+
+Make sure Sync Library is enabled and allow time for upload.
+
+---
+
+## Enjoy custom music, but do it responsibly
+
+With Audexis and Apple Music together, you can organize:
+
+- unreleased songs you created
+- artist dropbox downloads
+- demos
+- personal recordings
+- edits and remixes you have permission to keep
+
+Everything stays clean, organized, and consistent.
+
+Try preparing your files with Audexis here:
+
+https://www.audexis.app

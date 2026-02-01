@@ -19,11 +19,11 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     field: string | null;
     open: boolean;
   }>({ field: null, open: false });
-  const { config, multiFrameKeys } = useUserConfig();
+  const { config, multiFrameKeys, allSidebarItems } = useUserConfig();
 
   const { files, changes, setChanges, selected } = useChanges();
   const [defaultValues, setDefaultValues] = useState<
-    Record<string, SerializableTagFrameValue | undefined>
+    Record<string, SerializableTagFrameValue>
   >({});
   const sidebar_items = config.sidebar_items;
 
@@ -31,6 +31,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
   useEffect(() => {
     setDefaultValues({});
+    // console.log(defaultValues);
 
     if (selected.length === 0) return;
 
@@ -42,7 +43,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       return file;
     });
 
-    console.log(sf);
+    // console.log(sf);
     const sfs = sf
       .filter((item) => item !== null && item !== undefined)
       .filter((f) => f?.frames !== null)
@@ -54,12 +55,17 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     if (selectedFiles.length === 1) {
       const map: Record<string, SerializableTagFrameValue> = {};
 
+      allSidebarItems.map((key) => {
+        map[key.value] = { value: "", type: "Text" };
+      });
+
       Object.entries(selectedFiles[0]).forEach(([key, value]) => {
-        console.log({ value });
+        // console.log({ value });
         if (Array.isArray(value) && value.length > 0) {
           map[key] = value[0];
         }
       });
+      console.log({ map });
 
       setDefaultValues(map);
 
@@ -103,6 +109,11 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         return obj;
       }, {});
 
+      Object.entries(
+        allSidebarItems.map((key) => {
+          defaultValue[key.value] = { value: "", type: "Text" };
+        }),
+      );
       sidebar_items.forEach((item) => {
         const values = selectedFiles.map((f) => f[item.value as keyof AllTags]);
         const first = values[0];
@@ -225,20 +236,28 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                             e.target.select();
                           }
                         }}
-                        value={
-                          selected.length > 0
-                            ? changes[item.value as keyof AllTags]?.[0]
-                                .value === "" ||
-                              (changes[item.value as keyof AllTags] !==
-                                undefined &&
-                                changes[item.value as keyof AllTags] !== null &&
-                                typeof changes[item.value as keyof AllTags]?.[0]
-                                  .value === "string")
-                              ? changes[item.value as keyof AllTags]?.[0].value
-                              : defaultValues &&
-                                (defaultValues[item.value] as any)?.value
-                            : ""
-                        }
+                        value={(() => {
+                          let df: string = "";
+                          if (selected.length > 0) {
+                            if (
+                              changes[item.value] &&
+                              changes[item.value][0] &&
+                              typeof changes[item.value][0].value === "string"
+                            ) {
+                              df = changes[item.value][0].value as string;
+                            } else {
+                              if (
+                                defaultValues[item.value] &&
+                                defaultValues[item.value].value &&
+                                typeof defaultValues[item.value].value ===
+                                  "string"
+                              ) {
+                                df = defaultValues[item.value].value as string;
+                              }
+                            }
+                          }
+                          return df;
+                        })()}
                         onChange={(e) => {
                           let v = changes[item.value];
                           if (!v) {

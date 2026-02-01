@@ -1,0 +1,17 @@
+{
+  "rust-analyzer.linkedProjects": ["./apps/desktop/src-tauri/Cargo.toml"],
+  "rust-analyzer.check.targets": [
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc"
+  ],
+  "rust-analyzer.diagnostics.disabled": ["inactive-code"],
+  "rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "cargo",
+    "check",
+    "--workspace",
+    "--message-format=json",
+    "--all-targets",
+    "--manifest-path=./apps/desktop/src-tauri/Cargo.toml"
+  ]
+}
