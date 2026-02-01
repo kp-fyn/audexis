@@ -47,6 +47,17 @@ const url = Astro.url.pathname;
       }}
       titleTemplate="%s — Audexis"
     />
+    <style is:inline>
+      [data-theme="light"] {
+        --background: #f1f1f1;
+      }
+      [data-theme="dark"] {
+        --background: #0a0a0a;
+      }
+      body {
+        background-color: var(--background);
+      }
+    </style>
     <script is:inline>
       let theme = localStorage.getItem("theme");
       if (theme !== "light" && theme !== "dark") {
