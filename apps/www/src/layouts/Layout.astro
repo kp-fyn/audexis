@@ -136,74 +136,88 @@ const url = Astro.url.pathname;
       observer.observe(targetElement, config);
     </script>
 
-    <script is:inline>
-      fetch("https://api.github.com/repos/kp-fyn/audexis/releases/latest")
-        .then((response) => response.json())
-        .then((release) => {
-          let defaultUrl = "https://github.com/kp-fyn/audexis/releases/latest";
-          let macDownloadUrl = defaultUrl;
-          let windowsDownloadUrl = defaultUrl;
+    <script>
+      setTimeout(() => {
+        document.body.style.visibility = "visible";
 
-          const os = window.navigator.platform.toLowerCase();
-          const dmgAsset = release.assets.find((a) => a.name.endsWith(".dmg"));
-          if (dmgAsset) {
-            macDownloadUrl = dmgAsset.browser_download_url;
-          }
-          const exeAsset = release.assets.find((a) => a.name.endsWith(".exe"));
-          if (exeAsset) {
-            windowsDownloadUrl = exeAsset.browser_download_url;
-          }
-          const downloadButtons = document.getElementsByClassName(
-            "download-latest-release",
-          );
-          const dmgLinkElements = document.querySelectorAll(
-            "[data-dmg-download-link]",
-          );
-          const exeLinkElements = document.querySelectorAll(
-            "[data-exe-download-link]",
-          );
-          for (let i = 0; i < dmgLinkElements.length; i++) {
-            const linkEl = dmgLinkElements[i];
-            linkEl.setAttribute("href", macDownloadUrl);
-          }
-          for (let i = 0; i < exeLinkElements.length; i++) {
-            const linkEl = exeLinkElements[i];
-            linkEl.setAttribute("href", windowsDownloadUrl);
-          }
-          for (let i = 0; i < downloadButtons.length; i++) {
-            const btn = downloadButtons[i];
+        fetch("https://api.github.com/repos/kp-fyn/audexis/releases/latest")
+          .then((response) => response.json())
+          .then((release) => {
+            console.log({ release });
+            let defaultUrl =
+              "https://github.com/kp-fyn/audexis/releases/latest";
+            let macDownloadUrl = defaultUrl;
+            let windowsDownloadUrl = defaultUrl;
 
-            if (
-              os.includes("mac") ||
-              os.includes("iphone") ||
-              os.includes("ipad")
-            ) {
-              btn.setAttribute("href", macDownloadUrl);
-              btn.innerHTML = "Download for Mac";
-            } else if (os.includes("win")) {
-              btn.setAttribute("href", windowsDownloadUrl);
-              btn.innerHTML = "Download for Windows";
-            } else {
-              btn.setAttribute("href", defaultUrl);
-              btn.innerHTML = "Download Latest Release";
+            const os = window.navigator.platform.toLowerCase();
+            const dmgAsset = release.assets.find((a) =>
+              a.name.endsWith(".dmg"),
+            );
+            if (dmgAsset) {
+              macDownloadUrl = dmgAsset.browser_download_url;
             }
-          }
-          const macFileSize = dmgAsset
-            ? (dmgAsset.size / (1024 * 1024)).toFixed(1)
-            : "0";
-          const windowsFileSize = exeAsset
-            ? (exeAsset.size / (1024 * 1024)).toFixed(1)
-            : "0";
-          document.querySelectorAll("[data-latest-dmg-size]").forEach((el) => {
-            el.innerHTML = macFileSize;
+            const exeAsset = release.assets.find((a) =>
+              a.name.endsWith(".exe"),
+            );
+            if (exeAsset) {
+              windowsDownloadUrl = exeAsset.browser_download_url;
+            }
+            const downloadButtons = document.getElementsByClassName(
+              "download-latest-release",
+            );
+            const dmgLinkElements = document.querySelectorAll(
+              "[data-dmg-download-link]",
+            );
+            const exeLinkElements = document.querySelectorAll(
+              "[data-exe-download-link]",
+            );
+            for (let i = 0; i < dmgLinkElements.length; i++) {
+              const linkEl = dmgLinkElements[i];
+              linkEl.setAttribute("href", macDownloadUrl);
+            }
+            for (let i = 0; i < exeLinkElements.length; i++) {
+              const linkEl = exeLinkElements[i];
+              linkEl.setAttribute("href", windowsDownloadUrl);
+            }
+            for (let i = 0; i < downloadButtons.length; i++) {
+              const btn = downloadButtons[i];
+
+              if (
+                os.includes("mac") ||
+                os.includes("iphone") ||
+                os.includes("ipad")
+              ) {
+                btn.setAttribute("href", macDownloadUrl);
+                btn.innerHTML = "Download for Mac";
+              } else if (os.includes("win")) {
+                btn.setAttribute("href", windowsDownloadUrl);
+                btn.innerHTML = "Download for Windows";
+              } else {
+                btn.setAttribute("href", defaultUrl);
+                btn.innerHTML = "Download Latest Release";
+              }
+            }
+            const macFileSize = dmgAsset
+              ? (dmgAsset.size / (1024 * 1024)).toFixed(1)
+              : "0";
+            const windowsFileSize = exeAsset
+              ? (exeAsset.size / (1024 * 1024)).toFixed(1)
+              : "0";
+            document
+              .querySelectorAll("[data-latest-dmg-size]")
+              .forEach((el) => {
+                el.innerHTML = macFileSize;
+              });
+            document
+              .querySelectorAll("[data-latest-exe-size]")
+              .forEach((el) => {
+                el.innerHTML = windowsFileSize;
+              });
+          })
+          .catch((error) => {
+            console.error("Error fetching release data:", error);
           });
-          document.querySelectorAll("[data-latest-exe-size]").forEach((el) => {
-            el.innerHTML = windowsFileSize;
-          });
-        })
-        .catch((error) => {
-          console.error("Error fetching release data:", error);
-        });
+      }, 500);
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
