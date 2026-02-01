@@ -1,4 +1,5 @@
 @import "@audexis/shared/styles";
+@import "tailwindcss";
 @plugin "@tailwindcss/typography";
 /* @custom-variant light (&:where([data-theme=light], [data-theme=light] *));
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *)); */

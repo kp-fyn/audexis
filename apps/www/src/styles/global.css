@@ -1,5 +1,6 @@
 @import "@audexis/shared/styles";
-
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 .min-height-full {
   min-height: calc(100vh - 72px);
 }
