@@ -9,12 +9,13 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@audexis/shared": "workspace:*",
     "@astrojs/sitemap": "^3.7.0",
+    "@audexis/shared": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.15",
     "astro-seo": "^1.1.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "wrangler": "^4.61.1"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19"

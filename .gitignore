@@ -31,6 +31,8 @@ target/
 **/.next/
 **/out/
 **/.vercel
+**/.astro
+**/.astro/
 
 # Logs
 logs/
@@ -46,5 +48,5 @@ logs/
 
 # Lock files
 yarn.lock
-
-
+.astro
+.astro/*
