@@ -61,7 +61,7 @@ const showSideBar = url.startsWith("/docs");
           >
             <slot />
           </article>
-          <EditOnGithub />
+          {showSideBar && <EditOnGithub />}
         </main>
 
         <div class="hidden xl:block xl:col-span-2">

@@ -1,13 +1,10 @@
 @import "@audexis/shared/styles";
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+@plugin '@tailwindcss/typography';
 .min-height-full {
   min-height: calc(100vh - 72px);
 }
 
 .activeButton {
   @apply !text-primary !font-medium;
-}
-body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }

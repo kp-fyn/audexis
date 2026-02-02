@@ -1,12 +1,10 @@
 ---
 let url = Astro.url.pathname;
-if (url === "/docs") {
+if (url === "/docs" || url === "/docs/") {
   url = "/docs/index";
 }
-const githubUrl = `https://github.com/kp-fyn/audexis/edit/main/apps/www/src/pages${url.replace(
-  /^\/+/,
-  "/",
-)}.md`;
+const githubUrl = `https://github.com/kp-fyn/audexis/edit/main/apps/www/src/pages${url}
+${url.endsWith("/") ? "index" : ""}.md`;
 ---
 
 <div class="mt-12 pt-8 border-t border-border">

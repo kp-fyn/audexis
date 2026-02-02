@@ -9,10 +9,10 @@ const { title, description, centered } = Astro.props;
 ---
 
 <section
-  class={`flex mt-32 px-4 lg:px-24 flex-col ${centered && "justify-center items-center text-center mx-auto"}`}
+  class={`flex mt-32 px-4 w-full lg:px-24 flex-col ${centered && "justify-center items-center text-center mx-auto"}`}
 >
   <h2 class="text-4xl md:text-6xl w-full font-semibold">{title}</h2>
-  <span class="w-xl mt-6 text-muted-foreground text-xl">
+  <span class="w-xl max-w-full mt-6 text-muted-foreground text-xl wrap-normal">
     {description}
   </span>
   <slot />
