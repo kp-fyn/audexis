@@ -184,6 +184,12 @@ pub enum TagValue {
     },
     UserText(UserTextEntry),
     UserUrl(UserUrlEntry),
+    Comment {
+        encoding: String,
+        language: String,
+        description: String,
+        text: String,
+    },
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PictureData {
@@ -251,6 +257,12 @@ pub enum SerializableTagValue {
     },
     UserText(UserTextEntry),
     UserUrl(UserUrlEntry),
+    Comment {
+        encoding: String,
+        language: String,
+        description: String,
+        text: String,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -308,6 +320,16 @@ impl fmt::Display for TagValue {
             }
             TagValue::UserText(ut) => write!(f, "{}={}", ut.description, ut.value),
             TagValue::UserUrl(uu) => write!(f, "{}={}", uu.description, uu.url),
+            TagValue::Comment {
+                encoding,
+                language,
+                description,
+                text,
+            } => write!(
+                f,
+                "Comment (encoding: {}, language: {}, description: {}, text: {})",
+                encoding, language, description, text
+            ),
         }
     }
 }
@@ -468,6 +490,17 @@ impl From<File> for SerializableFile {
                     }),
                     TagValue::UserText(item) => out_vals.push(SerializableTagValue::UserText(item)),
                     TagValue::UserUrl(item) => out_vals.push(SerializableTagValue::UserUrl(item)),
+                    TagValue::Comment {
+                        encoding,
+                        language,
+                        description,
+                        text,
+                    } => out_vals.push(SerializableTagValue::Comment {
+                        encoding,
+                        language,
+                        description,
+                        text,
+                    }),
                 }
             }
             tags.insert(key, out_vals);

@@ -73,14 +73,7 @@ export interface FileNode {
   name: string;
   path: string;
   type: "file" | "directory";
-  children?: Map<string, FileNode>;
-  audioFile?: AudioFile;
-  hash?: string;
-}
-
-export interface RootFileTree {
-  organized: Map<string, FileNode>;
-  disorgainzed: Map<string, FileNode>;
+  children?: FileNode[];
 }
 
 export interface ImgData {
@@ -145,57 +138,6 @@ export interface Tags {
   releaseDate: string;
 }
 
-export type TagKey =
-  | "title"
-  | "artist"
-  | "album"
-  | "year"
-  | "trackNumber"
-  | "genre"
-  | "albumArtist"
-  | "contentGroup"
-  | "composer"
-  | "encodedBy"
-  | "unsyncedLyrics"
-  | "length"
-  | "conductor"
-  | "attachedPicture"
-  | "userDefinedUrl"
-  | "comments"
-  | "private"
-  | "relativeVolumeAdjustment"
-  | "encryptionMethod"
-  | "groupIdRegistration"
-  | "generalObject"
-  | "commercialUrl"
-  | "copyrightUrl"
-  | "audioFileUrl"
-  | "artistUrl"
-  | "radioStationUrl"
-  | "paymentUrl"
-  | "bitmapImageUrl"
-  | "userDefinedText"
-  | "synchronizedLyrics"
-  | "tempoCodes"
-  | "musicCdIdentifier"
-  | "eventTimingCodes"
-  | "sequence"
-  | "playCount"
-  | "audioSeekPointIndex"
-  | "mediaType"
-  | "commercialFrame"
-  | "audioEncryption"
-  | "signatureFrame"
-  | "softwareEncoder"
-  | "audioEncodingMethod"
-  | "recommendedBufferSize"
-  | "beatsPerMinute"
-  | "language"
-  | "fileType"
-  | "time"
-  | "recordingDate"
-  | "releaseDate";
-
 export interface StringTag {
   title: TagText;
   artist: TagText;
@@ -249,10 +191,10 @@ export interface StringTag {
 export interface UserConfig {
   columns: Column[];
   theme: "light" | "dark";
-  albums: Album[];
+  albums: [];
   just_updated: boolean;
   onboarding: boolean;
-  view: string;
+  view: "simple" | "folder";
   sidebar_items: SidebarItem[];
   density: "default" | "compact" | "comfort";
   show_diff_modal: boolean;
@@ -267,20 +209,6 @@ export interface Column {
   label: string;
   size: number;
   kind: "Text" | "Image";
-}
-
-export interface Album {
-  id: string;
-  hashes: string[];
-  album: string;
-  copyright: string;
-  year: string;
-  genre: string;
-  album_artist: string;
-  folder: string;
-  file_format_path: string;
-  file_format_path_enabled: boolean;
-  attached_picture: AttatchedPicture;
 }
 
 export interface AttatchedPicture {

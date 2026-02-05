@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
+import { path } from "@tauri-apps/api";
 
 import { twMerge } from "tailwind-merge";
+import { FileNode } from "../types";
 
 export function parseShortcut(shortcut: string) {
   shortcut = shortcut.replace(
@@ -63,4 +65,45 @@ export function isValidFileName(
   }
 
   return { err: false };
+}
+
+export async function buildFileTree(files: string[]): Promise<FileNode[]> {
+  const tree: FileNode[] = [];
+  const pathMap: Record<string, FileNode> = {};
+  for (const filePath of files) {
+    const segments = filePath.split(path.sep());
+    let currentLevel = tree;
+    let currentPath = "";
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      currentPath = currentPath
+        ? await path.join(currentPath, segment)
+        : segment;
+
+      let node = pathMap[currentPath];
+      if (!node) {
+        node = {
+          name: segment,
+          type: "directory",
+          children: [],
+          path: currentPath,
+        };
+        pathMap[currentPath] = node;
+        currentLevel.push(node);
+      }
+
+      if (i < segments.length - 1) {
+        if (!node.children) {
+          node.children = [];
+        }
+        currentLevel = node.children;
+      }
+    }
+  }
+
+  return tree;
+}
+interface FileTreeNode {
+  name: string;
+  children?: FileTreeNode[];
 }

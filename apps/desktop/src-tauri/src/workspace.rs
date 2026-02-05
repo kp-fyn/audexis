@@ -21,6 +21,9 @@ impl Workspace {
             files: Vec::new(),
         }
     }
+    pub fn get_file_by_path_mut(&mut self, path: &std::path::Path) -> Option<&mut File> {
+        self.files.iter_mut().find(|f| f.path == path)
+    }
     pub fn write_tags(
         &mut self,
         file_paths: Vec<String>,
@@ -56,6 +59,17 @@ impl Workspace {
                                     },
                                     TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
                                     TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+                                    TagValue::Comment {
+                                        encoding,
+                                        language,
+                                        description,
+                                        text,
+                                    } => SerializableTagValue::Comment {
+                                        encoding,
+                                        language,
+                                        description,
+                                        text,
+                                    },
                                 })
                                 .collect();
                             (k, ser_vals)
@@ -161,6 +175,7 @@ impl Workspace {
                 }
             }
         } else {
+            println!("Importing directory: {}\n", file.display());
             let entries = fs::read_dir(file);
             if entries.is_ok() {
                 let entries = entries.unwrap();
@@ -169,8 +184,10 @@ impl Workspace {
                         let entry = entry.unwrap();
                         let path = entry.path();
                         print!("Importing from dir: {}\n", path.clone().display());
-                        let _ = self.import(path)?;
+                        let _ = self.import(path);
 
+                        continue;
+                    } else {
                         continue;
                     }
                 }

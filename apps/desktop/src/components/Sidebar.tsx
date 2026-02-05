@@ -2,11 +2,16 @@ import { ReactNode, useRef } from "react";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth";
 import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
 import EditMenu from "./EditMenu";
+import { useUserConfig } from "../hooks/useUserConfig";
+import Filetree from "./Filetree";
+import { useChanges } from "../hooks/useChanges";
 
 export default function Sidebar(): ReactNode {
   const { sidebarWidth, setSidebarWidth } = useSidebarWidth();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
+  const { config } = useUserConfig();
+  const { fileTree } = useChanges();
 
   const { width } = useWindowDimensions();
 
@@ -54,11 +59,15 @@ export default function Sidebar(): ReactNode {
       }}
       className="fixed select-none pb-12 top-12 left-0 h-screen z-50 bg-background  border-r border-border text-foreground overflow-y-auto overflow-x-clip"
     >
-      {/*{config.view === "simple" ? <EditMenu/> : <FileTree/>}*/}
-      <EditMenu />
+      {config.view === "simple" ? (
+        <EditMenu />
+      ) : (
+        <Filetree node={fileTree[0]} />
+      )}
+
       <div
         style={{ left: `${sidebarWidth}px` }}
-        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-3 cursor-col-resize  bg-white hover:bg-border `}
+        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-0.5 cursor-col-resize  bg-border hover:bg-border `}
         onMouseDown={startResizing}
       >
         <div className="border-r h-screen border-border "></div>

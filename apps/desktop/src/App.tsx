@@ -37,6 +37,8 @@ import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
+import path from "path";
+import { buildFileTree } from "./lib/utils";
 
 function App() {
   const {
@@ -46,6 +48,7 @@ function App() {
     files,
     hasUnsavedChanges,
     nudgeSaveBar,
+    setFileTree,
   } = useChanges();
   const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
@@ -237,7 +240,20 @@ function App() {
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     columns.map((c) => c.id ?? ""),
   );
-
+  useEffect(() => {
+    invoke("get_workspace_root").catch(() => {});
+  }, []);
+  useEffect(() => {
+    const unlisten = listen("scanned-files", async (event: Event<any>) => {
+      console.log(event.payload);
+      const fileTree = await buildFileTree(event.payload as string[]);
+      console.log({ fileTree });
+      setFileTree(fileTree);
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
   useEffect(() => {
     setColumnOrder(config.columns.map((c) => c.value));
   }, [config.columns]);
