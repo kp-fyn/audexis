@@ -1,25 +1,19 @@
-use crate::AppState;
+use crate::{AppState, FileNode};
 use serde::Serialize;
 
-use std::{fs, thread};
+use std::fs;
 use tauri::{command, AppHandle, Emitter, State};
 
-#[derive(Debug, Clone, Serialize)]
-pub struct FileNode {
-    pub path: String,
-    pub name: String,
-    pub is_directory: bool,
-}
 #[command]
 pub fn get_folder_children(
     folder_path: String,
     state: State<'_, AppState>,
 ) -> Result<Vec<FileNode>, String> {
     let db = state.conn.clone();
-    let conn = match db.lock() {
-        Ok(c) => c,
-        Err(poisoned) => poisoned.into_inner(),
-    };
+    // let conn = match db.lock() {
+    //     Ok(c) => c,
+    //     Err(poisoned) => poisoned.into_inner(),
+    // };
     let mut children: Vec<FileNode> = Vec::new();
     let result = fs::read_dir(folder_path);
     if result.is_err() {

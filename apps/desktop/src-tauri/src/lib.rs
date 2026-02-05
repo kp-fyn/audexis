@@ -13,6 +13,7 @@ use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
 use rusqlite::Connection;
+use serde::Serialize;
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,12 @@ pub struct AppState {
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
     pub conn: Arc<Mutex<Connection>>,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct FileNode {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -123,6 +130,7 @@ pub fn run() {
             commands::get_all_sidebar_items::get_all_sidebar_items,
             commands::redo::redo,
             commands::get_workspace_root::get_workspace_root,
+            commands::get_folder_children::get_folder_children
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")

@@ -72,8 +72,7 @@ export interface UploadedImage {
 export interface FileNode {
   name: string;
   path: string;
-  type: "file" | "directory";
-  children?: FileNode[];
+  is_directory: boolean;
 }
 
 export interface ImgData {

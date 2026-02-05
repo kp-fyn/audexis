@@ -59,11 +59,7 @@ export default function Sidebar(): ReactNode {
       }}
       className="fixed select-none pb-12 top-12 left-0 h-screen z-50 bg-background  border-r border-border text-foreground overflow-y-auto overflow-x-clip"
     >
-      {config.view === "simple" ? (
-        <EditMenu />
-      ) : (
-        <Filetree node={fileTree[0]} />
-      )}
+      {config.view === "simple" ? <EditMenu /> : <Filetree />}
 
       <div
         style={{ left: `${sidebarWidth}px` }}
