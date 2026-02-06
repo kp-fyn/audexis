@@ -3,7 +3,7 @@ use crate::tag_manager::itunes::utils::{
 };
 use crate::tag_manager::tag_backend::{BackendError, TagError};
 use crate::tag_manager::traits::TagFormat;
-use crate::tag_manager::utils::{FreeformTag, TagValue};
+use crate::tag_manager::utils::{FrameKey, FreeformTag, TagValue};
 use std::collections::HashMap;
 use std::fs;
 
@@ -951,7 +951,11 @@ impl TagFormat for V0 {
                 crate::tag_manager::utils::FrameKey::UserDefinedText => {
                     for v in vals {
                         if let TagValue::UserText(ut) = v {
-                            let key = format!("----:{}:{}", "com.apple.iTunes", ut.description);
+                            let key = format!(
+                                "----:{}:{}",
+                                "com.apple.iTunes",
+                                ut.description.replace(" ", "_")
+                            );
                             updated_entries.push((key.clone(), TagValue::Text(ut.value.clone())));
                             push_key_once(&key);
                         } else if let TagValue::Text(s) = v {
@@ -964,7 +968,11 @@ impl TagFormat for V0 {
                 crate::tag_manager::utils::FrameKey::UserDefinedURL => {
                     for v in vals {
                         if let TagValue::UserUrl(u) = v {
-                            let key = format!("----:{}:{}", "com.apple.iTunes", u.description);
+                            let key = format!(
+                                "----:{}:{}",
+                                "com.apple.iTunes",
+                                u.description.replace(" ", "_")
+                            );
                             updated_entries.push((key.clone(), TagValue::Text(u.url.clone())));
                             push_key_once(&key);
                         }
@@ -990,7 +998,7 @@ impl TagFormat for V0 {
                             _ => None,
                         })
                         .collect::<Vec<_>>()
-                        .join("; ");
+                        .join("\\");
                     if !joined.is_empty() {
                         let key = "©ART".to_string();
                         updated_entries.push((key.clone(), TagValue::Text(joined)));
@@ -1019,7 +1027,7 @@ impl TagFormat for V0 {
                                 _ => None,
                             })
                             .collect::<Vec<_>>()
-                            .join("; ");
+                            .join("\\");
                         let key = code.to_string();
                         if !text_joined.is_empty() {
                             updated_entries.push((key.clone(), TagValue::Text(text_joined)));
@@ -1043,27 +1051,35 @@ impl TagFormat for V0 {
         let mut old_entries: Vec<(String, TagValue)> = Vec::new();
         for (k, vals) in old_vec.iter() {
             match k {
-                crate::tag_manager::utils::FrameKey::UserDefinedText => {
+                FrameKey::UserDefinedText => {
                     for v in vals {
                         if let TagValue::UserText(ut) = v {
-                            let key = format!("----:{}:{}", "com.apple.iTunes", ut.description);
+                            let key = format!(
+                                "----:{}:{}",
+                                "com.apple.iTunes",
+                                ut.description.replace(" ", "_")
+                            );
                             if !updated_keys.contains(&key) {
                                 old_entries.push((key, TagValue::Text(ut.value.clone())));
                             }
                         }
                     }
                 }
-                crate::tag_manager::utils::FrameKey::UserDefinedURL => {
+                FrameKey::UserDefinedURL => {
                     for v in vals {
                         if let TagValue::UserUrl(u) = v {
-                            let key = format!("----:{}:{}", "com.apple.iTunes", u.description);
+                            let key = format!(
+                                "----:{}:{}",
+                                "com.apple.iTunes",
+                                u.description.replace(" ", "_")
+                            );
                             if !updated_keys.contains(&key) {
                                 old_entries.push((key, TagValue::Text(u.url.clone())));
                             }
                         }
                     }
                 }
-                crate::tag_manager::utils::FrameKey::AttachedPicture => {
+                FrameKey::AttachedPicture => {
                     let key = "covr".to_string();
                     if !updated_keys.contains(&key) {
                         for v in vals {

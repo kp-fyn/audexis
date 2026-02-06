@@ -117,7 +117,7 @@ export function UserConfigProvider({
             | "default"
             | "compact"
             | "comfort",
-          view: (config.view as string).toLowerCase(),
+          view: config.view.toLowerCase() as "simple" | "folder",
         });
         localStorage.setItem("theme", themeLower);
 

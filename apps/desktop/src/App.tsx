@@ -11,7 +11,7 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { Event, listen } from "@tauri-apps/api/event";
-import { AllTags, File, Frames, SidebarItem } from "@/ui/types";
+import { AllTags, File, FileNode, Frames, SidebarItem } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserConfig } from "@/ui/hooks/useUserConfig.tsx";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
@@ -37,6 +37,7 @@ import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
+import path from "path";
 
 function App() {
   const {
@@ -46,6 +47,7 @@ function App() {
     files,
     hasUnsavedChanges,
     nudgeSaveBar,
+    setFileTree,
   } = useChanges();
   const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
@@ -237,6 +239,16 @@ function App() {
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     columns.map((c) => c.id ?? ""),
   );
+  useEffect(() => {
+    const unlisten = listen("workspace-roots", async (event: Event<any>) => {
+      console.log(event.payload);
+
+      setFileTree(event.payload as FileNode[]);
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
 
   useEffect(() => {
     setColumnOrder(config.columns.map((c) => c.value));
@@ -312,7 +324,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    //  invoke doesn't work immediately on page load or reload
     setTimeout(() => {
       invoke("get_workspace_files").catch(() => {
         setIsLoading(false);
@@ -331,6 +342,7 @@ function App() {
       invoke("get_all_sidebar_items").then((items: unknown) => {
         setAllSidebarItems(items as SidebarItem[]);
       });
+      invoke("get_workspace_root").catch(() => {});
     }, 500);
   }, []);
 

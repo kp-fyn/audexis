@@ -82,6 +82,7 @@
 @theme {
   --color-headings: var(--heading);
   --color-border: var(--border);
+  --color--hover-foreground: var(--hover-foreground);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-background: var(--background);

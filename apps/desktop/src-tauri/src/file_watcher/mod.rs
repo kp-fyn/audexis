@@ -128,16 +128,18 @@ impl FileWatcher {
         println!("Total touched files: {:?}", modified);
         if modified.is_empty() == false {
             for (k, v) in modified {
-                let mut prev_path: Option<PathBuf> = None;
+                let mut prev_path: Option<PathBuf> = k.clone().into();
 
                 for p in v.iter() {
                     let path_to_find: PathBuf =
                         prev_path.as_ref().cloned().unwrap_or_else(|| k.clone());
                     println!("Path to find: {:?}", path_to_find);
-                    let file = ws.get_file_by_path(&path_to_find);
+                    let file = ws.get_file_by_path_mut(&path_to_find);
                     if file.is_none() {
                         continue;
                     }
+                    let file = file.unwrap();
+
                     if p == &path_to_find {
                         continue;
                     }
@@ -156,10 +158,9 @@ impl FileWatcher {
                     if path_exists == false {
                         continue;
                     }
-                    let file = file.unwrap();
 
                     prev_path = Some(p.clone());
-
+                    print!("Renaming file from {:?} to {:?}\n", file.path, p);
                     file.path = p.clone();
                     was_modified = true;
                 }

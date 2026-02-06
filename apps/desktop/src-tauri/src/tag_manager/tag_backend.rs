@@ -24,7 +24,7 @@ impl DefaultBackend {
         }
     }
 
-    fn resolve_format(&self, path: &PathBuf) -> Formats {
+    pub fn resolve_format(&self, path: &PathBuf) -> Formats {
         self.manager.detect_tag_format(path)
     }
 
@@ -32,7 +32,7 @@ impl DefaultBackend {
         self.manager.get_release_class(fmt)
     }
 
-    fn detect_all_formats(&self, path: &PathBuf, primary: &Formats) -> Vec<Formats> {
+    pub fn detect_all_formats(&self, path: &PathBuf, primary: &Formats) -> Vec<Formats> {
         use std::fs::File;
         use std::io::{Read, Seek, SeekFrom};
 
@@ -229,6 +229,19 @@ impl TagBackend for DefaultBackend {
                         super::utils::SerializableTagValue::UserUrl(item) => {
                             out_vals.push(TagValue::UserUrl(item.clone()))
                         }
+                        super::utils::SerializableTagValue::Comment {
+                            encoding,
+                            language,
+                            description,
+                            text,
+                        } => {
+                            out_vals.push(TagValue::Comment {
+                                encoding: encoding.clone(),
+                                language: language.clone(),
+                                description: description.clone(),
+                                text: text.clone(),
+                            });
+                        }
                     }
                 }
                 updated.insert(*k, out_vals);
@@ -302,12 +315,23 @@ impl TagDiff {
                             description,
                         } => SerializableTagValue::Picture {
                             mime,
-                            data_base64: base64::engine::general_purpose::STANDARD.encode(data),
+                            data_base64: base64::engine::general_purpose::STANDARD.encode(&data),
                             picture_type,
                             description,
                         },
                         TagValue::UserText(item) => SerializableTagValue::UserText(item),
                         TagValue::UserUrl(item) => SerializableTagValue::UserUrl(item),
+                        TagValue::Comment {
+                            encoding,
+                            language,
+                            description,
+                            text,
+                        } => SerializableTagValue::Comment {
+                            encoding,
+                            language,
+                            description,
+                            text,
+                        },
                     })
                     .collect()
             })

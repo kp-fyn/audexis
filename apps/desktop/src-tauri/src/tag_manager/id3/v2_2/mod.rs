@@ -257,7 +257,7 @@ impl TagFormat for V2_2 {
             pos += 6 + size;
         }
         let mut single_map: HashMap<FrameKey, TagValue> = HashMap::new();
-        for (k, vals) in updated.into_iter() {
+        for (k, vals) in updated.clone().into_iter() {
             if vals.is_empty() {
                 continue;
             }
@@ -269,7 +269,7 @@ impl TagFormat for V2_2 {
                         _ => None,
                     })
                     .collect::<Vec<_>>()
-                    .join("; ");
+                    .join("\\");
                 single_map.insert(k, TagValue::Text(joined));
             } else {
                 single_map.insert(k, vals[0].clone());
@@ -312,6 +312,31 @@ impl TagFormat for V2_2 {
                     let joined = format!("{}={}", uu.description, uu.url);
                     let encoded = encode_text_payload(&joined, false);
                     raw.insert(k.to_string(), encoded);
+                }
+                _ => { /*Hnandle other types later */ }
+            }
+
+            for (key, value) in updated.iter() {
+                if key.clone() == FrameKey::Comments {
+                    if let TagValue::Comment {
+                        encoding,
+                        language,
+                        description,
+                        text,
+                    } = &value[0]
+                    {
+                        let enc_byte = match encoding.as_str() {
+                            "UTF-16" => 0x01,
+                            _ => 0x00,
+                        };
+                        let mut payload = Vec::new();
+                        payload.push(enc_byte);
+                        payload.extend_from_slice(&language.as_bytes()[..3.min(language.len())]);
+                        payload.extend_from_slice(description.as_bytes());
+                        payload.push(0x00);
+                        payload.extend_from_slice(text.as_bytes());
+                        raw.insert("COM".to_string(), payload);
+                    }
                 }
             }
         }
