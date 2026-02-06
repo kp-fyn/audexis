@@ -1,10 +1,15 @@
 use crate::commands::import_paths::import_paths;
 
 // use crate::tag_manager::utils::SerializableFile;
+use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
+use crate::tag_manager::utils::{File, FrameKey, TagValue};
+
 use crate::AppState;
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs::{self, metadata};
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::thread;
 
@@ -66,7 +71,7 @@ pub fn handle_import_files(
 ) {
     // let mut errs: Vec<BackendError> = vec![];
     // {
-    //     let mut ws = state.workspace.lock().unwrap();
+    // let mut ws = state.workspace.lock().unwrap();
 
     //     for path in &paths {
     //         let r = ws.import(path.clone());
@@ -76,6 +81,7 @@ pub fn handle_import_files(
     //         }
     //     }
     // }
+
     let db = state.conn.clone();
     println!("importing files: {:?}", paths.clone().len());
 
@@ -215,10 +221,10 @@ fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Resul
                 last_modified.map(|t| systemtime_to_unix(t)).unwrap_or(0),
             ],
         );
-        // if let Err(e) = res {
-        //     println!("Failed to insert file {}: {:?}", path_str, e);
-        //     continue;
-        // }
+        if let Err(e) = res {
+            println!("Failed to insert file {}: {:?}", path_str, e);
+            continue;
+        }
     }
 
     tx.commit()?;
@@ -375,4 +381,225 @@ fn update_root_scan_time(conn: &Connection, path: &str) -> Result<(), rusqlite::
         [path],
     )?;
     Ok(())
+}
+
+pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<File>> {
+    let tag_backend = DefaultBackend::new();
+    let mut files: Vec<File> = vec![];
+    for file_path in file_paths {
+        let is_indexed: bool = conn
+            .query_row(
+                "SELECT 1 FROM files WHERE path = ?1 AND metadata_status = 'indexed'",
+                [file_path.as_str()],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+
+        if !is_indexed {
+            let tags = update_metadata_in_db(conn, &file_path, &tag_backend);
+            if tags.is_err() {
+                println!(
+                    "Error updating metadata for file {}: {:?}",
+                    file_path,
+                    tags.err()
+                );
+                continue;
+            }
+            let tags = tags.unwrap();
+            let tag_format = tag_backend.resolve_format(&PathBuf::from(&file_path));
+            let tag_formats =
+                tag_backend.detect_all_formats(&PathBuf::from(&file_path), &tag_format);
+
+            let file = File {
+                path: PathBuf::from(&file_path),
+                tags,
+                freeforms: Vec::new(),
+                tag_format,
+                tag_formats,
+                id: uuid::Uuid::new_v4(),
+            };
+            files.push(file);
+            println!("Updated tags for file: {}", file_path);
+        } else {
+            println!("File already indexed: {}", file_path);
+            let tags = detected_tags_in_db(conn, &file_path);
+            if tags.is_err() {
+                println!(
+                    "Error retrieving metadata for file {}: {:?}",
+                    file_path,
+                    tags.err()
+                );
+                continue;
+            }
+            let tags = tags.unwrap();
+            let tag_format = tag_backend.resolve_format(&PathBuf::from(&file_path));
+            let tag_formats =
+                tag_backend.detect_all_formats(&PathBuf::from(&file_path), &tag_format);
+
+            let file = File {
+                path: PathBuf::from(&file_path),
+                tags,
+                freeforms: Vec::new(),
+                tag_format,
+                tag_formats,
+                id: uuid::Uuid::new_v4(),
+            };
+            files.push(file);
+        }
+    }
+    Ok(files)
+}
+
+fn update_metadata_in_db(
+    conn: &mut Connection,
+    file_path: &str,
+    tag_backend: &DefaultBackend,
+) -> Result<(HashMap<FrameKey, Vec<TagValue>>)> {
+    let r = tag_backend.read(&PathBuf::from(file_path));
+    if r.is_err() {
+        return Result::Err(rusqlite::Error::InvalidQuery);
+    }
+    // delete previous tags
+    conn.execute("DELETE FROM tag_text WHERE file_path = ?1", [file_path])?;
+    conn.execute("DELETE FROM tag_pictures WHERE file_path = ?1", [file_path])?;
+    conn.execute(
+        "DELETE FROM tag_user_text WHERE file_path = ?1",
+        [file_path],
+    )?;
+    conn.execute("DELETE FROM tag_user_url WHERE file_path = ?1", [file_path])?;
+    conn.execute("DELETE FROM tag_comment WHERE file_path = ?1", [file_path])?;
+    let f = r.unwrap();
+    let tags = f.tags;
+    for (frame_key, tag_values) in &tags {
+        for tag_value in tag_values {
+            match tag_value {
+                TagValue::Text(text) => {
+                    println!("Inserting tag: {} -> text", frame_key);
+                    conn.execute(
+                        "INSERT INTO tag_text (file_path, key, value) VALUES (?1, ?2, ?3)",
+                        params![file_path, frame_key.to_string(), text],
+                    )?;
+                }
+                TagValue::Picture {
+                    mime,
+                    data,
+                    picture_type: _,
+                    description: _,
+                } => {
+                    println!("Inserting tag: {} -> picture", frame_key);
+                    conn.execute(
+                        "INSERT INTO tag_pictures (file_path, key, mime_type, data) VALUES (?1, ?2, ?3, ?4)",
+                        params![file_path, frame_key.to_string(), mime, data],
+                    )?;
+                }
+                TagValue::UserText(ut) => {
+                    println!("Inserting tag: {} -> user text", frame_key);
+                    conn.execute(
+                        "INSERT INTO tag_user_text (file_path, key, value) VALUES (?1, ?2, ?3)",
+                        params![file_path, frame_key.to_string(), ut.value],
+                    )?;
+                }
+                TagValue::UserUrl(uu) => {
+                    println!("Inserting tag: {} -> user url", frame_key);
+                    conn.execute(
+                        "INSERT INTO tag_user_url (file_path, key, url) VALUES (?1, ?2, ?3)",
+                        params![file_path, frame_key.to_string(), uu.url],
+                    )?;
+                }
+
+                TagValue::Comment {
+                    text,
+                    encoding: _,
+                    language: _,
+                    description: _,
+                } => {
+                    conn.execute(
+                        "INSERT INTO tag_comment (file_path, key, comment) VALUES (?1, ?2, ?3)",
+                        params![file_path, frame_key.to_string(), text],
+                    )?;
+                }
+            }
+        }
+    }
+    conn.execute(
+        "UPDATE files SET metadata_status = 'indexed' WHERE path = ?1",
+        [file_path],
+    )?;
+    println!("updating metadata for file: {}", file_path);
+
+    Ok(tags)
+}
+
+fn detected_tags_in_db(
+    conn: &mut Connection,
+    file_path: &str,
+) -> Result<(HashMap<FrameKey, Vec<TagValue>>)> {
+    // For demonstration, we just print the tags found in the database
+    let mut text_stmt = conn.prepare("SELECT key, value FROM tag_text WHERE file_path = ?1")?;
+    let tag_txt = text_stmt.query_map([file_path], |row| {
+        let key: String = row.get(0)?;
+        let value: String = row.get(1)?;
+        Ok((key, value))
+    })?;
+    let mut picture_stmt =
+        conn.prepare("SELECT key, mime_type, data FROM tag_pictures WHERE file_path = ?1")?;
+    let tag_pics = picture_stmt.query_map([file_path], |row| {
+        let key: String = row.get(0)?;
+        let mime_type: String = row.get(1)?;
+        let data: Vec<u8> = row.get(2)?;
+        Ok((key, mime_type, data))
+    })?;
+    let mut user_text_stmt =
+        conn.prepare("SELECT key, value FROM tag_user_text WHERE file_path = ?1")?;
+    let tag_user_texts = user_text_stmt.query_map([file_path], |row| {
+        let key: String = row.get(0)?;
+        let value: String = row.get(1)?;
+        Ok((key, value))
+    })?;
+    let mut user_url_stmt =
+        conn.prepare("SELECT key, url FROM tag_user_url WHERE file_path = ?1")?;
+    let tag_user_urls = user_url_stmt.query_map([file_path], |row| {
+        let key: String = row.get(0)?;
+        let url: String = row.get(1)?;
+        Ok((key, url))
+    })?;
+    let mut comment_stmt = conn.prepare(
+        "SELECT key, comment FROM tag_comment WHERE file_path
+    = ?1",
+    )?;
+    let tag_comments = comment_stmt.query_map([file_path], |row| {
+        let key: String = row.get(0)?;
+        let comment: String = row.get(1)?;
+        Ok((key, comment))
+    })?;
+    let mut tags: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
+    for tag in tag_txt {
+        let (key, value) = tag?;
+        let frame_key = FrameKey::from_str(&key);
+        if frame_key.is_none() {
+            continue;
+        }
+        let frame_key = frame_key.unwrap();
+        tags.entry(frame_key.clone())
+            .or_insert_with(Vec::new)
+            .push(TagValue::Text(value.clone()));
+    }
+    for tag in tag_pics {
+        let (key, mime_type, data) = tag?;
+        let frame_key = FrameKey::from_str(&key);
+        if frame_key.is_none() {
+            continue;
+        }
+        let frame_key = frame_key.unwrap();
+        tags.entry(frame_key.clone())
+            .or_insert_with(Vec::new)
+            .push(TagValue::Picture {
+                mime: mime_type.clone(),
+                data: data.clone(),
+                picture_type: None,
+                description: None,
+            });
+    }
+
+    Ok((tags))
 }

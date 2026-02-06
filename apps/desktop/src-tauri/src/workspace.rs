@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    backend: DefaultBackend,
+    pub backend: DefaultBackend,
     pub files: Vec<File>,
 }
 

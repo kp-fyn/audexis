@@ -24,7 +24,7 @@ impl DefaultBackend {
         }
     }
 
-    fn resolve_format(&self, path: &PathBuf) -> Formats {
+    pub fn resolve_format(&self, path: &PathBuf) -> Formats {
         self.manager.detect_tag_format(path)
     }
 
@@ -32,7 +32,7 @@ impl DefaultBackend {
         self.manager.get_release_class(fmt)
     }
 
-    fn detect_all_formats(&self, path: &PathBuf, primary: &Formats) -> Vec<Formats> {
+    pub fn detect_all_formats(&self, path: &PathBuf, primary: &Formats) -> Vec<Formats> {
         use std::fs::File;
         use std::io::{Read, Seek, SeekFrom};
 
