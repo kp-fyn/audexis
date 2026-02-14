@@ -72,17 +72,13 @@ export interface UploadedImage {
 export interface FileNode {
   name: string;
   path: string;
-  type: "file" | "directory";
-  children?: Map<string, FileNode>;
-  audioFile?: AudioFile;
-  hash?: string;
+  is_directory: boolean;
 }
 
-export interface RootFileTree {
-  organized: Map<string, FileNode>;
-  disorgainzed: Map<string, FileNode>;
+export interface ExtendedFileNode extends FileNode {
+  children?: FileNode[];
+  is_root?: boolean;
 }
-
 export interface ImgData {
   mime: string;
   type?: { id: number; name?: string };
@@ -145,57 +141,6 @@ export interface Tags {
   releaseDate: string;
 }
 
-export type TagKey =
-  | "title"
-  | "artist"
-  | "album"
-  | "year"
-  | "trackNumber"
-  | "genre"
-  | "albumArtist"
-  | "contentGroup"
-  | "composer"
-  | "encodedBy"
-  | "unsyncedLyrics"
-  | "length"
-  | "conductor"
-  | "attachedPicture"
-  | "userDefinedUrl"
-  | "comments"
-  | "private"
-  | "relativeVolumeAdjustment"
-  | "encryptionMethod"
-  | "groupIdRegistration"
-  | "generalObject"
-  | "commercialUrl"
-  | "copyrightUrl"
-  | "audioFileUrl"
-  | "artistUrl"
-  | "radioStationUrl"
-  | "paymentUrl"
-  | "bitmapImageUrl"
-  | "userDefinedText"
-  | "synchronizedLyrics"
-  | "tempoCodes"
-  | "musicCdIdentifier"
-  | "eventTimingCodes"
-  | "sequence"
-  | "playCount"
-  | "audioSeekPointIndex"
-  | "mediaType"
-  | "commercialFrame"
-  | "audioEncryption"
-  | "signatureFrame"
-  | "softwareEncoder"
-  | "audioEncodingMethod"
-  | "recommendedBufferSize"
-  | "beatsPerMinute"
-  | "language"
-  | "fileType"
-  | "time"
-  | "recordingDate"
-  | "releaseDate";
-
 export interface StringTag {
   title: TagText;
   artist: TagText;
@@ -249,10 +194,10 @@ export interface StringTag {
 export interface UserConfig {
   columns: Column[];
   theme: "light" | "dark";
-  albums: Album[];
+  albums: [];
   just_updated: boolean;
   onboarding: boolean;
-  view: string;
+  view: "simple" | "folder";
   sidebar_items: SidebarItem[];
   density: "default" | "compact" | "comfort";
   show_diff_modal: boolean;
@@ -267,20 +212,6 @@ export interface Column {
   label: string;
   size: number;
   kind: "Text" | "Image";
-}
-
-export interface Album {
-  id: string;
-  hashes: string[];
-  album: string;
-  copyright: string;
-  year: string;
-  genre: string;
-  album_artist: string;
-  folder: string;
-  file_format_path: string;
-  file_format_path_enabled: boolean;
-  attached_picture: AttatchedPicture;
 }
 
 export interface AttatchedPicture {
@@ -342,3 +273,36 @@ export interface File {
 export type Frames = {
   [key: string]: SerializableTagFrameValue[];
 };
+
+export type CreateEvent = {
+  op: "Create";
+  file: CreatedFile;
+};
+export type ModifyEvent = {
+  op: "Modify";
+  file: ModifiedFile;
+};
+
+export type DeleteEvent = {
+  op: "Delete";
+  file: DeletedFile;
+};
+
+export interface CreatedFile {
+  is_directory: boolean;
+  parent_path: string;
+  name: string;
+  path: string;
+}
+export interface ModifiedFile {
+  is_directory: boolean;
+  old_path: string;
+  parent_path: string;
+  name: string;
+  path: string;
+}
+export interface DeletedFile {
+  parent_path: string;
+  path: string;
+}
+export type FileEvent = CreateEvent | DeleteEvent | ModifyEvent;

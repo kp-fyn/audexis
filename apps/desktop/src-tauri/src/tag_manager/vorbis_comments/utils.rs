@@ -1,4 +1,4 @@
-// Generic utils for handling vorbis for multiple formats
+// Generic utils for handling vorbis for multiple audio formats
 use crate::tag_manager::utils::{FrameKey, TagValue};
 use base64::{engine::general_purpose as b64_gp, Engine as _};
 use once_cell::sync::Lazy;
@@ -263,6 +263,22 @@ pub fn build_comments(tags: &HashMap<FrameKey, Vec<TagValue>>, needs_picture: bo
         let vorbis_key = vorbis_code(*key);
         for value in values.iter() {
             if let TagValue::Text(text) = value {
+                let comment_str = format!("{}={}", vorbis_key, text);
+                let comment_bytes = comment_str.as_bytes();
+                let comment_length = comment_bytes.len() as u32;
+
+                let mut comment_entry: Vec<u8> = Vec::new();
+                comment_entry.extend(&comment_length.to_le_bytes());
+                comment_entry.extend(comment_bytes);
+
+                comment_list.push(comment_entry);
+            } else if let TagValue::Comment {
+                text,
+                encoding: _,
+                language: _,
+                description: _,
+            } = value
+            {
                 let comment_str = format!("{}={}", vorbis_key, text);
                 let comment_bytes = comment_str.as_bytes();
                 let comment_length = comment_bytes.len() as u32;

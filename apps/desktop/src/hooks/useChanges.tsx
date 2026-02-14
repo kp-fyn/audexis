@@ -12,12 +12,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 import { listen, Event } from "@tauri-apps/api/event";
-import {
-  RootFileTree,
-  Tags,
-  File,
-  SerializableTagFrameValue,
-} from "@/ui/types";
+import { FileNode, File, SerializableTagFrameValue } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 
 type FileIdentifier = {
@@ -35,24 +30,18 @@ interface ChangesContext {
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
   fileTreeFolderSelected: string[];
   setFilesToShow: Dispatch<SetStateAction<FileIdentifier[]>>;
-  setFileTree: Dispatch<SetStateAction<RootFileTree>>;
+  setFileTree: Dispatch<SetStateAction<FileNode[]>>;
   filesToShow: FileIdentifier[];
   selected: string[];
-  fileTree: RootFileTree;
-  initialDialogPage: number;
-  saveChanges: () => void;
-  albumId: string;
-  setAlbumId: Dispatch<SetStateAction<string>>;
+  fileTree: FileNode[];
 
-  showAlbumDialog: (page?: number) => void;
-  closeAlbumDialog: () => void;
+  saveChanges: () => void;
+
   clearChanges: () => void;
   files: File[];
   setFiles: Dispatch<SetStateAction<File[]>>;
-  albumDialogOpen: boolean;
-
-  albumDialogValues: Partial<Tags>;
-  setAlbumDialogValues: Dispatch<SetStateAction<Partial<Tags>>>;
+  allFiles: Map<string, File>;
+  setAllFiles: Dispatch<SetStateAction<Map<string, File>>>;
   canUndo: boolean;
   canRedo: boolean;
   hasUnsavedChanges: boolean;
@@ -64,23 +53,13 @@ const ChangesContext = createContext<ChangesContext>({
   changes: {},
   canRedo: false,
   canUndo: false,
-  albumId: "",
-  setAlbumId: () => {
-    throw new Error("setAlbumId function must be overridden");
-  },
-  setAlbumDialogValues: () => {
-    throw new Error("setAlbumDialogValues function must be overridden");
-  },
-  albumDialogValues: {},
+
   setFileTreeFolderSelected: () => {
     throw new Error("setFileTreeFolderSelected function must be overridden");
   },
   fileTreeFolderSelected: [],
   setFilesToShow: () => {
     throw new Error("setFilesToShow function must be overridden");
-  },
-  closeAlbumDialog: () => {
-    throw new Error("closeAlbumDialog function must be overridden");
   },
 
   clearChanges: () => {
@@ -90,16 +69,8 @@ const ChangesContext = createContext<ChangesContext>({
     throw new Error("clearChanges function must be overridden");
   },
   filesToShow: [],
-  initialDialogPage: 0,
-  fileTree: {
-    disorgainzed: new Map(),
-    organized: new Map(),
-  },
-  albumDialogOpen: false,
-  showAlbumDialog: () => {
-    throw new Error("showAlbumDialog function must be overridden");
-  },
 
+  fileTree: [],
   setChanges: () => {
     throw new Error("setChanges function must be overridden");
   },
@@ -120,6 +91,10 @@ const ChangesContext = createContext<ChangesContext>({
     throw new Error("nudgeSaveBar function must be overridden");
   },
   saveBarNudge: 0,
+  allFiles: new Map<string, File>(),
+  setAllFiles: () => {
+    throw new Error("setAllFiles function must be overridden");
+  },
 });
 
 export function useChanges(): ChangesContext {
@@ -142,8 +117,7 @@ export function ChangesProvider({
 
   const [files, setFiles] = useState<File[]>([]);
   const [filesToShow, setFilesToShow] = useState<FileIdentifier[]>([]);
-  const [albumId, setAlbumId] = useState<string>("");
-  const [initialDialogPage, setInitialDialogPage] = useState(0);
+
   const [fileTreeFolderSelected, setFileTreeFolderSelected] = useState<
     string[]
   >([]);
@@ -152,20 +126,8 @@ export function ChangesProvider({
     canUndo: false,
   });
   const [selected, setSelected] = useState<string[]>([]);
-  const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
-  const [albumDialogValues, setAlbumDialogValues] = useState<Partial<Tags>>({
-    albumArtist: "",
-    album: "",
-    year: "",
-    genre: "",
-    copyright: "",
-    attachedPicture: undefined,
-  });
-
-  const [fileTree, setFileTree] = useState<RootFileTree>({
-    disorgainzed: new Map(),
-    organized: new Map(),
-  });
+  const [allFiles, setAllFiles] = useState<Map<string, File>>(new Map());
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
 
   const [saveBarNudge, setSaveBarNudge] = useState(0);
   const nudgeSaveBar = () => setSaveBarNudge((n) => n + 1);
@@ -191,17 +153,6 @@ export function ChangesProvider({
       return prevSelected;
     });
   }, [files]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      if (document?.body?.style) document.body.style.cssText = "";
-    }, 0);
-    if (!albumDialogOpen) {
-      setAlbumDialogValues({});
-      setInitialDialogPage(0);
-      setAlbumId("");
-    }
-  }, [albumDialogOpen]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent): void => {
@@ -287,30 +238,12 @@ export function ChangesProvider({
     setChanges({});
   };
 
-  function showAlbumDialog(page?: number): void {
-    if (page) {
-      setInitialDialogPage(page);
-    } else {
-      setInitialDialogPage(0);
-    }
-    setAlbumDialogOpen(true);
-  }
-
-  function closeAlbumDialog(): void {
-    setAlbumDialogOpen(false);
-    setAlbumDialogValues({});
-    setInitialDialogPage(0);
-    setAlbumId("");
-    setTimeout(() => {
-      if (document?.body?.style) document.body.style.cssText = "";
-    }, 0);
-  }
-
   return (
     <ChangesContext.Provider
       value={{
         changes: changes,
-
+        allFiles,
+        setAllFiles,
         setChanges,
 
         saveChanges,
@@ -325,19 +258,12 @@ export function ChangesProvider({
         setSelected,
         files,
         setFiles,
-        initialDialogPage,
-        albumDialogOpen,
-        albumId,
-        setAlbumId,
-        closeAlbumDialog,
-        setAlbumDialogValues,
-        showAlbumDialog,
-        albumDialogValues,
+
         hasUnsavedChanges,
         nudgeSaveBar,
         saveBarNudge,
-        canRedo: historyState.canUndo,
-        canUndo: historyState.canRedo,
+        canRedo: historyState.canRedo,
+        canUndo: historyState.canUndo,
       }}
     >
       {children}

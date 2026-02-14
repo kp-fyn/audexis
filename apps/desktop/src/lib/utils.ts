@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
+import { path } from "@tauri-apps/api";
 
 import { twMerge } from "tailwind-merge";
+import { FileNode } from "../types";
 
 export function parseShortcut(shortcut: string) {
   shortcut = shortcut.replace(

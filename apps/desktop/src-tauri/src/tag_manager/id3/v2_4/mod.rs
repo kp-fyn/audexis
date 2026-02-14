@@ -1,3 +1,4 @@
+use crate::tag_manager;
 use crate::tag_manager::id3::utils::{id3v24_key, id3v24_raw_to_tags, id3v24_tags_to_raw};
 use crate::tag_manager::id3::v2_3::utils::{
     create_header_with_version, encode_text_payload, to_synchsafe,
@@ -277,7 +278,7 @@ impl TagFormat for V2_4 {
         }
         let mut pictures: Vec<(FrameKey, Vec<TagValue>)> = Vec::new();
         let mut non_picture: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
-        for (k, vals) in updated.into_iter() {
+        for (k, vals) in updated.clone().into_iter() {
             if k == FrameKey::AttachedPicture {
                 pictures.push((k, vals));
             } else {
@@ -338,7 +339,7 @@ impl TagFormat for V2_4 {
                     picture_type,
                     description,
                 } => {
-                    let encoded = crate::tag_manager::id3::v2_3::utils::encode_img_payload(
+                    let encoded = tag_manager::id3::v2_3::utils::encode_img_payload(
                         &mime,
                         picture_type.unwrap_or(3),
                         description.as_deref().unwrap_or(""),
@@ -362,8 +363,38 @@ impl TagFormat for V2_4 {
                     payload.extend_from_slice(uu.url.as_bytes());
                     raw_frames.push((k.to_string(), payload));
                 }
+                _ => { /*Handle other types later */ }
             }
         }
+        let comments = updated.get(&FrameKey::Comments);
+        if let Some(vals) = comments {
+            for v in vals {
+                if let TagValue::Comment {
+                    encoding: _,
+                    language,
+                    description,
+                    text,
+                } = v
+                {
+                    let mut payload = Vec::new();
+                    payload.push(0x00);
+                    let lang_bytes = language.as_bytes();
+                    if lang_bytes.len() >= 3 {
+                        payload.extend_from_slice(&lang_bytes[0..3]);
+                    } else {
+                        payload.extend_from_slice(lang_bytes);
+                        for _ in 0..(3 - lang_bytes.len()) {
+                            payload.push(0x00);
+                        }
+                    }
+                    payload.extend_from_slice(description.as_bytes());
+                    payload.push(0x00);
+                    payload.extend_from_slice(text.as_bytes());
+                    raw_frames.push(("COMM".to_string(), payload));
+                }
+            }
+        }
+
         for (_k, vals) in pictures.into_iter() {
             for v in vals {
                 if let TagValue::Picture {
@@ -373,7 +404,7 @@ impl TagFormat for V2_4 {
                     description,
                 } = v
                 {
-                    let encoded = crate::tag_manager::id3::v2_3::utils::encode_img_payload(
+                    let encoded = tag_manager::id3::v2_3::utils::encode_img_payload(
                         &mime,
                         picture_type.unwrap_or(3),
                         description.as_deref().unwrap_or(""),

@@ -1,3 +1,4 @@
+use crate::tag_manager;
 use crate::tag_manager::utils::FrameKey;
 use crate::tag_manager::utils::TagValue;
 use once_cell::sync::Lazy;
@@ -1103,12 +1104,10 @@ pub fn raw_to_tags(raw: &[(String, TagValue)]) -> HashMap<FrameKey, Vec<TagValue
                             result
                                 .entry(UserDefinedText)
                                 .or_default()
-                                .push(TagValue::UserText(
-                                    crate::tag_manager::utils::UserTextEntry {
-                                        description: name.to_string(),
-                                        value: seg.to_string(),
-                                    },
-                                ));
+                                .push(TagValue::UserText(tag_manager::utils::UserTextEntry {
+                                    description: name.to_string(),
+                                    value: seg.to_string(),
+                                }));
                         }
                     }
                     continue;

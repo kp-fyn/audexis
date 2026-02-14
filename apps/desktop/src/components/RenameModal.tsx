@@ -127,7 +127,7 @@ export default function RenameModal() {
       aria-modal="true"
       role="dialog"
       aria-labelledby="rename-modal-title"
-      className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 z-1200 flex items-center justify-center p-4 md:p-8"
     >
       <div
         className="absolute inset-0 bg-background/70 backdrop-blur-sm border-t border-border animate-in fade-in"
@@ -136,7 +136,7 @@ export default function RenameModal() {
       <span tabIndex={0} aria-hidden="true" />
       <div
         ref={dialogRef}
-        className={`relative w-full max-w-3xl rounded-lg border border-border bg-gradient-to-b from-background/95 to-background/80 shadow-xl ring-1 ring-border/50 overflow-hidden animate-in ${
+        className={`relative w-full max-w-3xl rounded-lg border border-border bg-linear-to-b from-background/95 to-background/80 shadow-xl ring-1 ring-border/50 overflow-hidden animate-in ${
           closing ? "animate-out fade-out zoom-out-95" : "zoom-in-90"
         } duration-150`}
       >
@@ -255,6 +255,6 @@ export default function RenameModal() {
       </div>
       <span tabIndex={0} aria-hidden="true" />
     </div>,
-    portalNode
+    portalNode,
   );
 }

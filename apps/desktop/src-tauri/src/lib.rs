@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod constants;
+mod database;
 mod file_watcher;
 mod history;
 mod tag_manager;
@@ -11,15 +12,24 @@ use crate::config::user::{load_config, Theme, CONFIG_FILE};
 use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
+use rusqlite::Connection;
+use serde::Serialize;
 
 use std::env;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
+    pub conn: Arc<Mutex<Connection>>,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct FileNode {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -31,9 +41,11 @@ pub fn run() {
             let path = app
                 .path()
                 .app_data_dir()
-                .expect("Failed to get app data directory")
-                .join(CONFIG_FILE);
-            let user_config = load_config(&path);
+                .expect("Failed to get app data directory");
+            let conn = database::init_database(&path.join("audexis.db"))?;
+            let config_path = path.join(CONFIG_FILE);
+
+            let user_config = load_config(&config_path);
             let theme = match user_config.theme {
                 Theme::Light => "light",
                 Theme::Dark => "dark",
@@ -43,6 +55,7 @@ pub fn run() {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
+                conn: Arc::new(Mutex::new(conn)),
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
@@ -116,6 +129,8 @@ pub fn run() {
             commands::undo::undo,
             commands::get_all_sidebar_items::get_all_sidebar_items,
             commands::redo::redo,
+            commands::get_workspace_root::get_workspace_root,
+            commands::get_folder_children::get_folder_children
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")
