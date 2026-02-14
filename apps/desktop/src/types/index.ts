@@ -75,6 +75,10 @@ export interface FileNode {
   is_directory: boolean;
 }
 
+export interface ExtendedFileNode extends FileNode {
+  children?: FileNode[];
+  is_root?: boolean;
+}
 export interface ImgData {
   mime: string;
   type?: { id: number; name?: string };
@@ -269,3 +273,36 @@ export interface File {
 export type Frames = {
   [key: string]: SerializableTagFrameValue[];
 };
+
+export type CreateEvent = {
+  op: "Create";
+  file: CreatedFile;
+};
+export type ModifyEvent = {
+  op: "Modify";
+  file: ModifiedFile;
+};
+
+export type DeleteEvent = {
+  op: "Delete";
+  file: DeletedFile;
+};
+
+export interface CreatedFile {
+  is_directory: boolean;
+  parent_path: string;
+  name: string;
+  path: string;
+}
+export interface ModifiedFile {
+  is_directory: boolean;
+  old_path: string;
+  parent_path: string;
+  name: string;
+  path: string;
+}
+export interface DeletedFile {
+  parent_path: string;
+  path: string;
+}
+export type FileEvent = CreateEvent | DeleteEvent | ModifyEvent;

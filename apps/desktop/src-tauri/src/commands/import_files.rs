@@ -1,11 +1,9 @@
-use crate::tag_manager::tag_backend::BackendError;
-use crate::tag_manager::utils::SerializableFile;
 use crate::utils::handle_import_files;
 use crate::AppState;
 use rfd::FileDialog;
 use std::env;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Emitter, State};
+use tauri::{command, AppHandle, State};
 #[command]
 pub fn import_files(app_handle: AppHandle, file_type: &str, state: State<'_, AppState>) {
     let home_dir: String = match env::home_dir() {

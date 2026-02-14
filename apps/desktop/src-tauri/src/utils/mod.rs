@@ -5,11 +5,12 @@ use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
 use crate::tag_manager::utils::{File, FrameKey, TagValue};
 
 use crate::AppState;
+
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::{self, metadata};
-use std::hash::Hash;
 use std::path::PathBuf;
 use std::thread;
 
@@ -63,26 +64,33 @@ pub fn handle_file_associations(app_handle: tauri::AppHandle, paths: Vec<PathBuf
         .collect();
     import_paths(app_handle, string_paths, state);
 }
+pub fn index_files(app_handle: tauri::AppHandle, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, ()> {
+    let state = app_handle.state::<AppState>();
+
+    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+
+    let conn = db.lock();
+    if conn.is_err() {
+        drop(conn);
+        return Err(());
+    }
+    let mut conn = conn.unwrap();
+
+    let (new_files, _existing_files) = check_files_against_db(&mut conn, paths);
+    let new_files_clone = new_files.clone();
+    if let Err(e) = insert_pending_files(&mut conn, new_files) {
+        println!("insert_pending_files failed: {:?}", e);
+    }
+    drop(conn);
+    return Ok(new_files_clone);
+}
 
 pub fn handle_import_files(
     app_handle: tauri::AppHandle,
     paths: Vec<PathBuf>,
     state: State<'_, AppState>,
 ) {
-    // let mut errs: Vec<BackendError> = vec![];
-    // {
-    // let mut ws = state.workspace.lock().unwrap();
-
-    //     for path in &paths {
-    //         let r = ws.import(path.clone());
-
-    //         if r.is_err() {
-    //             errs.push(r.err().unwrap());
-    //         }
-    //     }
-    // }
-
-    let db = state.conn.clone();
+    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
     println!("importing files: {:?}", paths.clone().len());
 
     thread::spawn(move || {
@@ -102,24 +110,23 @@ pub fn handle_import_files(
         let folder_path = folder.clone().to_string_lossy().to_string();
         match check_import_conflicts(&conn, &folder_path) {
             ImportConflict::ParentExists => {
-                println!("wee good")
+                println!("parent folder already imported");
+                drop(conn);
+                return;
             }
             ImportConflict::ChildrenExist(children) => {
-                println!("removing child adding parent");
-
                 remove_child_roots(&mut conn, &children).ok();
                 add_import_root(&conn, &folder_path).ok();
             }
             ImportConflict::Exact => {
-                println!("rescan");
-
                 update_root_scan_time(&conn, &folder_path).ok();
             }
             ImportConflict::NotFolder => {
                 println!("not a folder");
+                drop(conn);
+                return;
             }
             ImportConflict::None => {
-                print!("adding new root");
                 add_import_root(&conn, &folder_path).ok();
             }
         }
@@ -189,6 +196,7 @@ fn read_folder(path: PathBuf) -> Vec<PathBuf> {
     }
     files
 }
+
 fn unix_to_systemtime(timestamp: i64) -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(timestamp as u64)
 }
@@ -196,6 +204,65 @@ fn systemtime_to_unix(time: SystemTime) -> i64 {
     time.duration_since(UNIX_EPOCH)
         .unwrap_or(Duration::from_secs(0))
         .as_secs() as i64
+}
+pub fn delete_file_path(app_handle: tauri::AppHandle, file_path: PathBuf) {
+    let state = app_handle.state::<AppState>();
+
+    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+
+    let conn = db.lock();
+    if conn.is_err() {
+        drop(conn);
+        return;
+    }
+    let conn = conn.unwrap();
+    let file_path_str = file_path.to_string_lossy().to_string();
+
+    let delete_result = conn.execute("DELETE FROM files WHERE path = ?1", [file_path_str]);
+    if delete_result.is_err() {
+        return;
+    }
+}
+pub fn update_file_path(app_handle: tauri::AppHandle, old_path: PathBuf, new_path: PathBuf) {
+    let state = app_handle.state::<AppState>();
+
+    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+
+    let conn = db.lock();
+    if conn.is_err() {
+        drop(conn);
+        return;
+    }
+    let conn = conn.unwrap();
+
+    let new_path_str = new_path.to_string_lossy().to_string();
+    let old_path_str = old_path.to_string_lossy().to_string();
+    let r = conn.query_row(
+        "SELECT 1 FROM files WHERE path = ?1",
+        [new_path_str.as_str()],
+        |_e| Ok(true),
+    );
+
+    let exists: bool = r.unwrap_or(false);
+    if exists {
+        let delete_result = conn.execute("DELETE FROM files WHERE path = ?1", [old_path_str]);
+        if delete_result.is_err() {
+            return;
+        }
+    } else {
+        let new_file_name = new_path
+            .file_name()
+            .unwrap_or(OsStr::new("file"))
+            .to_string_lossy()
+            .to_string();
+        let update_result = conn.execute(
+            "UPDATE files SET path = ?2, file_name = ?3 WHERE path = ?1",
+            params![old_path_str, new_path_str, new_file_name],
+        );
+        if update_result.is_err() {
+            return;
+        }
+    }
 }
 
 fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Result<()> {
@@ -213,7 +280,9 @@ fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Resul
 
         let res = tx.execute(
             "INSERT INTO files (path, file_name, file_size, last_modified, status) 
-             VALUES (?1, ?2, ?3, ?4, 'pending')",
+             VALUES (?1, ?2, ?3, ?4, 'pending') 
+             ON CONFLICT(path)
+              DO UPDATE SET file_name=?2, file_size=?3",
             params![
                 path_str.as_str(),
                 file_name,
@@ -285,7 +354,7 @@ fn check_files_against_db(
                 .unwrap_or(Duration::from_secs(1))
                 .as_secs();
 
-            if disk_modified != db_modified {
+            if disk_modified > db_modified {
                 print!("File changed: frm {:?} to {:?}", db_modified, disk_modified);
                 new_files.push(file_path);
             } else {
@@ -299,6 +368,19 @@ fn check_files_against_db(
     (new_files, existing_files)
 }
 
+pub fn get_imported_folders(conn: &Connection) -> Vec<String> {
+    let mut stmt = conn
+        .prepare("SELECT path FROM import_roots WHERE status = 'active'")
+        .unwrap();
+
+    let imported_folders: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    imported_folders
+}
 enum ImportConflict {
     None,
     Exact,
@@ -387,6 +469,46 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
     let tag_backend = DefaultBackend::new();
     let mut files: Vec<File> = vec![];
     for file_path in file_paths {
+        let r = conn.query_row(
+            "SELECT 1 FROM files WHERE path = ?1",
+            [file_path.as_str()],
+            |_e| Ok(true),
+        );
+
+        let file_exists_in_db: bool = r.unwrap_or(false);
+        if file_exists_in_db == false {
+            let real_path = PathBuf::from(&file_path);
+            if real_path.exists() == false {
+                continue;
+            }
+            let file_name = real_path
+                .file_name()
+                .unwrap_or(OsStr::new("file"))
+                .to_string_lossy()
+                .to_string();
+            let file_size = metadata(&file_path)
+                .ok()
+                .map(|m| m.len())
+                .map(|size| size as i64)
+                .unwrap_or(0);
+            let last_modified = fs::metadata(&file_path)
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .map(|t| systemtime_to_unix(t))
+                .unwrap_or(0);
+
+            let res = conn.execute(
+                "INSERT INTO files (path, file_name, file_size, last_modified, status) 
+             VALUES (?1, ?2, ?3, ?4, 'pending') 
+             ON CONFLICT(path)
+              DO UPDATE SET file_name=?2, file_size=?3",
+                params![file_path, file_name, file_size, last_modified],
+            );
+            if res.is_err() {
+                println!("Err inserting");
+            }
+        }
+
         let is_indexed: bool = conn
             .query_row(
                 "SELECT 1 FROM files WHERE path = ?1 AND metadata_status = 'indexed'",
@@ -394,8 +516,33 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
                 |_| Ok(true),
             )
             .unwrap_or(false);
+        let db_modified: Option<SystemTime> = conn
+            .query_row(
+                "SELECT last_modified FROM files WHERE path = ?1",
+                [file_path.as_str()],
+                |row| {
+                    let timestamp: i64 = row.get(0)?;
+                    Ok(unix_to_systemtime(timestamp))
+                },
+            )
+            .ok();
 
-        if !is_indexed {
+        let disk_modified = metadata(&file_path).ok().and_then(|m| m.modified().ok());
+        let needs_update = if let (Some(db_mod), Some(disk_mod)) = (db_modified, disk_modified) {
+            let db_mod_unix = db_mod
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::from_secs(0))
+                .as_secs();
+            let disk_mod_unix = disk_mod
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or(Duration::from_secs(1))
+                .as_secs();
+            db_mod_unix < disk_mod_unix
+        } else {
+            true
+        };
+
+        if !is_indexed || needs_update || !file_exists_in_db {
             let tags = update_metadata_in_db(conn, &file_path, &tag_backend);
             if tags.is_err() {
                 println!(
@@ -454,12 +601,12 @@ fn update_metadata_in_db(
     conn: &mut Connection,
     file_path: &str,
     tag_backend: &DefaultBackend,
-) -> Result<(HashMap<FrameKey, Vec<TagValue>>)> {
+) -> Result<HashMap<FrameKey, Vec<TagValue>>> {
     let r = tag_backend.read(&PathBuf::from(file_path));
     if r.is_err() {
         return Result::Err(rusqlite::Error::InvalidQuery);
     }
-    // delete previous tags
+
     conn.execute("DELETE FROM tag_text WHERE file_path = ?1", [file_path])?;
     conn.execute("DELETE FROM tag_pictures WHERE file_path = ?1", [file_path])?;
     conn.execute(
@@ -525,7 +672,10 @@ fn update_metadata_in_db(
         "UPDATE files SET metadata_status = 'indexed' WHERE path = ?1",
         [file_path],
     )?;
-    println!("updating metadata for file: {}", file_path);
+    conn.execute(
+        "UPDATE files SET last_modified = strftime('%s', 'now') WHERE path = ?1",
+        [file_path],
+    )?;
 
     Ok(tags)
 }
@@ -533,8 +683,7 @@ fn update_metadata_in_db(
 fn detected_tags_in_db(
     conn: &mut Connection,
     file_path: &str,
-) -> Result<(HashMap<FrameKey, Vec<TagValue>>)> {
-    // For demonstration, we just print the tags found in the database
+) -> Result<HashMap<FrameKey, Vec<TagValue>>> {
     let mut text_stmt = conn.prepare("SELECT key, value FROM tag_text WHERE file_path = ?1")?;
     let tag_txt = text_stmt.query_map([file_path], |row| {
         let key: String = row.get(0)?;
@@ -601,5 +750,5 @@ fn detected_tags_in_db(
             });
     }
 
-    Ok((tags))
+    Ok(tags)
 }

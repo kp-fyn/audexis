@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use tauri::AppHandle;
 
+use crate::tag_manager;
 use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend, TagError};
 use crate::tag_manager::utils::{CleanupRule, File, FrameKey, SerializableTagValue, TagValue};
 use base64::Engine;
@@ -36,7 +37,7 @@ impl Workspace {
                 for (k, v) in &updated_tags {
                     single_map.insert(*k, v.clone());
                 }
-                let changes = crate::tag_manager::utils::Changes {
+                let changes = tag_manager::utils::Changes {
                     paths: vec![file_path_str.clone()],
                     tags: single_map
                         .into_iter()

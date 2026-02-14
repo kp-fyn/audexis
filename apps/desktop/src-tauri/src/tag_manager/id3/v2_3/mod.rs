@@ -402,7 +402,7 @@ impl TagFormat for V2_3 {
         comments.map(|vals| {
             for val in vals {
                 if let TagValue::Comment {
-                    encoding,
+                    encoding: _,
                     language,
                     description,
                     text,

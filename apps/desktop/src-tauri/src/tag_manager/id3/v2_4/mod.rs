@@ -1,3 +1,4 @@
+use crate::tag_manager;
 use crate::tag_manager::id3::utils::{id3v24_key, id3v24_raw_to_tags, id3v24_tags_to_raw};
 use crate::tag_manager::id3::v2_3::utils::{
     create_header_with_version, encode_text_payload, to_synchsafe,
@@ -338,7 +339,7 @@ impl TagFormat for V2_4 {
                     picture_type,
                     description,
                 } => {
-                    let encoded = crate::tag_manager::id3::v2_3::utils::encode_img_payload(
+                    let encoded = tag_manager::id3::v2_3::utils::encode_img_payload(
                         &mime,
                         picture_type.unwrap_or(3),
                         description.as_deref().unwrap_or(""),
@@ -369,7 +370,7 @@ impl TagFormat for V2_4 {
         if let Some(vals) = comments {
             for v in vals {
                 if let TagValue::Comment {
-                    encoding,
+                    encoding: _,
                     language,
                     description,
                     text,
@@ -403,7 +404,7 @@ impl TagFormat for V2_4 {
                     description,
                 } = v
                 {
-                    let encoded = crate::tag_manager::id3::v2_3::utils::encode_img_payload(
+                    let encoded = tag_manager::id3::v2_3::utils::encode_img_payload(
                         &mime,
                         picture_type.unwrap_or(3),
                         description.as_deref().unwrap_or(""),

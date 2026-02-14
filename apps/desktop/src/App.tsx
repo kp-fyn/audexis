@@ -11,7 +11,14 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { Event, listen } from "@tauri-apps/api/event";
-import { AllTags, File, FileNode, Frames, SidebarItem } from "@/ui/types";
+import {
+  AllTags,
+  ExtendedFileNode,
+  File,
+  FileNode,
+  Frames,
+  SidebarItem,
+} from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserConfig } from "@/ui/hooks/useUserConfig.tsx";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
@@ -37,7 +44,6 @@ import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
-import path from "path";
 
 function App() {
   const {
@@ -45,9 +51,11 @@ function App() {
     selected,
     setFiles,
     files,
+    setAllFiles,
     hasUnsavedChanges,
     nudgeSaveBar,
     setFileTree,
+    allFiles,
   } = useChanges();
   const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
@@ -63,8 +71,9 @@ function App() {
   } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
 
-  function normalizeFilesPayload(payload: any[]): File[] {
-    return (payload || []).map((sf: any) => {
+  function normalizeFilesPayload(payload: any[]): Map<string, File> {
+    const filesMap = new Map<string, File>();
+    (payload || []).map((sf: any) => {
       const tagsMap = (sf && sf.tags) || {};
 
       const file: File = {
@@ -76,8 +85,9 @@ function App() {
 
         frames: tagsMap,
       } as File;
-      return file;
+      filesMap.set(sf.path, file);
     });
+    return filesMap;
   }
 
   const helpers: ColumnDef<File, any>[] = config.columns.map((item) => {
@@ -240,11 +250,14 @@ function App() {
     columns.map((c) => c.id ?? ""),
   );
   useEffect(() => {
-    const unlisten = listen("workspace-roots", async (event: Event<any>) => {
-      console.log(event.payload);
+    const unlisten = listen(
+      "workspace-roots",
+      async (event: Event<ExtendedFileNode[]>) => {
+        console.log(event.payload);
 
-      setFileTree(event.payload as FileNode[]);
-    });
+        setFileTree(event.payload);
+      },
+    );
     return () => {
       unlisten.then((f) => f());
     };
@@ -279,8 +292,22 @@ function App() {
   useEffect(() => {
     const unlisten = listen("workspace-updated", (event: Event<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
-
-      setFiles(normalized);
+      if (config.view === "simple") {
+        setFiles(Array.from(normalized.values()));
+      }
+      setAllFiles(
+        (prev) =>
+          new Map([
+            ...Array.from(prev.entries()),
+            ...Array.from(normalized.entries()),
+          ]),
+      );
+      console.log(
+        new Map([
+          ...Array.from(allFiles.entries()),
+          ...Array.from(normalized.entries()),
+        ]).size,
+      );
       setIsLoading(false);
     });
 
@@ -505,7 +532,7 @@ function App() {
         </div>
 
         <div className="fixed bottom-0 w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
-          <span className="truncate">{files.length} files loaded</span>
+          <span className="truncate">{allFiles.size} files loaded</span>
         </div>
       </main>
     </DndContext>

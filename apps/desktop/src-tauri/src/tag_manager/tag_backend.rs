@@ -1,4 +1,5 @@
 use super::traits::{Formats, TagFormat};
+use super::utils;
 use super::utils::{Changes, File, FrameKey, SerializableTagValue, TagValue};
 use super::TagManager;
 use base64::Engine;
@@ -203,10 +204,10 @@ impl TagBackend for DefaultBackend {
                 let mut out_vals: Vec<TagValue> = Vec::new();
                 for v in vals {
                     match v {
-                        super::utils::SerializableTagValue::Text(s) => {
+                        utils::SerializableTagValue::Text(s) => {
                             out_vals.push(TagValue::Text(s.clone()))
                         }
-                        super::utils::SerializableTagValue::Picture {
+                        utils::SerializableTagValue::Picture {
                             mime,
                             data_base64,
                             picture_type,
@@ -223,13 +224,13 @@ impl TagBackend for DefaultBackend {
                                 });
                             }
                         }
-                        super::utils::SerializableTagValue::UserText(item) => {
+                        utils::SerializableTagValue::UserText(item) => {
                             out_vals.push(TagValue::UserText(item.clone()))
                         }
-                        super::utils::SerializableTagValue::UserUrl(item) => {
+                        utils::SerializableTagValue::UserUrl(item) => {
                             out_vals.push(TagValue::UserUrl(item.clone()))
                         }
-                        super::utils::SerializableTagValue::Comment {
+                        utils::SerializableTagValue::Comment {
                             encoding,
                             language,
                             description,

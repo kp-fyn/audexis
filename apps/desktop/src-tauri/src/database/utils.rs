@@ -101,32 +101,6 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     )?;
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS operations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            operation_type TEXT NOT NULL,
-            status TEXT DEFAULT 'pending',
-            created_at INTEGER DEFAULT (strftime('%s', 'now')),
-            completed_at INTEGER,
-            error_message TEXT,
-            details TEXT
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS operation_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            operation_id INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            old_path TEXT,
-            old_values TEXT,
-            new_values TEXT,
-            status TEXT DEFAULT 'pending',
-            FOREIGN KEY (operation_id) REFERENCES operations(id) ON DELETE CASCADE
-        )",
-        [],
-    )?;
-    conn.execute(
         "CREATE TABLE IF NOT EXISTS import_roots (
              path TEXT PRIMARY KEY,
              imported_at INTEGER DEFAULT (strftime('%s', 'now')),
@@ -191,23 +165,6 @@ pub fn create_indexes(conn: &Connection) -> Result<()> {
     )?;
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_folders_depth ON folders(depth)",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operations_status ON operations(status)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operation_items_operation ON operation_items(operation_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operation_items_file_path ON operation_items(file_path)",
         [],
     )?;
 

@@ -21,18 +21,18 @@ pub fn get_workspace_root(app_handle: AppHandle, state: State<'_, AppState>) {
         }
         let mut stmt = stmt.unwrap();
 
-        let fake_roots = stmt
+        let roots = stmt
             .query_map([], |row| {
                 let path: String = row.get(0)?;
                 Ok(path)
             })
             .map_err(|e| e.to_string());
-        if fake_roots.is_err() {
-            println!("Failed to query import roots: {:?}", fake_roots.err());
+        if roots.is_err() {
+            println!("Failed to query import roots: {:?}", roots.err());
             return;
         }
-        let fake_roots = fake_roots.unwrap();
-        let roots = fake_roots
+        let roots = roots.unwrap();
+        let roots = roots
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string());
         if roots.is_err() {
@@ -44,11 +44,10 @@ pub fn get_workspace_root(app_handle: AppHandle, state: State<'_, AppState>) {
         let mut result = Vec::new();
 
         for root_path in roots {
-            let name = root_path
-                .split('/')
-                .last()
-                .unwrap_or(&root_path)
-                .to_string();
+            let name = match std::path::Path::new(&root_path).file_name() {
+                Some(name) => name.to_string_lossy().to_string(),
+                None => root_path.clone(),
+            };
 
             result.push(FileNode {
                 path: root_path.clone(),

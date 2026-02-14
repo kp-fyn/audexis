@@ -1,7 +1,7 @@
 use crate::tag_manager::utils::SerializableFile;
 use crate::utils::get_tags;
 use crate::{AppState, FileNode};
-use serde::Serialize;
+
 use std::fs;
 use std::thread;
 use tauri::{command, AppHandle, Emitter, State};

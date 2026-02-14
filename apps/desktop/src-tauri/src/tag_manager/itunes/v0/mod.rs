@@ -1,3 +1,4 @@
+use crate::tag_manager;
 use crate::tag_manager::itunes::utils::{
     get_atom_flag, itunes_key, raw_to_tags, FREEFORM_REVERSE_MAP,
 };
@@ -789,7 +790,7 @@ impl TagFormat for V0 {
     fn get_tags(
         &self,
         file_path: &std::path::PathBuf,
-    ) -> Result<HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>, BackendError> {
+    ) -> Result<HashMap<tag_manager::utils::FrameKey, Vec<TagValue>>, BackendError> {
         let buffer = fs::read(file_path).map_err(|_| {
             BackendError::ReadFailed(TagError {
                 internal_message: "Failed to open file".to_string(),
@@ -821,7 +822,7 @@ impl TagFormat for V0 {
                 } else if magic_number.starts_with(&[0xFF, 0xD8, 0xFF]) {
                     mime_type = "image/jpeg";
                 }
-                let pic = crate::tag_manager::utils::PictureData {
+                let pic = tag_manager::utils::PictureData {
                     mime: mime_type.to_string(),
                     data: ilst_atom.buffer
                         [(data_start + 8) as usize..(data_start + data_size) as usize]
@@ -937,7 +938,7 @@ impl TagFormat for V0 {
     fn write_tags(
         &self,
         file_path: &std::path::PathBuf,
-        updated_tags: HashMap<crate::tag_manager::utils::FrameKey, Vec<TagValue>>,
+        updated_tags: HashMap<tag_manager::utils::FrameKey, Vec<TagValue>>,
     ) -> Result<(), BackendError> {
         let mut updated_entries: Vec<(String, TagValue)> = Vec::new();
         let mut updated_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -948,7 +949,7 @@ impl TagFormat for V0 {
 
         for (k, vals) in updated_tags.iter() {
             match k {
-                crate::tag_manager::utils::FrameKey::UserDefinedText => {
+                tag_manager::utils::FrameKey::UserDefinedText => {
                     for v in vals {
                         if let TagValue::UserText(ut) = v {
                             let key = format!(
@@ -965,7 +966,7 @@ impl TagFormat for V0 {
                         }
                     }
                 }
-                crate::tag_manager::utils::FrameKey::UserDefinedURL => {
+                tag_manager::utils::FrameKey::UserDefinedURL => {
                     for v in vals {
                         if let TagValue::UserUrl(u) = v {
                             let key = format!(
@@ -978,7 +979,7 @@ impl TagFormat for V0 {
                         }
                     }
                 }
-                crate::tag_manager::utils::FrameKey::AttachedPicture => {
+                tag_manager::utils::FrameKey::AttachedPicture => {
                     let mut any = false;
                     for v in vals {
                         if let TagValue::Picture { .. } = v {
@@ -990,7 +991,7 @@ impl TagFormat for V0 {
                         push_key_once(&"covr".to_string());
                     }
                 }
-                crate::tag_manager::utils::FrameKey::Artists => {
+                tag_manager::utils::FrameKey::Artists => {
                     let joined = vals
                         .iter()
                         .filter_map(|v| match v {
@@ -1006,10 +1007,9 @@ impl TagFormat for V0 {
                     }
                 }
                 other => {
-                    let code = crate::tag_manager::itunes::utils::itunes_code(*other);
+                    let code = tag_manager::itunes::utils::itunes_code(*other);
                     if code == "----" {
-                        if let Some(spec) =
-                            crate::tag_manager::itunes::utils::itunes_freeform_spec(*other)
+                        if let Some(spec) = tag_manager::itunes::utils::itunes_freeform_spec(*other)
                         {
                             if let Some(first) =
                                 vals.iter().find(|v| matches!(v, TagValue::Text(_)))
@@ -1090,10 +1090,9 @@ impl TagFormat for V0 {
                     }
                 }
                 other => {
-                    let code = crate::tag_manager::itunes::utils::itunes_code(*other);
+                    let code = tag_manager::itunes::utils::itunes_code(*other);
                     if code == "----" {
-                        if let Some(spec) =
-                            crate::tag_manager::itunes::utils::itunes_freeform_spec(*other)
+                        if let Some(spec) = tag_manager::itunes::utils::itunes_freeform_spec(*other)
                         {
                             let key = format!("----:{}:{}", spec.mean, spec.name);
                             if !updated_keys.contains(&key) {

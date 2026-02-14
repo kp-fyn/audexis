@@ -12,7 +12,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 import { listen, Event } from "@tauri-apps/api/event";
-import { FileNode, Tags, File, SerializableTagFrameValue } from "@/ui/types";
+import { FileNode, File, SerializableTagFrameValue } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 
 type FileIdentifier = {
@@ -40,7 +40,8 @@ interface ChangesContext {
   clearChanges: () => void;
   files: File[];
   setFiles: Dispatch<SetStateAction<File[]>>;
-
+  allFiles: Map<string, File>;
+  setAllFiles: Dispatch<SetStateAction<Map<string, File>>>;
   canUndo: boolean;
   canRedo: boolean;
   hasUnsavedChanges: boolean;
@@ -90,6 +91,10 @@ const ChangesContext = createContext<ChangesContext>({
     throw new Error("nudgeSaveBar function must be overridden");
   },
   saveBarNudge: 0,
+  allFiles: new Map<string, File>(),
+  setAllFiles: () => {
+    throw new Error("setAllFiles function must be overridden");
+  },
 });
 
 export function useChanges(): ChangesContext {
@@ -121,7 +126,7 @@ export function ChangesProvider({
     canUndo: false,
   });
   const [selected, setSelected] = useState<string[]>([]);
-
+  const [allFiles, setAllFiles] = useState<Map<string, File>>(new Map());
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
 
   const [saveBarNudge, setSaveBarNudge] = useState(0);
@@ -237,7 +242,8 @@ export function ChangesProvider({
     <ChangesContext.Provider
       value={{
         changes: changes,
-
+        allFiles,
+        setAllFiles,
         setChanges,
 
         saveChanges,
