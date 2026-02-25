@@ -130,7 +130,8 @@ pub fn run() {
             commands::get_all_sidebar_items::get_all_sidebar_items,
             commands::redo::redo,
             commands::get_workspace_root::get_workspace_root,
-            commands::get_folder_children::get_folder_children
+            commands::get_folder_children::get_folder_children,
+            commands::request_file::request_file
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")

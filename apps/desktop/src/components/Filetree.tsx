@@ -1,13 +1,13 @@
 import React, { MouseEvent, ReactNode, useEffect, useState } from "react";
 import { useChanges } from "../hooks/useChanges";
-import { ExtendedFileNode, File, FileNode, FileEvent } from "../types";
+import { ExtendedFileNode, File, FileNode, FileEvent, RawFile } from "../types";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderClosed, FolderOpen, FileAudio } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { path } from "@tauri-apps/api";
 
 export default function TreeRoot(): ReactNode {
-  const { fileTree, allFiles, setFiles } = useChanges();
+  const { fileTree, allFiles, setFiles, setAllFiles } = useChanges();
   const [filesToShow, setFilesToShow] = useState<string[]>([]);
   const [rootNodes, setRootNodes] = useState<FileNode[]>(fileTree);
 
@@ -39,139 +39,187 @@ export default function TreeRoot(): ReactNode {
     });
   }
   useEffect(() => {
-    const unlisten = listen<FileEvent[]>("folder-view-events", (event) => {
-      for (const ev of event.payload) {
-        console.log(ev.op);
-        switch (ev.op) {
-          case "Create": {
-            const file = ev.file;
+    const unlisten = listen<FileEvent[]>(
+      "folder-view-events",
+      async (event) => {
+        for (const ev of event.payload) {
+          console.log(ev.op);
 
-            setLoadedFileTree((prev) => {
-              const newFileTree = [...prev];
-              const parentDirIndex = newFileTree.findIndex(
-                (fileNode) => fileNode.path === ev.file.parent_path,
-              );
-              if (parentDirIndex === -1) {
-                console.log("not found");
-                return prev;
-              }
-              const updatedParent = { ...newFileTree[parentDirIndex] };
-              if (!updatedParent.children) {
-                updatedParent.children = [
-                  {
+          switch (ev.op) {
+            case "Create": {
+              const file = ev.file;
+
+              setLoadedFileTree((prev) => {
+                const newFileTree = [...prev];
+                const parentDirIndex = newFileTree.findIndex(
+                  (fileNode) => fileNode.path === ev.file.parent_path,
+                );
+                if (parentDirIndex === -1) {
+                  console.log("not found");
+                  return prev;
+                }
+                const updatedParent = { ...newFileTree[parentDirIndex] };
+                if (!updatedParent.children) {
+                  updatedParent.children = [
+                    {
+                      name: file.name,
+                      is_directory: file.is_directory,
+                      path: file.path,
+                    },
+                  ];
+
+                  return newFileTree;
+                } else {
+                  updatedParent.children.push({
                     name: file.name,
                     is_directory: file.is_directory,
                     path: file.path,
-                  },
-                ];
+                  });
+                  newFileTree[parentDirIndex] = updatedParent;
+                  return newFileTree;
+                }
+              });
+              break;
+            }
+            case "Modify": {
+              const file = ev.file;
+              console.log({ file });
+              const oldFile = allFiles.get(file.path);
+              let newFil: File | undefined;
+              if (!oldFile) {
+                try {
+                  const newF = await invoke<RawFile>("request_file", {
+                    path: file.path,
+                  });
 
-                return newFileTree;
-              } else {
-                updatedParent.children.push({
-                  name: file.name,
-                  is_directory: file.is_directory,
-                  path: file.path,
-                });
-                console.log({ newFileTree });
-                return newFileTree;
+                  if (newF) {
+                    newFil = {
+                      ...newF,
+                      frames: newF.tags,
+                    };
+
+                    setAllFiles((prev) =>
+                      new Map([...Array.from(prev.entries())]).set(
+                        newF.path,
+                        newFil as File,
+                      ),
+                    );
+                    setFiles((prev) => {
+                      return [...prev, newFil as File];
+                    });
+                  }
+                } catch {
+                  console.log("error");
+                }
               }
-            });
-            break;
-          }
-          case "Modify": {
-            const file = ev.file;
 
-            setLoadedFileTree((prev) => {
-              let newFileTree = [...prev];
-              const parentDirIndex = newFileTree.findIndex(
-                (fileNode) => fileNode.path === ev.file.parent_path,
-              );
-              if (parentDirIndex === -1) {
-                console.log("not found");
-                return prev;
-              }
-              console.log("modify");
-              if (file.is_directory) {
-                const badNodes = newFileTree.filter((ch) =>
-                  ch.path.startsWith(file.old_path),
+              setLoadedFileTree((prev) => {
+                let newFileTree = [...prev];
+                const parentDirIndex = newFileTree.findIndex(
+                  (fileNode) => fileNode.path === ev.file.parent_path,
                 );
-                const goodNodes = newFileTree.filter(
-                  (ch) =>
-                    badNodes.findIndex((ch2) => ch2.path === ch.path) === -1,
-                );
+                if (parentDirIndex === -1) {
+                  console.log("not found");
+                  return prev;
+                }
+                console.log("modify");
+                if (file.is_directory) {
+                  const badNodes = newFileTree.filter((ch) =>
+                    ch.path.startsWith(file.old_path),
+                  );
+                  const goodNodes = newFileTree.filter(
+                    (ch) =>
+                      badNodes.findIndex((ch2) => ch2.path === ch.path) === -1,
+                  );
 
-                for (const fileNode of badNodes) {
-                  const newChildren: FileNode[] = [];
-                  if (fileNode.children) {
-                    for (const ch of fileNode.children) {
-                      const newPath = ch.path.replace(file.old_path, file.path);
-                      const oldPath = ch.path;
-                      console.log({ oldPath, newPath });
-                      newChildren.push({
-                        ...ch,
-                        path: ch.path.replace(file.old_path, file.path),
-                      });
+                  for (const fileNode of badNodes) {
+                    const newChildren: FileNode[] = [];
+                    if (fileNode.children) {
+                      for (const ch of fileNode.children) {
+                        const newPath = ch.path.replace(
+                          file.old_path,
+                          file.path,
+                        );
+                        const oldPath = ch.path;
+                        console.log({ oldPath, newPath });
+                        newChildren.push({
+                          ...ch,
+                          path: ch.path.replace(file.old_path, file.path),
+                        });
+                      }
+                    }
+                    goodNodes.push({
+                      ...fileNode,
+                      path: fileNode.path.replace(file.old_path, file.path),
+                      children: newChildren,
+                    });
+                  }
+
+                  console.log({ badNodes, goodNodes });
+                  newFileTree = [...goodNodes];
+                }
+                const updatedParent = { ...newFileTree[parentDirIndex] };
+                if (!updatedParent.children) {
+                  return newFileTree;
+                } else {
+                  const oldChildIndex = updatedParent.children.findIndex(
+                    (child) => child.path === file.old_path,
+                  );
+                  console.log({ newFil });
+                  if (oldChildIndex === -1) {
+                    if (file.is_directory) {
+                      updatedParent.children.push(file);
+                    } else {
+                      if (newFil) {
+                        updatedParent.children.push(file);
+                      }
+
+                      console.log({ newFileTree });
+                      return newFileTree;
                     }
                   }
-                  goodNodes.push({
-                    ...fileNode,
-                    path: fileNode.path.replace(file.old_path, file.path),
-                    children: newChildren,
-                  });
+                  updatedParent.children[oldChildIndex] = {
+                    ...updatedParent.children[oldChildIndex],
+                    path: file.path,
+                    name: file.name,
+                  };
+
+                  return newFileTree;
+                }
+              });
+              break;
+            }
+            case "Remove": {
+              const file = ev.file;
+              console.log(file);
+              setLoadedFileTree((prev) => {
+                let newFileTree = [...prev];
+                const parentDirIndex = newFileTree.findIndex(
+                  (fileNode) => fileNode.path === ev.file.parent_path,
+                );
+                if (parentDirIndex === -1) {
+                  console.log("not found");
+                  return prev;
+                }
+                if (newFileTree[parentDirIndex].children) {
+                  newFileTree[parentDirIndex].children = newFileTree[
+                    parentDirIndex
+                  ].children.filter((ch) => ch.path !== file.path);
                 }
 
-                console.log({ badNodes, goodNodes });
-                newFileTree = [...goodNodes];
-              }
-              const updatedParent = { ...newFileTree[parentDirIndex] };
-              if (!updatedParent.children) {
-                return newFileTree;
-              } else {
-                const oldChildIndex = updatedParent.children.findIndex(
-                  (child) => child.path === file.old_path,
+                const goodNodes = newFileTree.filter(
+                  (ch) => !ch.path.startsWith(`${file.path}${path.sep()}`),
                 );
 
-                if (oldChildIndex === -1) return prev;
-                updatedParent.children[oldChildIndex] = {
-                  ...updatedParent.children[oldChildIndex],
-                  path: file.path,
-                  name: file.name,
-                };
+                newFileTree = [...goodNodes];
 
                 return newFileTree;
-              }
-            });
-            break;
-          }
-          case "Delete": {
-            const file = ev.file;
-            setLoadedFileTree((prev) => {
-              let newFileTree = [...prev];
-              const parentDirIndex = newFileTree.findIndex(
-                (fileNode) => fileNode.path === ev.file.parent_path,
-              );
-              if (parentDirIndex === -1) {
-                console.log("not found");
-                return prev;
-              }
-              if (newFileTree[parentDirIndex].children) {
-                newFileTree[parentDirIndex].children = newFileTree[
-                  parentDirIndex
-                ].children.filter((ch) => ch.path !== file.path);
-              }
-
-              const goodNodes = newFileTree.filter(
-                (ch) => !ch.path.startsWith(`${file.path}${path.sep()}`),
-              );
-
-              newFileTree = [...goodNodes];
-
-              return newFileTree;
-            });
+              });
+            }
           }
         }
-      }
-    });
+      },
+    );
     return () => {
       unlisten.then((f) => f());
     };
@@ -180,10 +228,11 @@ export default function TreeRoot(): ReactNode {
   if (!fileTree) return <></>;
   useEffect(() => {
     const arr: File[] = [];
-    filesToShow.forEach((path) => {
+    filesToShow.forEach(async (path) => {
       const f = allFiles.get(path);
       if (f) {
         arr.push(f);
+      } else {
       }
     });
     setFiles(arr);
@@ -318,7 +367,7 @@ function FiletreeNode({
   return (
     <div className="relative w-full">
       <div
-        className="flex gap-2 items-center w-full text-nowrap text-muted-foreground text-xs truncate hover:bg-hover hover:text-hover-foreground py-1 sticky bg-background cursor-pointer"
+        className={`flex gap-2  items-center w-full text-nowrap text-muted-foreground text-xs truncate hover:bg-hover hover:text-hover-foreground py-1 sticky bg-background cursor-pointer`}
         style={{
           top: stickyTop,
           zIndex: zIndex,
@@ -345,7 +394,7 @@ function FiletreeNode({
       {expanded && realChildren && (
         <div className="relative w-full">
           <div
-            className={`absolute top-0 bottom-0 z w-px bg-border`}
+            className={`absolute top-0 bottom-0 z w-px bg-border bg-black`}
             style={{
               left: `calc(0.5rem + ${paddingLeft} )`,
               zIndex: zIndex - 1,

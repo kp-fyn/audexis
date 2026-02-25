@@ -44,6 +44,7 @@ import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
+import { path } from "@tauri-apps/api";
 
 function App() {
   const {
@@ -80,7 +81,7 @@ function App() {
         path: sf.path,
         tag_format: sf.tag_format,
         tag_formats: sf.tag_formats,
-        fileName: sf.path?.split("/").pop() || sf.path,
+        fileName: sf.path.split(path.sep()).pop() || sf.path,
         release: sf.tag_format,
 
         frames: tagsMap,

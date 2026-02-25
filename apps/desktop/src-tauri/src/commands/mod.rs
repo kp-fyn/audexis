@@ -14,6 +14,7 @@ pub mod open_default;
 pub mod redo;
 pub mod remove_files;
 pub mod rename_files;
+pub mod request_file;
 pub mod save_frame_changes;
 pub mod undo;
 pub mod update_app;

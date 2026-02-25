@@ -1,5 +1,5 @@
 use crate::commands::import_paths::import_paths;
-
+use std::path::MAIN_SEPARATOR_STR;
 // use crate::tag_manager::utils::SerializableFile;
 use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
 use crate::tag_manager::utils::{File, FrameKey, TagValue};
@@ -43,7 +43,17 @@ pub fn to_label(s: &str) -> String {
     }
     result
 }
-
+pub fn is_in_folder(folder: &PathBuf, file: &PathBuf) -> bool {
+    let folder_path = format!(
+        "{}{}",
+        folder.to_string_lossy().to_string(),
+        MAIN_SEPARATOR_STR
+    );
+    println!("check");
+    println!(":{:?}", file.to_string_lossy().to_string());
+    println!("{:?}", &folder_path);
+    file.to_string_lossy().to_string().starts_with(&folder_path)
+}
 pub fn to_value(s: &str) -> String {
     let mut chars = s.chars();
     match chars.next() {

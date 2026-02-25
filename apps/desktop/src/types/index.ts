@@ -73,6 +73,7 @@ export interface FileNode {
   name: string;
   path: string;
   is_directory: boolean;
+  children?: FileNode[];
 }
 
 export interface ExtendedFileNode extends FileNode {
@@ -263,6 +264,13 @@ export interface FrameChangesPayload {
   frames: SerializableTagFrame[];
 }
 
+export interface RawFile {
+  path: string;
+
+  tag_format: string;
+  tag_formats?: string[];
+  tags: Frames;
+}
 export interface File {
   path: string;
 
@@ -284,7 +292,7 @@ export type ModifyEvent = {
 };
 
 export type DeleteEvent = {
-  op: "Delete";
+  op: "Remove";
   file: DeletedFile;
 };
 
