@@ -15,7 +15,6 @@ import {
   AllTags,
   ExtendedFileNode,
   File,
-  FileNode,
   Frames,
   SidebarItem,
 } from "@/ui/types";
@@ -45,6 +44,8 @@ import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
 import { path } from "@tauri-apps/api";
+import { shortcutAccelerator } from "./lib/utils";
+import { ContextMenuArea } from "./components/ContextMenu";
 
 function App() {
   const {
@@ -468,6 +469,41 @@ function App() {
 
       <Sidebar />
 
+      {/* <ContextMenuArea
+        className="flex flex-col h-screen overflow-hidden"
+        asChild
+        items={() => [
+          {
+            text: "Import Files…",
+            accelerator: shortcutAccelerator("mod+i"),
+            action: () => invoke("import_files", { fileType: "file" }),
+            enabled: config.view === "simple",
+          },
+          {
+            text: "Import Folder…",
+            accelerator: shortcutAccelerator("mod+shift+I"),
+            action: () => invoke("import_files", { fileType: "folder" }),
+          },
+          { item: "Separator" },
+          {
+            text: "Undo",
+            accelerator: shortcutAccelerator("mod+z"),
+            action: () => invoke("undo"),
+          },
+          {
+            text: "Redo",
+            accelerator: shortcutAccelerator("mod+shift+z"),
+
+            action: () => invoke("redo"),
+          },
+          { item: "Separator" },
+          {
+            text: "Refresh",
+            accelerator: shortcutAccelerator("mod+r"),
+            action: () => window.location.reload(),
+          },
+        ]}
+      > */}
       <main
         style={{
           marginLeft: `${sidebarWidth}px`,
@@ -536,6 +572,7 @@ function App() {
           <span className="truncate">{allFiles.size} files loaded</span>
         </div>
       </main>
+      {/* </ContextMenuArea> */}
     </DndContext>
   );
 }

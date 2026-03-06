@@ -13,11 +13,7 @@ import { ChangesProvider } from "@/ui/hooks/useChanges";
 import { OnboardingModal } from "@/ui/components/modals/OnboardingModal";
 import { Toaster } from "react-hot-toast";
 import { AutoUpdaterProvider } from "@/ui/hooks/useAutoUpdater";
-import { invoke } from "@tauri-apps/api/core";
-import {
-  ContextMenuArea,
-  ContextMenuProvider,
-} from "@/ui/components/ContextMenu";
+
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import SaveBar from "@/ui/components/SaveBar";
 import { RenameProvider } from "@/ui/hooks/useRename";
@@ -28,6 +24,7 @@ import { CleanupModal } from "@/ui/components/modals/CleanupModal";
 import { TagEditorError } from "@/ui/components/modals/TagEditorError";
 import { CleanupProvider } from "./hooks/useCleanup";
 import { TagEditorErrorsProvider } from "./hooks/useTagEditorErrors";
+
 const query = queryString.parse(window.location.search);
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
@@ -51,18 +48,6 @@ function Root() {
 
   useHotkeys(
     [
-      {
-        combo: "mod+i",
-        handler: () => invoke("import_files", { fileType: "file" }),
-      },
-      {
-        combo: "mod+shift+i",
-        handler: () => invoke("import_files", { fileType: "folder" }),
-      },
-      {
-        combo: "mod+r",
-        handler: () => window.location.reload(),
-      },
       {
         combo: ["mod+f"],
         handler: () => {
@@ -121,107 +106,69 @@ function Root() {
   };
 
   return (
-    <ContextMenuArea
+    <div
       className="flex flex-col h-screen overflow-hidden"
-      asChild
-      items={[
-        {
-          type: "item",
-          label: "Undo",
-          shortcut: "mod+Z",
-          disabled: false,
-          onSelect: () => invoke("undo"),
-        },
-        {
-          type: "item",
-          label: "Redo",
-          shortcut: "mod+shift+Z",
-          disabled: false,
-          onSelect: () => invoke("redo"),
-        },
-        { type: "separator" },
-        {
-          type: "item",
-          label: "Import Files…",
-          shortcut: "mod+I",
-          onSelect: () => invoke("import_files", { fileType: "file" }),
-        },
-        {
-          type: "item",
-          label: "Import Folder…",
-          shortcut: "mod+shift+I",
-          onSelect: () => invoke("import_files", { fileType: "folder" }),
-        },
-        { type: "separator" },
-        {
-          type: "item",
-          label: "Refresh",
-          shortcut: "mod+R",
-          onSelect: () => window.location.reload(),
-        },
-      ]}
+      onContextMenu={(e) => {
+        e.preventDefault();
+      }}
     >
-      <div className="flex flex-col h-screen overflow-hidden">
-        <Titlebar />
-        <div
-          style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
-          className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
-        >
-          <App />
-          <TagEditorError />
-          <FindReplaceBar />
-          <SaveBar />
-          <RenameModal />
-          <CleanupModal />
-        </div>
-        {showOnboarding && (
-          <OnboardingModal
-            open={showOnboarding}
-            onClose={handleCloseOnboarding}
-          />
-        )}
+      <Titlebar />
+      <div
+        style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
+        className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
+      >
+        <App />
+        <TagEditorError />
+        <FindReplaceBar />
+        <SaveBar />
+        <RenameModal />
+        <CleanupModal />
       </div>
-    </ContextMenuArea>
+      {showOnboarding && (
+        <OnboardingModal
+          open={showOnboarding}
+          onClose={handleCloseOnboarding}
+        />
+      )}
+    </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary FallbackComponent={ErrorPage}>
-      <ContextMenuProvider>
-        <UserConfigProvider initialTheme={theme}>
-          <TagEditorErrorsProvider>
-            <ChangesProvider>
-              <AutoUpdaterProvider>
-                <CleanupProvider>
-                  <RenameProvider>
-                    <FindReplaceProvider>
-                      <SidebarWidthProvider>
-                        <Root />
-                        <Toaster
-                          position="top-right"
-                          containerStyle={{
-                            marginTop: "64px",
-                          }}
-                          toastOptions={{
-                            className:
-                              "!bg-background !text-foreground !border !border-border",
-                            style: {
-                              background: "var(--background)",
-                              color: "var(--foreground)",
-                              border: "1px solid var(--border)",
-                            },
-                          }}
-                        />
-                      </SidebarWidthProvider>
-                    </FindReplaceProvider>
-                  </RenameProvider>
-                </CleanupProvider>
-              </AutoUpdaterProvider>
-            </ChangesProvider>
-          </TagEditorErrorsProvider>
-        </UserConfigProvider>
-      </ContextMenuProvider>
+      <UserConfigProvider initialTheme={theme}>
+        <TagEditorErrorsProvider>
+          <ChangesProvider>
+            <AutoUpdaterProvider>
+              <CleanupProvider>
+                <RenameProvider>
+                  <FindReplaceProvider>
+                    <SidebarWidthProvider>
+                      <Root />
+                      <Toaster
+                        position="top-right"
+                        containerStyle={{
+                          marginTop: "64px",
+                        }}
+                        toastOptions={{
+                          className:
+                            "!bg-background !text-foreground !border !border-border",
+                          style: {
+                            background: "var(--background)",
+                            color: "var(--foreground)",
+                            border: "1px solid var(--border)",
+                          },
+                        }}
+                      />
+                    </SidebarWidthProvider>
+                  </FindReplaceProvider>
+                </RenameProvider>
+              </CleanupProvider>
+            </AutoUpdaterProvider>
+          </ChangesProvider>
+        </TagEditorErrorsProvider>
+      </UserConfigProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -1,17 +1,22 @@
 import { clsx, type ClassValue } from "clsx";
-import { path } from "@tauri-apps/api";
 
 import { twMerge } from "tailwind-merge";
-import { FileNode } from "../types";
 
 export function parseShortcut(shortcut: string) {
   shortcut = shortcut.replace(
     "mod",
     navigator.platform.includes("Mac") ? "⌘" : "Ctrl",
   );
+
   shortcut = shortcut.replace("cmd", "⌘");
   shortcut = shortcut.replace("ctrl", "Ctrl");
   shortcut = shortcut.replace("alt", "Alt");
+  shortcut = shortcut.replace("shift", "Shift");
+  return shortcut;
+}
+export function shortcutAccelerator(shortcut: string) {
+  shortcut = shortcut.replace("mod", "CmdOrCtrl");
+
   shortcut = shortcut.replace("shift", "Shift");
   return shortcut;
 }
