@@ -164,22 +164,16 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
   }, [selected, files, sidebar_items]);
 
   return (
-    <div className="py-2 px-4">
+    <div className="py-2 ">
       <div className="text-muted-foreground text-md flex flex-col capitalize px-6">
-        {disabled
-          ? "No file selected"
-          : bottombar && (
-              <div className="flex flex-row  truncate">
-                &gt;&nbsp;Editing&nbsp;
-              </div>
-            )}
+        {disabled && "No file selected"}
       </div>
-      <div className={`flex px-6`}>
+      <div className={`flex px-6 overflow-x-none`}>
         {defaultValues && (
           <div
             className={`${
               bottombar
-                ? "grid  px-6 grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6"
+                ? "grid  px-6 grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-5 gap-y-2"
                 : "flex flex-col gap-3 px-2"
             } w-full`}
           >
@@ -194,40 +188,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                   >
                     {item.label}
                     <div className="flex gap-2">
-                      {/* {multiFrameKeys.includes(item.value) ? (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            disabled={disabled || selected.length !== 1}
-                            onClick={() =>
-                              setListEditor({
-                                field: item.value,
-                                open: true,
-                              })
-                            }
-                          >
-                            Edit list
-                          </Button>
-                          {(() => {
-                            if (selected.length !== 1) return null;
-                            const f = files.find(
-                              (ff) => ff.path === selected[0],
-                            );
-                            const arr = f?.frames?.[item.value];
-                            const textCount = Array.isArray(arr)
-                              ? arr.filter((v: any) => v && v.type === "Text")
-                                  .length
-                              : 0;
-                            if (textCount > 0)
-                              return (
-                                <span className="text-[10px] px-1 rounded bg-muted text-foreground/70">
-                                  {textCount} items
-                                </span>
-                              );
-                            return null;
-                          })()}
-                        </div>
-                      ) : ( */}
                       <Input
                         placeholder={item.label}
                         disabled={disabled}
@@ -238,6 +198,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                         }}
                         value={(() => {
                           let df: string = "";
+                          if (disabled) return df;
                           if (selected.length > 0) {
                             if (
                               changes[item.value] &&
@@ -259,6 +220,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                           return df;
                         })()}
                         onChange={(e) => {
+                          if (disabled) return;
                           let v = changes[item.value];
                           if (!v) {
                             v = [];
@@ -280,12 +242,13 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                           <Button
                             variant="outline"
                             disabled={disabled}
-                            onClick={() =>
+                            onClick={() => {
+                              console.log("opened");
                               setListEditor({
                                 field: item.value,
                                 open: true,
-                              })
-                            }
+                              });
+                            }}
                           >
                             Edit list
                           </Button>

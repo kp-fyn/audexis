@@ -153,6 +153,12 @@ export function ChangesProvider({
       return prevSelected;
     });
   }, [files]);
+  useEffect(() => {
+    window.addEventListener("audexis:save-changes", saveChanges);
+    return () => {
+      window.removeEventListener("audexis:save-changes", saveChanges);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent): void => {
@@ -271,6 +277,7 @@ export function ChangesProvider({
   );
 
   async function saveChanges(): Promise<void> {
+    console.log({ changes });
     if (!changes) return;
     if (!selected || selected.length === 0) return;
 

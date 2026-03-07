@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { Event, listen } from "@tauri-apps/api/event";
+import { Event as TauriEvent, listen } from "@tauri-apps/api/event";
 import {
   AllTags,
   ExtendedFileNode,
@@ -44,10 +44,58 @@ import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
 import { path } from "@tauri-apps/api";
-import { shortcutAccelerator } from "./lib/utils";
-import { ContextMenuArea } from "./components/ContextMenu";
+
+import Bottombar from "./components/Bottombar";
+import { useBottombarHeight } from "./hooks/useBottombarHeight";
 
 function App() {
+  useHotkeys(
+    [
+      {
+        combo: ["mod+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } }),
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", {
+              detail: { mode: "replace" },
+            }),
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-next")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-prev")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-one")),
+        allowInInputs: true,
+      },
+
+      {
+        combo: ["mod+shift+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-all")),
+        allowInInputs: true,
+      },
+    ],
+    [],
+  );
+
   const {
     setSelected,
     selected,
@@ -72,7 +120,7 @@ function App() {
     setAllSidebarItems,
   } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
-
+  const { bottombarHeight } = useBottombarHeight();
   function normalizeFilesPayload(payload: any[]): Map<string, File> {
     const filesMap = new Map<string, File>();
     (payload || []).map((sf: any) => {
@@ -254,7 +302,7 @@ function App() {
   useEffect(() => {
     const unlisten = listen(
       "workspace-roots",
-      async (event: Event<ExtendedFileNode[]>) => {
+      async (event: TauriEvent<ExtendedFileNode[]>) => {
         console.log(event.payload);
 
         setFileTree(event.payload);
@@ -292,7 +340,7 @@ function App() {
   });
 
   useEffect(() => {
-    const unlisten = listen("workspace-updated", (event: Event<any[]>) => {
+    const unlisten = listen("workspace-updated", (event: TauriEvent<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
       if (config.view === "simple") {
         setFiles(Array.from(normalized.values()));
@@ -318,7 +366,7 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    const unlisten = listen("error", (event: Event<any[]>) => {
+    const unlisten = listen("error", (event: TauriEvent<any[]>) => {
       setErrors((prev) => [[...event.payload], ...prev]);
     });
 
@@ -442,7 +490,6 @@ function App() {
       </div>
     );
   }
-
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -507,9 +554,13 @@ function App() {
       <main
         style={{
           marginLeft: `${sidebarWidth}px`,
-          height: `calc(100% - calc(var(--spacing) * 6))`,
+
+          height:
+            config.view === "simple"
+              ? "100%"
+              : `calc(100% - ${bottombarHeight}px - 24px)`,
         }}
-        className="flex flex-col flex-1  w-full select-none"
+        className="flex flex-col  w-full select-none"
       >
         <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
           <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
@@ -567,12 +618,19 @@ function App() {
             </div>
           </div>
         </div>
-
-        <div className="fixed bottom-0 w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
-          <span className="truncate">{allFiles.size} files loaded</span>
-        </div>
       </main>
       {/* </ContextMenuArea> */}
+      <div
+        style={{
+          bottom: config.view === "simple" ? "0" : `${bottombarHeight}px`,
+
+          marginLeft: `${sidebarWidth}px`,
+        }}
+        className="fixed w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
+      >
+        <span className="truncate">{allFiles.size} files loaded</span>
+      </div>
+      <Bottombar left={sidebarWidth} />
     </DndContext>
   );
 }
