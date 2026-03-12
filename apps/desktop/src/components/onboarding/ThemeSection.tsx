@@ -27,9 +27,7 @@ export function ThemeSection({ theme, onThemeChange }: ThemeSectionProps) {
               <div className="text-[11px] font-medium tracking-wide uppercase text-foreground/60 mb-2">
                 {opt} theme
               </div>
-              <div className="h-20 rounded bg-gradient-to-br from-background/70 to-background/40 border border-border flex items-center justify-center text-[10px] text-foreground/50">
-                Preview
-              </div>
+
               {theme === opt && (
                 <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-inner" />
               )}

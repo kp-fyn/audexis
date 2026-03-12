@@ -1,8 +1,11 @@
 use crate::commands::import_paths::import_paths;
+use crate::config::user::ViewMode;
 use std::path::MAIN_SEPARATOR_STR;
 // use crate::tag_manager::utils::SerializableFile;
-use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
-use crate::tag_manager::utils::{File, FrameKey, TagValue};
+use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend};
+use crate::tag_manager::utils::{
+    File, FrameKey, SerializableFile, TagValue, UserTextEntry, UserUrlEntry,
+};
 
 use crate::AppState;
 
@@ -100,80 +103,99 @@ pub fn handle_import_files(
     paths: Vec<PathBuf>,
     state: State<'_, AppState>,
 ) {
-    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
-    println!("importing files: {:?}", paths.clone().len());
-
-    thread::spawn(move || {
-        println!("import thread started");
-
-        let folder = paths.get(0);
-        // print!("importing folder: {:?}", folder);
-        if folder.is_none() {
-            return;
+    let mut errs: Vec<BackendError> = vec![];
+    if state.view_mode == ViewMode::Simple {
+        {
+            let mut ws = state.workspace.lock().unwrap();
+            for path in paths {
+                let r = ws.import(PathBuf::from(path));
+                if let Err(e) = r {
+                    println!("error importing file: {:?}", e);
+                    errs.push(e);
+                }
+            }
         }
-        let mut conn = match db.lock() {
-            Ok(c) => c,
-            Err(poisoned) => poisoned.into_inner(),
+
+        let serializable_files: Vec<SerializableFile> = {
+            let ws = state.workspace.lock().unwrap();
+            ws.files
+                .clone()
+                .into_iter()
+                .map(SerializableFile::from)
+                .collect()
         };
 
-        let folder = folder.unwrap().clone();
-        let folder_path = folder.clone().to_string_lossy().to_string();
-        match check_import_conflicts(&conn, &folder_path) {
-            ImportConflict::ParentExists => {
-                println!("parent folder already imported");
-                drop(conn);
+        if !errs.is_empty() {
+            app_handle.emit("error", errs).unwrap();
+        }
+
+        app_handle
+            .emit("workspace-updated", serializable_files)
+            .unwrap();
+
+        if let Ok(mut watcher) = state.file_watcher.lock() {
+            let _ = watcher.watch_workspace();
+        }
+    } else {
+        let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+        println!("importing files: {:?}", paths.clone().len());
+
+        thread::spawn(move || {
+            println!("import thread started");
+
+            let folder = paths.get(0);
+            // print!("importing folder: {:?}", folder);
+            if folder.is_none() {
                 return;
             }
-            ImportConflict::ChildrenExist(children) => {
-                remove_child_roots(&mut conn, &children).ok();
-                add_import_root(&conn, &folder_path).ok();
+            let mut conn = match db.lock() {
+                Ok(c) => c,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+
+            let folder = folder.unwrap().clone();
+            let folder_path = folder.clone().to_string_lossy().to_string();
+            match check_import_conflicts(&conn, &folder_path) {
+                ImportConflict::ParentExists => {
+                    println!("parent folder already imported");
+                    drop(conn);
+                    return;
+                }
+                ImportConflict::ChildrenExist(children) => {
+                    remove_child_roots(&mut conn, &children).ok();
+                    add_import_root(&conn, &folder_path).ok();
+                }
+                ImportConflict::Exact => {
+                    update_root_scan_time(&conn, &folder_path).ok();
+                }
+                ImportConflict::NotFolder => {
+                    println!("not a folder");
+                    drop(conn);
+                    return;
+                }
+                ImportConflict::None => {
+                    add_import_root(&conn, &folder_path).ok();
+                }
             }
-            ImportConflict::Exact => {
-                update_root_scan_time(&conn, &folder_path).ok();
+
+            let scanned_files = read_folder(folder);
+            if let Err(e) = app_handle.emit("scanned-files", scanned_files.clone()) {
+                println!("emit failed: {:?}", e);
             }
-            ImportConflict::NotFolder => {
-                println!("not a folder");
-                drop(conn);
-                return;
+
+            let (new_files, _existing_files) = check_files_against_db(&conn, scanned_files);
+
+            if let Err(e) = insert_pending_files(&mut conn, new_files) {
+                println!("insert_pending_files failed: {:?}", e);
             }
-            ImportConflict::None => {
-                add_import_root(&conn, &folder_path).ok();
-            }
+            drop(conn);
+        });
+
+        println!("import thread spawned");
+
+        if let Ok(mut watcher) = state.file_watcher.lock() {
+            let _ = watcher.watch_workspace();
         }
-
-        let scanned_files = read_folder(folder);
-        if let Err(e) = app_handle.emit("scanned-files", scanned_files.clone()) {
-            println!("emit failed: {:?}", e);
-        }
-
-        let (new_files, _existing_files) = check_files_against_db(&conn, scanned_files);
-
-        if let Err(e) = insert_pending_files(&mut conn, new_files) {
-            println!("insert_pending_files failed: {:?}", e);
-        }
-        drop(conn);
-    });
-
-    println!("import thread spawned");
-
-    // let serializable_files: Vec<SerializableFile> = {
-    //     let ws = state.workspace.lock().unwrap();
-    //     ws.files
-    //         .clone()
-    //         .into_iter()
-    //         .map(SerializableFile::from)
-    //         .collect()
-    // };
-    // if errs.len() > 0 {
-    //     println!("import errors: {:?}", errs);
-    //     // app_handle.emit("error", errs).unwrap();
-    // }
-    // app_handle
-    //     .emit("workspace-updated", serializable_files)
-    //     .unwrap();
-
-    if let Ok(mut watcher) = state.file_watcher.lock() {
-        let _ = watcher.watch_workspace();
     }
 }
 pub fn is_supported_file(path: &PathBuf) -> bool {
@@ -631,7 +653,11 @@ fn update_metadata_in_db(
         for tag_value in tag_values {
             match tag_value {
                 TagValue::Text(text) => {
-                    println!("Inserting tag: {} -> text", frame_key);
+                    if text.is_empty() {
+                        continue;
+                    }
+                    println!("Inserting tag: {} -> text: {}", frame_key, text);
+
                     conn.execute(
                         "INSERT INTO tag_text (file_path, key, value) VALUES (?1, ?2, ?3)",
                         params![file_path, frame_key.to_string(), text],
@@ -640,39 +666,39 @@ fn update_metadata_in_db(
                 TagValue::Picture {
                     mime,
                     data,
-                    picture_type: _,
+                    picture_type,
                     description: _,
                 } => {
                     println!("Inserting tag: {} -> picture", frame_key);
                     conn.execute(
-                        "INSERT INTO tag_pictures (file_path, key, mime_type, data) VALUES (?1, ?2, ?3, ?4)",
-                        params![file_path, frame_key.to_string(), mime, data],
+                        "INSERT INTO tag_pictures (file_path, key, mime_type, data, picture_type) VALUES (?1, ?2, ?3, ?4, ?5)",
+                        params![file_path, frame_key.to_string(), mime, data, picture_type.unwrap_or(3)],
                     )?;
                 }
                 TagValue::UserText(ut) => {
                     println!("Inserting tag: {} -> user text", frame_key);
                     conn.execute(
-                        "INSERT INTO tag_user_text (file_path, key, value) VALUES (?1, ?2, ?3)",
-                        params![file_path, frame_key.to_string(), ut.value],
+                        "INSERT INTO tag_user_text (file_path, key, value, description) VALUES (?1, ?2, ?3, ?4)",
+                        params![file_path, frame_key.to_string(), ut.value, ut.description],
                     )?;
                 }
                 TagValue::UserUrl(uu) => {
                     println!("Inserting tag: {} -> user url", frame_key);
                     conn.execute(
-                        "INSERT INTO tag_user_url (file_path, key, url) VALUES (?1, ?2, ?3)",
-                        params![file_path, frame_key.to_string(), uu.url],
+                        "INSERT INTO tag_user_url (file_path, key, url, description) VALUES (?1, ?2, ?3, ?4)",
+                        params![file_path, frame_key.to_string(), uu.url, uu.description],
                     )?;
                 }
 
                 TagValue::Comment {
                     text,
-                    encoding: _,
-                    language: _,
-                    description: _,
+                    encoding,
+                    language,
+                    description,
                 } => {
                     conn.execute(
-                        "INSERT INTO tag_comment (file_path, key, comment) VALUES (?1, ?2, ?3)",
-                        params![file_path, frame_key.to_string(), text],
+                        "INSERT INTO tag_comment (file_path, key, text, endcoding, language, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                        params![file_path, frame_key.to_string(), text, encoding, language, description],
                     )?;
                 }
             }
@@ -699,65 +725,151 @@ fn detected_tags_in_db(
         let key: String = row.get(0)?;
         let value: String = row.get(1)?;
         Ok((key, value))
-    })?;
-    let mut picture_stmt =
-        conn.prepare("SELECT key, mime_type, data FROM tag_pictures WHERE file_path = ?1")?;
+    });
+
+    let mut picture_stmt = conn.prepare(
+        "SELECT key, mime_type, data, picture_type, description FROM tag_pictures WHERE file_path = ?1",
+    )?;
     let tag_pics = picture_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0)?;
-        let mime_type: String = row.get(1)?;
-        let data: Vec<u8> = row.get(2)?;
-        Ok((key, mime_type, data))
-    })?;
+        let key: String = row.get(0).unwrap_or_default();
+        let mime_type: String = row.get(1).unwrap_or_default();
+        let data: Vec<u8> = row.get(2).unwrap_or_default();
+        let picture_type: u8 = row.get(3).unwrap_or(3);
+        let description: String = row.get(4).unwrap_or_default();
+        Ok((key, mime_type, data, picture_type, description))
+    });
     let mut user_text_stmt =
-        conn.prepare("SELECT key, value FROM tag_user_text WHERE file_path = ?1")?;
+        conn.prepare("SELECT key, value, description FROM tag_user_text WHERE file_path = ?1")?;
     let tag_user_texts = user_text_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0)?;
-        let value: String = row.get(1)?;
-        Ok((key, value))
-    })?;
+        let key: String = row.get(0).unwrap_or_default();
+        let value: String = row.get(1).unwrap_or_default();
+        let description: String = row.get(2).unwrap_or_default();
+        Ok((key, value, description))
+    });
     let mut user_url_stmt =
-        conn.prepare("SELECT key, url FROM tag_user_url WHERE file_path = ?1")?;
+        conn.prepare("SELECT key, url, description FROM tag_user_url WHERE file_path = ?1")?;
     let tag_user_urls = user_url_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0)?;
-        let url: String = row.get(1)?;
-        Ok((key, url))
-    })?;
+        let key: String = row.get(0).unwrap_or(String::new());
+        let url: String = row.get(1).unwrap_or(String::new());
+        let description: String = row.get(1).unwrap_or(String::new());
+        Ok((key, url, description))
+    });
     let mut comment_stmt = conn.prepare(
-        "SELECT key, comment FROM tag_comment WHERE file_path
+        "SELECT key, text, encoding, language, description FROM tag_comment WHERE file_path
     = ?1",
     )?;
     let tag_comments = comment_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0)?;
-        let comment: String = row.get(1)?;
-        Ok((key, comment))
-    })?;
+        let key: String = row.get(0).unwrap_or_default();
+        let text: String = row.get(1).unwrap_or_default();
+        let encoding: String = row.get(2).unwrap_or_default();
+        let language: String = row.get(3).unwrap_or_default();
+        let description: String = row.get(4).unwrap_or_default();
+
+        Ok((key, text, encoding, language, description))
+    });
     let mut tags: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
-    for tag in tag_txt {
-        let (key, value) = tag?;
-        let frame_key = FrameKey::from_str(&key);
-        if frame_key.is_none() {
-            continue;
+    if tag_txt.is_ok() {
+        let tag_txt = tag_txt.unwrap();
+
+        for tag in tag_txt {
+            if tag.is_err() {
+                continue;
+            }
+            let tag = tag.unwrap();
+            let (key, value) = tag;
+            let frame_key = FrameKey::from_str(&key);
+            if frame_key.is_none() {
+                continue;
+            }
+            let frame_key = frame_key.unwrap();
+            tags.entry(frame_key.clone())
+                .or_insert_with(Vec::new)
+                .push(TagValue::Text(value.clone()));
         }
-        let frame_key = frame_key.unwrap();
-        tags.entry(frame_key.clone())
-            .or_insert_with(Vec::new)
-            .push(TagValue::Text(value.clone()));
     }
-    for tag in tag_pics {
-        let (key, mime_type, data) = tag?;
-        let frame_key = FrameKey::from_str(&key);
-        if frame_key.is_none() {
-            continue;
+    if tag_pics.is_ok() {
+        let tag_pics = tag_pics.unwrap();
+        for tag in tag_pics {
+            if tag.is_err() {
+                continue;
+            }
+            let (key, mime_type, data, picture_type, description) = tag.unwrap();
+            if key.is_empty() || mime_type.is_empty() || data.is_empty() {
+                continue;
+            }
+            let frame_key = FrameKey::from_str(&key);
+            if frame_key.is_none() {
+                continue;
+            }
+            let frame_key = frame_key.unwrap();
+            tags.entry(frame_key.clone())
+                .or_insert_with(Vec::new)
+                .push(TagValue::Picture {
+                    mime: mime_type.clone(),
+                    data: data.clone(),
+                    picture_type: Some(picture_type.clone()),
+                    description: Some(description.clone()),
+                });
         }
-        let frame_key = frame_key.unwrap();
-        tags.entry(frame_key.clone())
-            .or_insert_with(Vec::new)
-            .push(TagValue::Picture {
-                mime: mime_type.clone(),
-                data: data.clone(),
-                picture_type: None,
-                description: None,
-            });
+    }
+    if tag_user_texts.is_ok() {
+        let tag_user_texts = tag_user_texts.unwrap();
+        for tag in tag_user_texts {
+            if tag.is_err() {
+                continue;
+            }
+            let (key, value, description) = tag.unwrap();
+
+            let frame_key = FrameKey::from_str(&key);
+            if frame_key.is_none() {
+                continue;
+            }
+            let frame_key = frame_key.unwrap();
+            tags.entry(frame_key.clone())
+                .or_insert_with(Vec::new)
+                .push(TagValue::UserText(UserTextEntry { description, value }))
+        }
+    }
+    if tag_user_urls.is_ok() {
+        let tag_user_urls = tag_user_urls.unwrap();
+        for tag in tag_user_urls {
+            if tag.is_err() {
+                continue;
+            }
+            let (key, url, description) = tag.unwrap();
+
+            let frame_key = FrameKey::from_str(&key);
+            if frame_key.is_none() {
+                continue;
+            }
+            let frame_key = frame_key.unwrap();
+            tags.entry(frame_key.clone())
+                .or_insert_with(Vec::new)
+                .push(TagValue::UserUrl(UserUrlEntry { description, url }))
+        }
+    }
+    if tag_comments.is_ok() {
+        let tag_comments = tag_comments.unwrap();
+        for tag in tag_comments {
+            if tag.is_err() {
+                continue;
+            }
+            let (key, text, encoding, language, description) = tag.unwrap();
+
+            let frame_key = FrameKey::from_str(&key);
+            if frame_key.is_none() {
+                continue;
+            }
+            let frame_key = frame_key.unwrap();
+            tags.entry(frame_key.clone())
+                .or_insert_with(Vec::new)
+                .push(TagValue::Comment {
+                    encoding,
+                    text,
+                    language,
+                    description,
+                })
+        }
     }
 
     Ok(tags)

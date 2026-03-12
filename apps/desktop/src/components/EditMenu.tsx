@@ -42,6 +42,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
       return file;
     });
+    console.log({ sf });
 
     // console.log(sf);
     const sfs = sf
@@ -65,7 +66,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           map[key] = value[0];
         }
       });
-      console.log({ map });
 
       setDefaultValues(map);
 
@@ -91,7 +91,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           | undefined;
         if (!img) return;
         if (!img.value) return;
-
+        console.log({ img });
         setPictures([img]);
         setImage(img);
       } else {
@@ -263,8 +263,8 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         )}
       </div>
 
-      {!bottombar && (
-        <>
+      <>
+        {!bottombar ? (
           <img
             src={(() => {
               if (image) {
@@ -279,7 +279,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               }
               return Img;
             })()}
-            onClick={async () => {
+            onClick={() => {
               const selectedFormats = selected
                 .map((fp) => files.find((f) => f.path === fp))
                 .filter(Boolean)
@@ -299,96 +299,118 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             }}
             className="w-full aspect-square self-center justify-self-center mt-4"
           ></img>
-          <ImageManagerModal
-            open={artworkOpen}
-            onClose={() => setArtworkOpen(false)}
-            pictures={pictures}
-            onChange={(nextList) => {
-              if (nextList.length === 0) {
-                setImage(null);
-                setPictures([]);
-                invoke("save_frame_changes", {
-                  frameChanges: {
-                    paths: selected,
-                    frames: [
-                      {
-                        key: "attachedPicture",
-                        values: [],
-                      },
-                    ],
-                  },
-                })
-                  .then(() => toast.success("Artwork removed"))
-                  .catch((e) =>
-                    toast.error(`Failed to save artwork: ${String(e)}`),
-                  );
+        ) : (
+          <Button
+            className="ml-12 mt-5"
+            onClick={() => {
+              const selectedFormats = selected
+                .map((fp) => files.find((f) => f.path === fp))
+                .filter(Boolean)
+                .map((f) => (f as any).tag_format as string);
+              const anyV1 = selectedFormats.some(
+                (fmt) =>
+                  typeof fmt === "string" &&
+                  fmt.toLowerCase().startsWith("id3v1"),
+              );
+              if (anyV1) {
+                toast.error(
+                  "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images.",
+                );
                 return;
               }
-              setPictures(nextList);
-              setImage(nextList[0]);
+              setArtworkOpen(true);
+            }}
+          >
+            Edit Artwork
+          </Button>
+        )}
+        <ImageManagerModal
+          open={artworkOpen}
+          onClose={() => setArtworkOpen(false)}
+          pictures={pictures}
+          onChange={(nextList) => {
+            if (nextList.length === 0) {
+              setImage(null);
+              setPictures([]);
               invoke("save_frame_changes", {
                 frameChanges: {
                   paths: selected,
                   frames: [
                     {
                       key: "attachedPicture",
-                      values: nextList,
+                      values: [],
                     },
                   ],
                 },
               })
-                .then(() => toast.success("Artwork updated"))
+                .then(() => toast.success("Artwork removed"))
                 .catch((e) =>
                   toast.error(`Failed to save artwork: ${String(e)}`),
                 );
-            }}
-          />
-          <ValueListEditor
-            open={listEditor.open}
-            title={
-              listEditor.field ? `Edit ${listEditor.field}` : "Edit Values"
+              return;
             }
-            values={(() => {
-              if (!listEditor.open || selected.length !== 1) return [];
-              const f = files.find((ff) => ff.path === selected[0]);
-              if (!f || !f.frames) return [];
-              const key = listEditor.field;
-              if (!key) return [];
-              const arr = (f.frames as any)[key] as Array<any> | undefined;
-              if (!Array.isArray(arr)) return [];
-              return arr
-                .filter(
-                  (v) => v && v.type === "Text" && typeof v.value === "string",
-                )
-                .map((v) => v.value as string);
-            })()}
-            onClose={() => setListEditor({ field: null, open: false })}
-            onSave={(vals) => {
-              if (!listEditor.field) return;
+            setPictures(nextList);
+            setImage(nextList[0]);
+            invoke("save_frame_changes", {
+              frameChanges: {
+                paths: selected,
+                frames: [
+                  {
+                    key: "attachedPicture",
+                    values: nextList,
+                  },
+                ],
+              },
+            })
+              .then(() => toast.success("Artwork updated"))
+              .catch((e) =>
+                toast.error(`Failed to save artwork: ${String(e)}`),
+              );
+          }}
+        />
+        <ValueListEditor
+          open={listEditor.open}
+          title={listEditor.field ? `Edit ${listEditor.field}` : "Edit Values"}
+          values={(() => {
+            if (!listEditor.open || selected.length !== 1) return [];
+            const f = files.find((ff) => ff.path === selected[0]);
+            if (!f || !f.frames) return [];
+            const key = listEditor.field;
+            if (!key) return [];
+            const arr = (f.frames as any)[key] as Array<any> | undefined;
+            if (!Array.isArray(arr)) return [];
+            return arr
+              .filter(
+                (v) => v && v.type === "Text" && typeof v.value === "string",
+              )
+              .map((v) => v.value as string);
+          })()}
+          onClose={() => setListEditor({ field: null, open: false })}
+          onSave={(vals) => {
+            if (!listEditor.field) return;
 
-              invoke("save_frame_changes", {
-                frameChanges: {
-                  paths: selected,
-                  frames: [
-                    {
-                      key: listEditor.field,
-                      values: vals
-                        .map((s) => s.trim())
-                        .filter((s) => s.length > 0)
-                        .map((s) => ({ type: "Text", value: s })),
-                    },
-                  ],
-                },
+            invoke("save_frame_changes", {
+              frameChanges: {
+                paths: selected,
+                frames: [
+                  {
+                    key: listEditor.field,
+                    values: vals
+                      .map((s) => s.trim())
+                      .filter((s) => s.length > 0)
+                      .map((s) => ({ type: "Text", value: s })),
+                  },
+                ],
+              },
+            })
+              .then(() => {
+                toast.success("Saved");
+                setListEditor({ field: null, open: false });
               })
-                .then(() => {
-                  toast.success("Saved");
-                  setListEditor({ field: null, open: false });
-                })
-                .catch((e) => toast.error(`Failed to save: ${String(e)}`));
-            }}
-          />
-        </>
-      )}
+              .catch((e) => toast.error(`Failed to save: ${String(e)}`));
+          }}
+        />
+      </>
     </div>
   );
 }

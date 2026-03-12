@@ -6,8 +6,8 @@ interface AppearanceSectionProps {
   theme: "light" | "dark";
   density: "compact" | "default" | "comfort";
   onThemeChange: (theme: "light" | "dark") => void;
-  view: "file" | "simple";
-  setView: (view: "folder" | "simple") => void;
+  view: "folder" | "simple";
+  onViewChange: (view: "folder" | "simple") => void;
   onDensityChange: (density: "compact" | "default" | "comfort") => void;
 }
 
@@ -16,8 +16,9 @@ export function AppearanceSection({
   density,
   onThemeChange,
   onDensityChange,
+
   view,
-  setView,
+  onViewChange,
 }: AppearanceSectionProps) {
   console.log({ view });
   return (
@@ -67,7 +68,7 @@ export function AppearanceSection({
               <button
                 key={value}
                 type="button"
-                onClick={() => setView(value)}
+                onClick={() => onViewChange(value)}
                 className={`flex-1 text-[10px] py-1 rounded border transition-colors ${
                   view.toLowerCase() === value
                     ? "border-primary bg-primary/20 text-foreground"

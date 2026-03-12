@@ -51,6 +51,7 @@ export function ImageManagerModal({
   const current = items[index];
 
   const currentTypeId = current?.picture_type ?? types[index] ?? 3;
+  console.log({ currentTypeId });
   const currentTypeName =
     PICTURE_TYPES.find((t) => t.id === currentTypeId)?.name || "Front Cover";
   const typeOptions = useMemo(
@@ -142,7 +143,10 @@ export function ImageManagerModal({
               <Select
                 disabled={!current}
                 value={currentTypeId.toString()}
-                onChange={(v) => updateType(Number(v))}
+                onChange={(v) => {
+                  if (!current) return;
+                  updateType(Number(v));
+                }}
                 placeholder="Select type"
                 options={typeOptions}
                 contentClassName="z-[100000001] border border-border bg-background/95 backdrop-blur-sm shadow-lg"
@@ -241,7 +245,7 @@ export function ImageManagerModal({
             )}
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={addImage}>
+            <Button className="flex-1" disabled={!current} onClick={addImage}>
               Add image
             </Button>
             <Button

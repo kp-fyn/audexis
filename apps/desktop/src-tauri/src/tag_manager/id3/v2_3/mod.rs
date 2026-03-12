@@ -195,6 +195,7 @@ impl TagFormat for V2_3 {
                         continue;
                     }
                     let picture_type = content[picture_type_index];
+                    println!("pic type: {:?}", &picture_type.to_string());
                     let description_start = picture_type_index + 1;
                     let description_end = content[description_start..]
                         .iter()

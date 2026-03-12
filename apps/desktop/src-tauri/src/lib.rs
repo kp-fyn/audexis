@@ -8,7 +8,7 @@ mod tag_manager;
 mod utils;
 mod workspace;
 
-use crate::config::user::{load_config, Theme, CONFIG_FILE};
+use crate::config::user::{load_config, Theme, ViewMode, CONFIG_FILE};
 use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
@@ -24,6 +24,7 @@ pub struct AppState {
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
     pub conn: Arc<Mutex<Connection>>,
+    pub view_mode: ViewMode,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct FileNode {
@@ -50,12 +51,18 @@ pub fn run() {
                 Theme::Light => "light",
                 Theme::Dark => "dark",
             };
+            let view = match user_config.view {
+                ViewMode::Folder => "folder",
+                ViewMode::Simple => "simple",
+            };
             let onboarding = user_config.onboarding;
+
             app.manage(AppState {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
                 conn: Arc::new(Mutex::new(conn)),
+                view_mode: user_config.view,
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
@@ -66,9 +73,10 @@ pub fn run() {
                 "main",
                 WebviewUrl::App(
                     format!(
-                        "index.html?theme={}&onboarding={}",
+                        "index.html?theme={}&onboarding={}&view={}",
                         theme,
-                        onboarding.to_string()
+                        onboarding.to_string(),
+                        view
                     )
                     .into(),
                 ),

@@ -47,7 +47,10 @@ import { path } from "@tauri-apps/api";
 
 import Bottombar from "./components/Bottombar";
 import { useBottombarHeight } from "./hooks/useBottombarHeight";
+const params = new URLSearchParams(window.location.href);
 
+let viewMode = params.get("view") ?? "simple";
+if (viewMode != "folder" && viewMode != "simple") viewMode = "simple";
 function App() {
   useHotkeys(
     [
@@ -300,6 +303,7 @@ function App() {
     columns.map((c) => c.id ?? ""),
   );
   useEffect(() => {
+    invoke("get_workspace_root").catch(() => {});
     const unlisten = listen(
       "workspace-roots",
       async (event: TauriEvent<ExtendedFileNode[]>) => {
@@ -311,7 +315,7 @@ function App() {
     return () => {
       unlisten.then((f) => f());
     };
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     setColumnOrder(config.columns.map((c) => c.value));
@@ -342,8 +346,10 @@ function App() {
   useEffect(() => {
     const unlisten = listen("workspace-updated", (event: TauriEvent<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
-      if (config.view === "simple") {
+      console.log({ viewMode });
+      if (viewMode === "simple") {
         setFiles(Array.from(normalized.values()));
+        console.log("setfiles");
       }
       setAllFiles(
         (prev) =>
@@ -364,7 +370,7 @@ function App() {
     return () => {
       unlisten.then((f) => f());
     };
-  }, []);
+  }, [config]);
   useEffect(() => {
     const unlisten = listen("error", (event: TauriEvent<any[]>) => {
       setErrors((prev) => [[...event.payload], ...prev]);
@@ -420,7 +426,7 @@ function App() {
         setAllSidebarItems(items as SidebarItem[]);
       });
       invoke("get_workspace_root").catch(() => {});
-    }, 500);
+    }, 1000);
   }, []);
 
   useHotkeys(
@@ -630,7 +636,7 @@ function App() {
       >
         <span className="truncate">{allFiles.size} files loaded</span>
       </div>
-      <Bottombar left={sidebarWidth} />
+      {config.view !== "simple" && <Bottombar left={sidebarWidth} />}
     </DndContext>
   );
 }

@@ -34,7 +34,10 @@ theme = theme.toString().toLowerCase();
 if (theme !== "light" && theme !== "dark") theme = "light";
 document.documentElement.setAttribute("data-theme", theme);
 
-const params = new URLSearchParams(window.location.search);
+const params = new URLSearchParams(window.location.href);
+
+const viewMode = params.get("view") ?? "simple";
+
 if (params.get("theme") !== theme) {
   params.set("theme", theme);
   const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -91,7 +94,7 @@ function Root() {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary FallbackComponent={ErrorPage}>
-      <UserConfigProvider initialTheme={theme}>
+      <UserConfigProvider initialView={viewMode} initialTheme={theme}>
         <TagEditorErrorsProvider>
           <ChangesProvider>
             <AutoUpdaterProvider>

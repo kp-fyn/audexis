@@ -323,7 +323,7 @@ function FiletreeNode({
   loadedFileTree: ExtendedFileNode[];
 }): ReactNode {
   const [expanded, setExpanded] = useState(false);
-  const { selected } = useChanges();
+  const { selected, setSelected } = useChanges();
   const [isSelected, setIsSelected] = useState(false);
   useEffect(() => {
     if (selected.findIndex((ch) => ch === node.path) !== -1) {
@@ -342,7 +342,7 @@ function FiletreeNode({
           {
             folderPath: node.path,
           },
-        );
+        ).catch(() => []);
 
         setFilesToShow(
           loaded.filter((child) => !child.is_directory).map((f) => f.path),
@@ -403,9 +403,55 @@ function FiletreeNode({
       }
       if (!fromChild) setExpanded((prev) => !prev);
     } else {
-      console.log("File clicked:", node.path);
+      const parentPath = await path.dirname(node.path);
+      const parentPathName = await path.basename(parentPath);
+      const realNode = loadedFileTree.find((n) => n.path === parentPath);
+
+      if (!expanded && typeof realNode === "undefined") {
+        const loaded: FileNode[] = await invoke<FileNode[]>(
+          "get_folder_children",
+          {
+            folderPath: parentPath,
+          },
+        ).catch(() => []);
+
+        setFilesToShow(
+          loaded.filter((child) => !child.is_directory).map((f) => f.path),
+        );
+        updateFileTree({
+          path: parentPath,
+          name: parentPathName,
+          children: loaded,
+        });
+        // const arr: File[] = [];
+        // const filesNeeded = loaded
+        //   ? loaded.filter((child) => !child.is_directory)
+        //   : [];
+
+        // filesNeeded.forEach((file) => {
+        //   console.log({ allFiles });
+        //   const f = allFiles.get(file.path.toString());
+        //   console.log({ f });
+        //   if (f) {
+        //     arr.push(f);
+        //   }
+        // });
+
+        // setFiles(arr);
+      } else if (!expanded || fromChild === true) {
+        // const arr: File[] = [];
+        if (!realNode) return;
+        if (!realNode.children) return;
+        setFilesToShow(
+          realNode.children
+            .filter((child) => !child.is_directory)
+            .map((f) => f.path),
+        );
+      }
+      setSelected((sel) => [node.path]);
     }
   }
+  useEffect(() => {}, []);
 
   const stickyTop = `${depth * 1.25}rem`;
   const zIndex = 500 - depth;
@@ -472,7 +518,7 @@ function FiletreeNode({
         ]}
       >
         <div
-          className={`flex gap-2 ${isSelected ? "bg-primary/15 " : "hover:bg-hover hover:text-hover-foreground bg-background"}  items-center w-full text-nowrap text-muted-foreground text-xs truncate py-1 sticky cursor-pointer`}
+          className={`flex gap-2 ${isSelected ? "bg-primary/15 " : "hover:bg-hover hover:text-hover-foreground bg-background"}  items-center w-full text-nowrap text-muted-foreground text-xs truncate py-1 sticky `}
           style={{
             top: stickyTop,
             zIndex: zIndex,

@@ -14,11 +14,16 @@ import { Event, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { ChangelogModal } from "../components/modals/ChangelogModal";
 
+const params = new URLSearchParams(window.location.href);
+
+let viewMode = params.get("view") ?? "simple";
+if (viewMode != "folder" && viewMode != "simple") viewMode = "simple";
+console.log({ viewMode });
 const UserConfigContext = createContext<Config>({
   config: {
     theme: "light",
     onboarding: false,
-    view: "folder",
+    view: viewMode as "folder" | "simple",
     columns: [],
     albums: [],
     density: "default",
@@ -68,16 +73,18 @@ export function useUserConfig(): Config {
 export function UserConfigProvider({
   children,
   initialTheme,
+  initialView,
 }: {
   children: ReactNode;
   initialTheme: string;
+  initialView: string;
 }): ReactNode {
   const [hasOpened, setHasOpened] = useState(false);
   const [changelogModalOpen, setChangelogModalOpen] = useState(false);
   const [userConfig, setUserConfig] = useState<UserConfig>({
     theme: initialTheme ? (initialTheme as "light" | "dark") : "light",
     onboarding: false,
-    view: "folder",
+    view: viewMode,
     columns: [],
     albums: [],
     density: "default",
@@ -158,6 +165,11 @@ export function UserConfigProvider({
 
         setView: (view: "simple" | "folder") => {
           setUserConfig({ ...userConfig, view });
+          invoke("update_user_config", {
+            patch: {
+              view: view.charAt(0).toUpperCase() + view.slice(1),
+            },
+          });
         },
         setSidebarItems: (items: SidebarItem[]) => {
           setUserConfig((prev) => {

@@ -179,6 +179,7 @@ impl TagFormat for V2_4 {
                         break;
                     }
                     let picture_type = content[pic_type_index];
+
                     let description_start = pic_type_index + 1;
                     let description_end = content[description_start..]
                         .iter()
