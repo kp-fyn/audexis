@@ -27,9 +27,7 @@ export function ViewSection({ view, onViewChange }: ViewSectionProps) {
               <div className="text-[11px] font-medium tracking-wide uppercase text-foreground/60 mb-2">
                 {opt === "folder" ? "Folder view" : "Simple list"}
               </div>
-              <div className="h-20 rounded bg-muted/15 border border-border flex items-center justify-center text-[10px] text-foreground/50">
-                Mock Layout
-              </div>
+
               {view === opt && (
                 <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary" />
               )}
@@ -37,7 +35,7 @@ export function ViewSection({ view, onViewChange }: ViewSectionProps) {
           ))}
         </div>
         <p className="text-[11px] text-foreground/50">
-          Folder view groups by directory; simple lists everything flat.
+          Folder view is recommended for organized music libraries.
         </p>
       </div>
     </section>

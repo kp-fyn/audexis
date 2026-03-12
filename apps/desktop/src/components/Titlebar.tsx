@@ -18,8 +18,10 @@ import { MaximizeIcon } from "./icons/maximize";
 import { MinimizeIcon } from "./icons/minimize";
 import { CloseIcon } from "./icons/close";
 import { parseShortcut } from "../lib/utils";
+import { useUserConfig } from "../hooks/useUserConfig";
 
 export default function Titlebar() {
+  const { config } = useUserConfig();
   const [hover, setHover] = useState<boolean>(false);
   const [isWindowFocused, setIsWindowFocused] = useState<boolean>(true);
   const [isWindowFullscreen, setIsWindowFullscreen] = useState<boolean>(false);
@@ -174,15 +176,17 @@ export default function Titlebar() {
                 <Button>Import...</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  onClick={() => {
-                    invoke("import_files", { fileType: "file" }).catch((err) =>
-                      toast.error(`Failed to import files: ${err}`),
-                    );
-                  }}
-                >
-                  Import Files
-                </DropdownMenuItem>
+                {config.view !== "folder" && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      invoke("import_files", { fileType: "file" }).catch(
+                        (err) => toast.error(`Failed to import files: ${err}`),
+                      );
+                    }}
+                  >
+                    Import Files
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => {
                     invoke("import_files", { fileType: "folder" }).catch(

@@ -117,7 +117,7 @@ export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
   useEffect(() => {
     if (!open) return;
     fetch(
-      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/app/blog/(blogPages)/releases/v${version}.mdx`,
+      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/src/pages/v${version}.md`,
     )
       .then((res) => res.text())
       .then((text) => {
@@ -138,8 +138,6 @@ export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
       bodyClassName="p-0"
     >
       <div className="px-8 md:px-20 py-8 prose prose-slate dark:prose-invert max-w-none">
-        <h1>Release notes for v{version}</h1>
-
         <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
       </div>
     </Modal>
@@ -149,14 +147,7 @@ export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
 function getBody(source: string): {
   body: string;
 } {
-  const re = /export const metadata\s*=\s*({[\s\S]*?});?/;
-  const match = source.match(re);
-
-  if (!match) {
-    return { body: source };
-  }
-
-  const body = source.replace(re, "").trimStart();
+  const body = source.replace(/^---\n[\s\S]+?\n---/, "").trim();
 
   return { body };
 }

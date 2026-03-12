@@ -1,17 +1,19 @@
 use crate::config::user::{get_config_path, load_config, save_config, PartialUserConfig};
 
-use tauri::{command, AppHandle, Emitter};
+use tauri::{command, AppHandle, Emitter, Manager};
 
 #[command]
 pub fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Result<(), String> {
     let path = get_config_path(&app_handle);
     let mut config = load_config(&path);
-
+    let mut needs_to_relaunch = false;
+    let is_new = config.onboarding.clone();
     if let Some(theme) = patch.theme {
         config.theme = theme;
     }
     if let Some(view) = patch.view {
         config.view = view;
+        needs_to_relaunch = true;
     }
     if let Some(albums) = patch.albums {
         config.albums = albums;
@@ -34,5 +36,8 @@ pub fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Re
 
     save_config(&path, &config).map_err(|e| format!("Save failed: {}", e))?;
     app_handle.emit("user-config-updated", config).unwrap();
+    if needs_to_relaunch == true && is_new != true {
+        app_handle.restart();
+    }
     Ok(())
 }

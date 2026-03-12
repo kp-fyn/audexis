@@ -10,8 +10,14 @@ import {
 } from "@tanstack/react-table";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { Event, listen } from "@tauri-apps/api/event";
-import { AllTags, File, Frames, SidebarItem } from "@/ui/types";
+import { Event as TauriEvent, listen } from "@tauri-apps/api/event";
+import {
+  AllTags,
+  ExtendedFileNode,
+  File,
+  Frames,
+  SidebarItem,
+} from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserConfig } from "@/ui/hooks/useUserConfig.tsx";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth.tsx";
@@ -37,15 +43,72 @@ import TableHeaderRow from "@/ui/components/table/TableHeaderRow";
 import DataGrid from "@/ui/components/table/DataGrid";
 import { useHotkeys } from "@/ui/hooks/useHotkeys";
 import { useTagEditorErrors } from "./hooks/useTagEditorErrors";
+import { path } from "@tauri-apps/api";
 
+import Bottombar from "./components/Bottombar";
+import { useBottombarHeight } from "./hooks/useBottombarHeight";
+const params = new URLSearchParams(window.location.href);
+
+let viewMode = params.get("view") ?? "simple";
+if (viewMode != "folder" && viewMode != "simple") viewMode = "simple";
 function App() {
+  useHotkeys(
+    [
+      {
+        combo: ["mod+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", { detail: { mode: "find" } }),
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+f"],
+        handler: () => {
+          window.dispatchEvent(
+            new CustomEvent("audexis:find-open", {
+              detail: { mode: "replace" },
+            }),
+          );
+        },
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-next")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+shift+g"],
+        handler: () => window.dispatchEvent(new Event("audexis:find-prev")),
+        allowInInputs: true,
+      },
+      {
+        combo: ["mod+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-one")),
+        allowInInputs: true,
+      },
+
+      {
+        combo: ["mod+shift+enter"],
+        handler: () => window.dispatchEvent(new Event("audexis:replace-all")),
+        allowInInputs: true,
+      },
+    ],
+    [],
+  );
+
   const {
     setSelected,
     selected,
     setFiles,
     files,
+    setAllFiles,
     hasUnsavedChanges,
     nudgeSaveBar,
+    setFileTree,
+    allFiles,
   } = useChanges();
   const { setErrors } = useTagEditorErrors();
   const [isLoading, setIsLoading] = useState(true);
@@ -60,22 +123,24 @@ function App() {
     setAllSidebarItems,
   } = useUserConfig();
   const { sidebarWidth } = useSidebarWidth();
-
-  function normalizeFilesPayload(payload: any[]): File[] {
-    return (payload || []).map((sf: any) => {
+  const { bottombarHeight } = useBottombarHeight();
+  function normalizeFilesPayload(payload: any[]): Map<string, File> {
+    const filesMap = new Map<string, File>();
+    (payload || []).map((sf: any) => {
       const tagsMap = (sf && sf.tags) || {};
 
       const file: File = {
         path: sf.path,
         tag_format: sf.tag_format,
         tag_formats: sf.tag_formats,
-        fileName: sf.path?.split("/").pop() || sf.path,
+        fileName: sf.path.split(path.sep()).pop() || sf.path,
         release: sf.tag_format,
 
         frames: tagsMap,
       } as File;
-      return file;
+      filesMap.set(sf.path, file);
     });
+    return filesMap;
   }
 
   const helpers: ColumnDef<File, any>[] = config.columns.map((item) => {
@@ -237,6 +302,20 @@ function App() {
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     columns.map((c) => c.id ?? ""),
   );
+  useEffect(() => {
+    invoke("get_workspace_root").catch(() => {});
+    const unlisten = listen(
+      "workspace-roots",
+      async (event: TauriEvent<ExtendedFileNode[]>) => {
+        console.log(event.payload);
+
+        setFileTree(event.payload);
+      },
+    );
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [config]);
 
   useEffect(() => {
     setColumnOrder(config.columns.map((c) => c.value));
@@ -265,19 +344,35 @@ function App() {
   });
 
   useEffect(() => {
-    const unlisten = listen("workspace-updated", (event: Event<any[]>) => {
+    const unlisten = listen("workspace-updated", (event: TauriEvent<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
-
-      setFiles(normalized);
+      console.log({ viewMode });
+      if (viewMode === "simple") {
+        setFiles(Array.from(normalized.values()));
+        console.log("setfiles");
+      }
+      setAllFiles(
+        (prev) =>
+          new Map([
+            ...Array.from(prev.entries()),
+            ...Array.from(normalized.entries()),
+          ]),
+      );
+      console.log(
+        new Map([
+          ...Array.from(allFiles.entries()),
+          ...Array.from(normalized.entries()),
+        ]).size,
+      );
       setIsLoading(false);
     });
 
     return () => {
       unlisten.then((f) => f());
     };
-  }, []);
+  }, [config]);
   useEffect(() => {
-    const unlisten = listen("error", (event: Event<any[]>) => {
+    const unlisten = listen("error", (event: TauriEvent<any[]>) => {
       setErrors((prev) => [[...event.payload], ...prev]);
     });
 
@@ -312,7 +407,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    //  invoke doesn't work immediately on page load or reload
     setTimeout(() => {
       invoke("get_workspace_files").catch(() => {
         setIsLoading(false);
@@ -331,7 +425,8 @@ function App() {
       invoke("get_all_sidebar_items").then((items: unknown) => {
         setAllSidebarItems(items as SidebarItem[]);
       });
-    }, 500);
+      invoke("get_workspace_root").catch(() => {});
+    }, 1000);
   }, []);
 
   useHotkeys(
@@ -401,7 +496,6 @@ function App() {
       </div>
     );
   }
-
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -428,12 +522,51 @@ function App() {
 
       <Sidebar />
 
+      {/* <ContextMenuArea
+        className="flex flex-col h-screen overflow-hidden"
+        asChild
+        items={() => [
+          {
+            text: "Import Files…",
+            accelerator: shortcutAccelerator("mod+i"),
+            action: () => invoke("import_files", { fileType: "file" }),
+            enabled: config.view === "simple",
+          },
+          {
+            text: "Import Folder…",
+            accelerator: shortcutAccelerator("mod+shift+I"),
+            action: () => invoke("import_files", { fileType: "folder" }),
+          },
+          { item: "Separator" },
+          {
+            text: "Undo",
+            accelerator: shortcutAccelerator("mod+z"),
+            action: () => invoke("undo"),
+          },
+          {
+            text: "Redo",
+            accelerator: shortcutAccelerator("mod+shift+z"),
+
+            action: () => invoke("redo"),
+          },
+          { item: "Separator" },
+          {
+            text: "Refresh",
+            accelerator: shortcutAccelerator("mod+r"),
+            action: () => window.location.reload(),
+          },
+        ]}
+      > */}
       <main
         style={{
           marginLeft: `${sidebarWidth}px`,
-          height: `calc(100% - calc(var(--spacing) * 6))`,
+
+          height:
+            config.view === "simple"
+              ? "100%"
+              : `calc(100% - ${bottombarHeight}px - 24px)`,
         }}
-        className="flex flex-col flex-1  w-full select-none"
+        className="flex flex-col  w-full select-none"
       >
         <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
           <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
@@ -491,11 +624,19 @@ function App() {
             </div>
           </div>
         </div>
-
-        <div className="fixed bottom-0 w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border">
-          <span className="truncate">{files.length} files loaded</span>
-        </div>
       </main>
+      {/* </ContextMenuArea> */}
+      <div
+        style={{
+          bottom: config.view === "simple" ? "0" : `${bottombarHeight}px`,
+
+          marginLeft: `${sidebarWidth}px`,
+        }}
+        className="fixed w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
+      >
+        <span className="truncate">{allFiles.size} files loaded</span>
+      </div>
+      {config.view !== "simple" && <Bottombar left={sidebarWidth} />}
     </DndContext>
   );
 }

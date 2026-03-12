@@ -95,69 +95,17 @@ export default function TableHeaderRow({
             key={headerGroup.id}
           >
             {headerGroup.headers.map((header: any, index: number) => (
-              <ContextMenuArea
-                items={() => {
-                  const available = allColumns.filter(
-                    (c) => !config.columns.find((col) => col.value === c.value),
-                  );
-                  if (!available.length) {
-                    return [
-                      {
-                        type: "item" as const,
-                        label: "No columns to add",
-                        disabled: true,
-                      },
-                    ];
-                  }
-                  return [
-                    {
-                      type: "submenu" as const,
-                      label: "Add Column",
-                      items: available.map((col) => ({
-                        type: "item" as const,
-                        label:
-                          col.label.charAt(0).toUpperCase() +
-                          col.label.slice(1),
-                        onSelect: () => {
-                          const newCols = config.columns.toSpliced(index, 0, {
-                            label:
-                              col.label.charAt(0).toUpperCase() +
-                              col.label.slice(1),
-                            value: col.value,
-                            kind: col.kind,
-                            size: 150,
-                          });
-                          setColumns(newCols);
-                        },
-                      })),
-                    },
-                    {
-                      type: "item" as const,
-                      label: "Remove Column",
-                      onSelect: () => {
-                        const newCols = config.columns.filter(
-                          (col) => col.value !== header.id,
-                        );
-                        setColumns(newCols);
-                      },
-                    },
-                  ];
-                }}
-                key={header.id}
-                asChild
-              >
-                <DraggableHeader header={header} key={header.id}>
-                  <div
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      startResizing(header.id, e);
-                    }}
-                    className="absolute top-0 right-0 h-full w-0.75 cursor-col-resize bg-transparent hover:bg-primary/40 transition"
-                  >
-                    <div className="border-r border-border h-full" />
-                  </div>
-                </DraggableHeader>
-              </ContextMenuArea>
+              <DraggableHeader header={header} key={header.id}>
+                <div
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    startResizing(header.id, e);
+                  }}
+                  className="absolute top-0 right-0 h-full w-0.75 cursor-col-resize bg-transparent hover:bg-primary/40 transition"
+                >
+                  <div className="border-r border-border h-full" />
+                </div>
+              </DraggableHeader>
             ))}
           </SortableContext>
         </div>

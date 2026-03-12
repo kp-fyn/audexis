@@ -1,25 +1,36 @@
 mod commands;
 mod config;
 mod constants;
+mod database;
 mod file_watcher;
 mod history;
 mod tag_manager;
 mod utils;
 mod workspace;
 
-use crate::config::user::{load_config, Theme, CONFIG_FILE};
+use crate::config::user::{load_config, Theme, ViewMode, CONFIG_FILE};
 use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
+use rusqlite::Connection;
+use serde::Serialize;
 
 use std::env;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
+    pub conn: Arc<Mutex<Connection>>,
+    pub view_mode: ViewMode,
+}
+#[derive(Debug, Clone, Serialize)]
+pub struct FileNode {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -31,18 +42,27 @@ pub fn run() {
             let path = app
                 .path()
                 .app_data_dir()
-                .expect("Failed to get app data directory")
-                .join(CONFIG_FILE);
-            let user_config = load_config(&path);
+                .expect("Failed to get app data directory");
+            let conn = database::init_database(&path.join("audexis.db"))?;
+            let config_path = path.join(CONFIG_FILE);
+
+            let user_config = load_config(&config_path);
             let theme = match user_config.theme {
                 Theme::Light => "light",
                 Theme::Dark => "dark",
             };
+            let view = match user_config.view {
+                ViewMode::Folder => "folder",
+                ViewMode::Simple => "simple",
+            };
             let onboarding = user_config.onboarding;
+
             app.manage(AppState {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
+                conn: Arc::new(Mutex::new(conn)),
+                view_mode: user_config.view,
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
@@ -53,9 +73,10 @@ pub fn run() {
                 "main",
                 WebviewUrl::App(
                     format!(
-                        "index.html?theme={}&onboarding={}",
+                        "index.html?theme={}&onboarding={}&view={}",
                         theme,
-                        onboarding.to_string()
+                        onboarding.to_string(),
+                        view
                     )
                     .into(),
                 ),
@@ -116,6 +137,9 @@ pub fn run() {
             commands::undo::undo,
             commands::get_all_sidebar_items::get_all_sidebar_items,
             commands::redo::redo,
+            commands::get_workspace_root::get_workspace_root,
+            commands::get_folder_children::get_folder_children,
+            commands::request_file::request_file
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")

@@ -65,7 +65,7 @@ impl Default for Theme {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ViewMode {
     Simple,
     Folder,

@@ -43,7 +43,7 @@ export function MultiValueInput({
       <div
         className={cn(
           "flex flex-wrap gap-1 rounded border border-border p-2 min-h-10 bg-background",
-          disabled && "opacity-50"
+          disabled && "opacity-50",
         )}
       >
         {values.map((v, i) => (
@@ -96,7 +96,7 @@ export function MultiValueInput({
         ))}
         {!disabled && (
           <input
-            className="flex-1 min-w-[120px] bg-transparent text-xs outline-none"
+            className="flex-1 min-w-30 bg-transparent text-xs outline-none"
             placeholder={placeholder || "Add value and press Enter"}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

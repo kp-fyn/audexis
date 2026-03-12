@@ -47,6 +47,17 @@ pub fn save_frame_changes(
                         },
                         TagValue::UserText(ut) => SerializableTagValue::UserText(ut.clone()),
                         TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu.clone()),
+                        TagValue::Comment {
+                            encoding,
+                            language,
+                            description,
+                            text,
+                        } => SerializableTagValue::Comment {
+                            encoding: encoding.clone(),
+                            language: language.clone(),
+                            description: description.clone(),
+                            text: text.clone(),
+                        },
                     })
                     .collect::<Vec<SerializableTagValue>>();
                 frame_map.insert(frame.key, existing_vals);
@@ -95,6 +106,22 @@ pub fn save_frame_changes(
                         .or_default()
                         .push(TagValue::UserUrl(entry.clone()));
                 }
+                SerializableTagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                } => {
+                    tag_map
+                        .entry(frame.key)
+                        .or_default()
+                        .push(TagValue::Comment {
+                            encoding: encoding.clone(),
+                            language: language.clone(),
+                            description: description.clone(),
+                            text: text.clone(),
+                        });
+                }
             }
         }
     }
@@ -123,6 +150,17 @@ pub fn save_frame_changes(
                 },
                 TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
                 TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+                TagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                } => SerializableTagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                },
             })
             .collect();
         write_changes.tags.insert(k, ser_vals);

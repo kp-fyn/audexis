@@ -10,9 +10,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { useChanges } from "@/ui/hooks/useChanges";
 import { useRename } from "@/ui/hooks/useRename";
 import { useCleanup } from "@/ui/hooks/useCleanup";
+import { Table } from "@tanstack/react-table";
 
 type DataGridProps = {
-  table: any;
+  table: Table<File>;
   files: File[];
   selected: string[];
   setSelected: (ids: string[]) => void;
@@ -33,27 +34,24 @@ export default function DataGrid({
   const { start: startRename } = useRename();
   const { start: startCleanup } = useCleanup();
 
-  const getIdAt = (index: number) => files[index]?.path;
+  const getIdAt = (index: number) =>
+    table.getSortedRowModel().rows[index].original.path;
   const setSelection = (ids: string[]) => setSelected(Array.from(new Set(ids)));
 
-  const isSelectedAt = (index: number) => {
-    const id = getIdAt(index);
-    return !!id && selected.includes(id);
-  };
-
-  const selectSingle = (index: number) => {
+  function selectSingle(path: string) {
     if (hasUnsavedChanges) {
       nudgeSaveBar();
       return;
     }
-    const id = getIdAt(index);
-    if (!id) return;
-    if (selected.length === 1 && selected[0] === id) {
+
+    console.log({ path });
+    if (!path) return;
+    if (selected.length === 1 && selected[0] === path) {
       setSelected([]);
       return;
     }
-    setSelection([id]);
-  };
+    setSelection([path]);
+  }
 
   const toggleAt = (index: number) => {
     if (hasUnsavedChanges) {
@@ -75,7 +73,9 @@ export default function DataGrid({
       return;
     }
     if (lastInteractedIndexRef.current == null) {
-      selectSingle(toIndex);
+      const id = getIdAt(toIndex);
+      if (!id) return;
+      selectSingle(id);
       lastInteractedIndexRef.current = toIndex;
       return;
     }
@@ -95,7 +95,9 @@ export default function DataGrid({
     if (withRange) {
       selectRange(nextIndex);
     } else {
-      selectSingle(nextIndex);
+      const id = getIdAt(nextIndex);
+      if (!id) return;
+      selectSingle(id);
     }
   };
 
@@ -119,7 +121,9 @@ export default function DataGrid({
       toggleAt(index);
       lastInteractedIndexRef.current = index;
     } else {
-      selectSingle(index);
+      const id = getIdAt(index);
+      if (!id) return;
+      selectSingle(id);
       lastInteractedIndexRef.current = index;
     }
   };
@@ -193,56 +197,55 @@ export default function DataGrid({
       }
       className="pb-2 outline-none"
     >
-      {table.getRowModel().rows.map((row: any, i: number) => {
-        const selectedNow = isSelectedAt(i);
+      {table.getSortedRowModel().rows.map((row, i: number) => {
+        const selectedNow =
+          selected.find((ch) => ch === row.original.path) !== undefined;
+
         return (
           <ContextMenuArea
             key={row.id}
             items={() => [
               {
-                type: "item",
-                label: "Select",
-                onSelect: () => selectSingle(i),
-                disabled: hasUnsavedChanges,
+                text: "Select",
+                action: () => {
+                  console.log({ row: row.original });
+                  selectSingle(row.original.path);
+                },
+                enabled: !hasUnsavedChanges,
               },
 
-              { type: "separator" },
+              { item: "Separator" },
               {
-                type: "item",
-                label: "Rename using pattern…",
-                onSelect: () => {
+                text: "Rename using pattern…",
+                action: () => {
                   const targets =
                     selected.length > 0 ? selected : [row.original.path];
                   startRename(targets, "{artist} - {title}.{ext}");
                 },
               },
               {
-                type: "item",
-                label: "Cleanup filenames…",
-                onSelect: () => {
+                text: "Cleanup filenames…",
+                action: () => {
                   const targets =
                     selected.length > 0 ? selected : [row.original.path];
 
                   startCleanup(targets);
                 },
               },
-              { type: "separator" },
+              { item: "Separator" },
               {
-                type: "item",
-                label: "Reveal in Finder",
-                onSelect: () => invoke("open", { path: row.original.path }),
+                text: "Reveal in Finder",
+                action: () => invoke("open", { path: row.original.path }),
               },
               {
-                type: "item",
-                label: "Open in default app",
-                onSelect: () =>
+                text: "Open in default app",
+                action: () =>
                   invoke("open_default", { path: row.original.path }),
               },
-              { type: "separator" },
+              { item: "Separator" },
               {
-                type: "item",
-                label: "Remove from workspace",
-                onSelect: () => {
+                text: "Remove from workspace",
+                action: () => {
                   const targets =
                     selected.length > 0 ? selected : [row.original.path];
 
@@ -258,11 +261,7 @@ export default function DataGrid({
               aria-selected={selectedNow || undefined}
               className={`tag-row flex gap-4 items-center px-1.5 border-b border-border/40 text-[12px] transition-colors focus:bg-hover ${
                 i % 2 === 0 ? "bg-muted/10" : "bg-background"
-              } ${
-                selectedNow
-                  ? "bg-primary/15 ring-1 ring-primary/40"
-                  : "hover:bg-hover"
-              }`}
+              } ${selectedNow ? "bg-primary/15" : "hover:bg-hover"}`}
               onClick={(e) => handleRowClick(e, i)}
             >
               {row.getVisibleCells().map((cell: any) => (

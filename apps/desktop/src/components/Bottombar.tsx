@@ -1,19 +1,15 @@
 import { ReactNode, useRef } from "react";
-import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth";
 import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
 import EditMenu from "./EditMenu";
 import { useUserConfig } from "../hooks/useUserConfig";
-import Filetree from "./Filetree";
-import { useChanges } from "../hooks/useChanges";
 
-export default function Sidebar(): ReactNode {
-  const { sidebarWidth, setSidebarWidth } = useSidebarWidth();
+import { useChanges } from "../hooks/useChanges";
+import { useBottombarHeight } from "../hooks/useBottombarHeight";
+
+export default function Bottombar({ left }: { left: number }): ReactNode {
+  const { bottombarHeight, setBottombarHeight } = useBottombarHeight();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
-  const { config } = useUserConfig();
-  const { fileTree } = useChanges();
-
-  const { width } = useWindowDimensions();
 
   const startResizing = (): void => {
     isResizing.current = true;
@@ -25,13 +21,13 @@ export default function Sidebar(): ReactNode {
 
   const resize = (event: MouseEvent): void => {
     if (isResizing.current && sidebarRef.current) {
-      const newWidth = event.clientX;
-      const minWidth = 0;
-      const maxWidth = window.innerWidth - 200;
+      const newHeight = window.innerHeight - event.clientY;
+      const minHeight = 200;
+      const maxHeight = window.innerHeight - 200;
       document.body.style.userSelect = "none";
-
-      if (newWidth >= minWidth && newWidth <= maxWidth) {
-        setSidebarWidth(newWidth);
+      console.log({ newHeight });
+      if (newHeight >= minHeight && newHeight <= maxHeight) {
+        setBottombarHeight(newHeight);
       }
     }
   };
@@ -51,23 +47,23 @@ export default function Sidebar(): ReactNode {
   return (
     <div
       ref={sidebarRef}
-      tabIndex={1}
+      tabIndex={2}
       style={{
-        width: `${sidebarWidth}px`,
+        width: `calc(100% - ${left}px)`,
         // minWidth: "300px",
-        maxWidth: `${width - 200}px`,
+        marginLeft: `${left}px`,
+        height: `${bottombarHeight}px`,
       }}
-      className="fixed select-none pb-12 top-12 left-0 h-screen z-50 bg-background  border-r border-border text-foreground overflow-y-auto overflow-x-clip"
+      className="bottom-0 fixed bg-background overflow-y-auto  "
     >
-      {config.view === "simple" ? <EditMenu /> : <Filetree />}
-
       <div
-        style={{ left: `${sidebarWidth}px` }}
-        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-0.5 cursor-col-resize  bg-border hover:bg-border `}
+        className={` bg-transparent   w-full h-1 cursor-row-resize   hover:bg-border `}
         onMouseDown={startResizing}
       >
-        <div className="border-r h-screen border-border "></div>
+        <div className="border-t  border-border "></div>
       </div>
+
+      <EditMenu bottombar />
     </div>
   );
 }

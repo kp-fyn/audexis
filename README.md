@@ -56,28 +56,28 @@ macOS:
 
 ### Requirements
 
-- Node.js 18+
-- Rust and Cargo
-- npm
+- Node.js 22+
+- Rust 1.90+
+- pnpm
 
 ### Clone
 
 ```bash
 git clone https://github.com/kp-fyn/audexis
-cd audexis/apps/desktop
+cd audexis
 
 ```
 
 ### Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Build
 
 ```bash
- npm run tauri build
+pnpm --filter desktop tauri build
 ```
 
 ## Contributing

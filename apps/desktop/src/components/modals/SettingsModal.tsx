@@ -43,6 +43,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     setSidebarItems,
     setDensity: persistDensity,
     setShowDiffModal,
+    setView,
   } = useUserConfig();
 
   const columnMetaById = useMemo(() => {
@@ -216,6 +217,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             <AppearanceSection
               theme={config.theme}
               density={config.density}
+              view={config.view}
+              onViewChange={setView}
               onThemeChange={setTheme}
               onDensityChange={persistDensity}
             />

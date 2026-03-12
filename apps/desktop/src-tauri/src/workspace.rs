@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use tauri::AppHandle;
 
+use crate::tag_manager;
 use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend, TagError};
 use crate::tag_manager::utils::{CleanupRule, File, FrameKey, SerializableTagValue, TagValue};
 use base64::Engine;
@@ -10,7 +11,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    backend: DefaultBackend,
+    pub backend: DefaultBackend,
     pub files: Vec<File>,
 }
 
@@ -20,6 +21,9 @@ impl Workspace {
             backend: DefaultBackend::new(),
             files: Vec::new(),
         }
+    }
+    pub fn get_file_by_path_mut(&mut self, path: &std::path::Path) -> Option<&mut File> {
+        self.files.iter_mut().find(|f| f.path == path)
     }
     pub fn write_tags(
         &mut self,
@@ -33,7 +37,7 @@ impl Workspace {
                 for (k, v) in &updated_tags {
                     single_map.insert(*k, v.clone());
                 }
-                let changes = crate::tag_manager::utils::Changes {
+                let changes = tag_manager::utils::Changes {
                     paths: vec![file_path_str.clone()],
                     tags: single_map
                         .into_iter()
@@ -56,6 +60,17 @@ impl Workspace {
                                     },
                                     TagValue::UserText(ut) => SerializableTagValue::UserText(ut),
                                     TagValue::UserUrl(uu) => SerializableTagValue::UserUrl(uu),
+                                    TagValue::Comment {
+                                        encoding,
+                                        language,
+                                        description,
+                                        text,
+                                    } => SerializableTagValue::Comment {
+                                        encoding,
+                                        language,
+                                        description,
+                                        text,
+                                    },
                                 })
                                 .collect();
                             (k, ser_vals)
@@ -161,6 +176,7 @@ impl Workspace {
                 }
             }
         } else {
+            println!("Importing directory: {}\n", file.display());
             let entries = fs::read_dir(file);
             if entries.is_ok() {
                 let entries = entries.unwrap();
@@ -169,8 +185,10 @@ impl Workspace {
                         let entry = entry.unwrap();
                         let path = entry.path();
                         print!("Importing from dir: {}\n", path.clone().display());
-                        let _ = self.import(path)?;
+                        let _ = self.import(path);
 
+                        continue;
+                    } else {
                         continue;
                     }
                 }

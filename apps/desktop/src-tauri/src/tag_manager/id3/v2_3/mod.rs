@@ -195,6 +195,7 @@ impl TagFormat for V2_3 {
                         continue;
                     }
                     let picture_type = content[picture_type_index];
+                    println!("pic type: {:?}", &picture_type.to_string());
                     let description_start = picture_type_index + 1;
                     let description_end = content[description_start..]
                         .iter()
@@ -312,7 +313,7 @@ impl TagFormat for V2_3 {
 
         let mut pictures: Vec<TagValue> = Vec::new();
         let mut flattened: HashMap<FrameKey, TagValue> = HashMap::new();
-        for (k, vec_vals) in updated_tags.into_iter() {
+        for (k, vec_vals) in updated_tags.clone().into_iter() {
             if vec_vals.is_empty() {
                 continue;
             }
@@ -329,10 +330,11 @@ impl TagFormat for V2_3 {
                     .iter()
                     .filter_map(|v| match v {
                         TagValue::Text(s) => Some(s.clone()),
+                        TagValue::UserUrl(v) => Some(format!("{}={}", v.description, v.url)),
                         _ => None,
                     })
                     .collect::<Vec<_>>()
-                    .join("; ");
+                    .join("\\");
                 flattened.insert(k, TagValue::Text(joined));
             } else {
                 flattened.insert(k, vec_vals[0].clone());
@@ -394,8 +396,37 @@ impl TagFormat for V2_3 {
                     payload.extend_from_slice(uu.url.as_bytes());
                     raw_frames.push((k.to_string(), payload));
                 }
+                _ => { /*Handle other types later */ }
             }
         }
+        let comments = updated_tags.get(&FrameKey::Comments);
+        comments.map(|vals| {
+            for val in vals {
+                if let TagValue::Comment {
+                    encoding: _,
+                    language,
+                    description,
+                    text,
+                } = val
+                {
+                    let mut payload = Vec::new();
+                    payload.push(0x00);
+                    let lang_bytes = language.as_bytes();
+                    if lang_bytes.len() >= 3 {
+                        payload.extend_from_slice(&lang_bytes[0..3]);
+                    } else {
+                        payload.extend_from_slice(lang_bytes);
+                        for _ in 0..(3 - lang_bytes.len()) {
+                            payload.push(0x00);
+                        }
+                    }
+                    payload.extend_from_slice(description.as_bytes());
+                    payload.push(0x00);
+                    payload.extend_from_slice(text.as_bytes());
+                    raw_frames.push(("COMM".to_string(), payload));
+                }
+            }
+        });
         for v in pictures.into_iter() {
             if let TagValue::Picture {
                 mime,
