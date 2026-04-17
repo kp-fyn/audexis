@@ -273,7 +273,7 @@ export interface RawFile {
 }
 export interface File {
   path: string;
-
+  fileName: string;
   tag_format: string;
   tag_formats?: string[];
   frames: Frames;

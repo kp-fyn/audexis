@@ -42,9 +42,9 @@
 }
 
 [data-theme="dark"] {
-  --heading: #f1f1f1;
+  --heading: #ffffff;
   --background: #0a0a0a;
-  --foreground: #f1f5f9;
+  --foreground: #f1f1f1;
   --hover: #1f1f2e;
   --hover-foreground: #f1f5f9;
 

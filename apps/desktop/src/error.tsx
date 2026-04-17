@@ -46,11 +46,6 @@ export default function ErrorPage({ error }: FallbackProps) {
                 />
               </svg>
             </div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 bg-destructive rounded-full flex items-center justify-center">
-              <span className="text-destructive-foreground text-xs font-bold">
-                !
-              </span>
-            </div>
           </div>
         </div>
 

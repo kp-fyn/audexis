@@ -42,7 +42,7 @@ pub trait TagFamily {
     fn new() -> Self
     where
         Self: Sized;
-
+    ///  Returns a vector of supported tag formats for this tag family.
     fn get_release_class(&self, version: &Formats) -> Option<Box<dyn TagFormat>>;
 }
 
@@ -50,7 +50,7 @@ pub trait TagFormat: Debug {
     fn new() -> Self
     where
         Self: Sized;
-
+    ///  Reads the tags from the specified file path and returns a `HashMap` where the keys are `FrameKey` and the values are vectors of `TagValue`. If an error occurs during the reading process, it returns a `BackendError`.
     fn get_tags(
         &self,
         file_path: &PathBuf,
@@ -58,6 +58,7 @@ pub trait TagFormat: Debug {
     fn get_freeforms(&self, _file_path: &PathBuf) -> Result<Vec<FreeformTag>, BackendError> {
         Ok(vec![])
     }
+    ///  Writes the provided tags to the specified file path. The `updated_tags` parameter is a `HashMap` where the keys are `FrameKey` and the values are vectors of `TagValue`. If an error occurs during the writing process, it returns a `BackendError`.
     fn write_tags(
         &self,
         file_path: &PathBuf,

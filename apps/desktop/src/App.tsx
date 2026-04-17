@@ -47,6 +47,8 @@ import { path } from "@tauri-apps/api";
 
 import Bottombar from "./components/Bottombar";
 import { useBottombarHeight } from "./hooks/useBottombarHeight";
+import { shortcutAccelerator } from "./lib/utils";
+import { ContextMenuArea } from "./components/ContextMenu";
 const params = new URLSearchParams(window.location.href);
 
 let viewMode = params.get("view") ?? "simple";
@@ -133,7 +135,7 @@ function App() {
         path: sf.path,
         tag_format: sf.tag_format,
         tag_formats: sf.tag_formats,
-        fileName: sf.path.split(path.sep()).pop() || sf.path,
+        fileName: sf.file_name || sf.path.split(path.sep()).pop() || sf.path,
         release: sf.tag_format,
 
         frames: tagsMap,
@@ -144,10 +146,33 @@ function App() {
   }
 
   const helpers: ColumnDef<File, any>[] = config.columns.map((item) => {
+    if (item.value === "fileName") {
+      return columnHelper.accessor("fileName", {
+        id: item.value,
+        size: item.size,
+        header: () => (
+          <span className="w-full truncate uppercase tracking-wide text-[11px] font-semibold text-foreground/70">
+            {item.label}
+          </span>
+        ),
+        sortingFn: "alphanumeric",
+        enableSorting: true,
+        cell: ({ row }) => {
+          return (
+            <div
+              className="text-[11px] truncate px-2"
+              title={row.original.fileName}
+            >
+              {row.original.fileName}
+            </div>
+          );
+        },
+      }) as ColumnDef<File, any>;
+    }
     if (item.kind === "Image") {
       return columnHelper.display({
         id: item.value,
-        size: item.size,
+        size: 90,
         header: () => (
           <span className="w-full truncate uppercase tracking-wide text-[11px] font-semibold text-foreground/70">
             {item.label}
@@ -174,11 +199,11 @@ function App() {
               ).length
             : 0;
           return (
-            <div className="relative inline-flex items-center">
+            <div className=" flex justify-center items-center">
               <img
                 src={`data:${pic.value.mime};base64,${pic.value.data_base64}`}
-                alt="Attached"
-                className="max-h-9.5 w-auto rounded-sm border border-border object-cover"
+                alt="Img cover"
+                className="max-h-9.5 w-auto rounded-sm border border-border self-center justify-self-center"
               />
               {count > 1 && (
                 <span className="ml-1 text-[10px] px-1 rounded bg-muted text-foreground/70">
@@ -329,7 +354,9 @@ function App() {
     }
   }, [files]);
 
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "fileName", desc: false },
+  ]);
 
   const table = useReactTable({
     state: { columnOrder, sorting },
@@ -340,6 +367,19 @@ function App() {
     columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    sortingFns: {
+      alphanumeric: (rowA, rowB, columnId) => {
+        const a = rowA.getValue(columnId);
+        const b = rowB.getValue(columnId);
+        if (a === b) return 0;
+        if (a === null || a === undefined) return 1;
+        if (b === null || b === undefined) return -1;
+        return String(a).localeCompare(String(b), undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      },
+    },
     defaultColumn: { minSize: 50 },
   });
 
@@ -358,12 +398,7 @@ function App() {
             ...Array.from(normalized.entries()),
           ]),
       );
-      console.log(
-        new Map([
-          ...Array.from(allFiles.entries()),
-          ...Array.from(normalized.entries()),
-        ]).size,
-      );
+      console.log({ normalized });
       setIsLoading(false);
     });
 
@@ -417,6 +452,7 @@ function App() {
 
       invoke("get_all_columns")
         .then((cols: any) => {
+          console.log({ cols });
           setAllColumns(cols);
         })
         .catch(() => {
@@ -438,7 +474,7 @@ function App() {
             nudgeSaveBar();
             return;
           }
-          setSelected([]);
+          setSelected(new Set());
           lastInteractedIndexRef.current = null;
         },
       },
@@ -449,7 +485,7 @@ function App() {
             nudgeSaveBar();
             return;
           }
-          setSelected(files.map((f) => f.path));
+          setSelected(new Set(files.map((f) => f.path)));
         },
       },
     ],
@@ -522,7 +558,7 @@ function App() {
 
       <Sidebar />
 
-      {/* <ContextMenuArea
+      <ContextMenuArea
         className="flex flex-col h-screen overflow-hidden"
         asChild
         items={() => [
@@ -556,83 +592,84 @@ function App() {
             action: () => window.location.reload(),
           },
         ]}
-      > */}
-      <main
-        style={{
-          marginLeft: `${sidebarWidth}px`,
-
-          height:
-            config.view === "simple"
-              ? "100%"
-              : `calc(100% - ${bottombarHeight}px - 24px)`,
-        }}
-        className="flex flex-col  w-full select-none"
       >
-        <div className="shrink-0 sticky top-0 z-50 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
-          <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
-            Tag Editor
-          </h1>
-          <div className="text-[11px] text-foreground/60">
-            {selected.length
-              ? `${selected.length} selected`
-              : `${files.length} files`}
-          </div>
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-auto" id="app-scroll">
-          <div
-            className="h-full"
-            onClick={() => {
-              if (hasUnsavedChanges) {
-                nudgeSaveBar();
-                return;
-              }
-              setSelected([]);
-            }}
-          >
-            <div
-              className="relative outline-none"
-              style={{
-                width: Math.max(
-                  config.columns.reduce(
-                    (sum, col) => sum + (col.size || 200),
-                    0,
-                  ) +
-                    config.columns.length * 16 +
-                    (config.columns.length - 1) * 16 +
-                    12 +
-                    170,
-                  600,
-                ),
-                minWidth: "100%",
-              }}
-            >
-              <TableHeaderRow
-                headerGroups={table.getHeaderGroups() as any}
-                columnOrder={columnOrder}
-                config={config as any}
-                setColumns={setColumns as any}
-                allColumns={allColumns as any}
-              />
-              <DataGrid
-                table={table as any}
-                files={files}
-                selected={selected}
-                setSelected={setSelected}
-                columnOrder={columnOrder}
-              />
+        <main
+          style={{
+            marginLeft: `${sidebarWidth}px`,
+            width: `calc(100% - ${sidebarWidth}px)`,
+            height:
+              config.view === "simple"
+                ? "100%"
+                : `calc(100% - ${bottombarHeight}px - 84px)`,
+          }}
+          className="flex flex-col  w-full select-none"
+        >
+          <div className="shrink-0 sticky top-0 z-20 flex items-center gap-4 h-9 px-4 border-b border-border bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
+            <h1 className="text-xs font-semibold tracking-wide uppercase text-foreground/70">
+              Tag Editor
+            </h1>
+            <div className="text-[11px] text-foreground/60">
+              {selected.size
+                ? `${selected.size} selected`
+                : `${files.length} files`}
             </div>
           </div>
-        </div>
-      </main>
-      {/* </ContextMenuArea> */}
+
+          <div className="flex-1 min-h-0 h-full overflow-auto" id="app-scroll">
+            <div
+              className="h-full"
+              onClick={() => {
+                if (hasUnsavedChanges) {
+                  nudgeSaveBar();
+                  return;
+                }
+                setSelected(new Set());
+              }}
+            >
+              <div
+                className=" outline-none  flex flex-col overflow-y-auto"
+                style={{
+                  width: Math.max(
+                    // what kinda drugs was i doin
+                    config.columns.reduce(
+                      (sum, col) => sum + (col.size || 200),
+                      0,
+                    ) +
+                      config.columns.length * 16 +
+                      (config.columns.length - 1) * 16 +
+                      12 +
+                      170,
+                    600,
+                  ),
+                  height: `calc(100% - ${bottombarHeight}px)`,
+                  minWidth: "100%",
+                }}
+              >
+                <TableHeaderRow
+                  headerGroups={table.getHeaderGroups() as any}
+                  columnOrder={columnOrder}
+                  config={config as any}
+                  setColumns={setColumns as any}
+                  allColumns={allColumns as any}
+                />
+                <DataGrid
+                  table={table as any}
+                  files={files}
+                  selected={selected}
+                  columnOrder={columnOrder}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </ContextMenuArea>
       <div
         style={{
           bottom: config.view === "simple" ? "0" : `${bottombarHeight}px`,
 
           marginLeft: `${sidebarWidth}px`,
         }}
-        className="fixed w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
+        className="fixed w-full shrink-0 h-[24px] px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
       >
         <span className="truncate">{allFiles.size} files loaded</span>
       </div>

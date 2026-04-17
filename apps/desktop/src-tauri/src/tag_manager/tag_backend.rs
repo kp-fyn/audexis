@@ -163,6 +163,16 @@ impl DefaultBackend {
 }
 
 impl TagBackend for DefaultBackend {
+    /// Reads the tags from the specified file path and returns a `File` struct containing the tag information.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - A reference to a `PathBuf` representing the file path to read tags from.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(File)` - If the tags were successfully read, returns a `File` struct containing the tag information.
+    /// * `Err(BackendError)` - If there was an error reading the tags, returns a `BackendError` with details about the failure.
     fn read(&self, path: &PathBuf) -> Result<File, BackendError> {
         let fmt = self.resolve_format(path);
         println!("Detected format: {:?}", fmt);
@@ -186,6 +196,15 @@ impl TagBackend for DefaultBackend {
         })
     }
 
+    /// Writes the specified tag changes to the corresponding files and returns a vector of `BackendError` instances for any failures that occur during the write process.
+    ///
+    /// # Arguments
+    ///
+    /// * `changes` - A reference to a `Changes` struct containing the tag changes to be written.
+    ///
+    /// # Returns
+    ///
+    /// * `Vec<BackendError>` - A vector of `BackendError` instances representing any errors that occurred during the write process. If the vector is empty, it indicates that all changes were successfully written.
     fn write_changes(&self, changes: &Changes) -> Vec<BackendError> {
         let mut results: Vec<BackendError> = Vec::new();
         for path_str in &changes.paths {
@@ -298,6 +317,7 @@ pub struct TagDiff {
 }
 
 impl TagDiff {
+    /// Creates a `TagDiff` instance from the given `FrameKey`, optional `before` values, and optional `after` values.
     fn from_change(
         key: FrameKey,
         before: Option<Vec<TagValue>>,

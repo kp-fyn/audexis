@@ -15,6 +15,7 @@ pub struct Workspace {
     pub files: Vec<File>,
 }
 
+// mainly for simple view
 impl Workspace {
     pub fn new(_app: &AppHandle) -> Self {
         Self {
@@ -25,6 +26,7 @@ impl Workspace {
     pub fn get_file_by_path_mut(&mut self, path: &std::path::Path) -> Option<&mut File> {
         self.files.iter_mut().find(|f| f.path == path)
     }
+
     pub fn write_tags(
         &mut self,
         file_paths: Vec<String>,
@@ -91,6 +93,7 @@ impl Workspace {
             }
         }
     }
+    /// remove from workspace and not from disk
     pub fn remove_file(&mut self, file_path: &PathBuf) -> bool {
         if let Some(index) = self.files.iter().position(|f| &f.path == file_path) {
             self.files.remove(index);
@@ -99,6 +102,8 @@ impl Workspace {
             return false;
         }
     }
+
+    /// Refresh tags for a specific file. Returns true if successful, false otherwise.
     pub fn refresh_tags(&mut self, file_path: &PathBuf) -> bool {
         if let Some(file) = self.files.iter_mut().find(|x| &x.path == file_path) {
             match self.backend.read(&file.path) {
@@ -120,6 +125,8 @@ impl Workspace {
             return false;
         }
     }
+
+    /// Refresh tags for all files in the workspace
     pub fn refresh_all_tags(&mut self) {
         for file in self.files.iter_mut() {
             match self.backend.read(&file.path) {
@@ -201,6 +208,7 @@ impl Workspace {
     pub fn get_file(&self, id: Uuid) -> Option<&File> {
         self.files.iter().find(|f| f.id == id)
     }
+    /// Kinda half baked solution for cleaning up file names. Applies a series of transformations based on the provided options.
     pub fn clean_up_file_names(
         &mut self,
         file_paths: Vec<String>,
@@ -365,6 +373,7 @@ impl Workspace {
         results
     }
 
+    /// Rename files based on a pattern. The pattern can include placeholders like
     pub fn rename_by_pattern(
         &mut self,
         file_paths: Vec<String>,

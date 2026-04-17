@@ -29,6 +29,7 @@ pub struct RenameResultItem {
     pub error: Option<String>,
 }
 
+/// Make it pretty
 pub fn to_label(s: &str) -> String {
     let mut result = String::new();
     let mut chars = s.chars().peekable();
@@ -46,6 +47,7 @@ pub fn to_label(s: &str) -> String {
     }
     result
 }
+/// Check if file is in folder
 pub fn is_in_folder(folder: &PathBuf, file: &PathBuf) -> bool {
     let folder_path = format!(
         "{}{}",
@@ -57,6 +59,7 @@ pub fn is_in_folder(folder: &PathBuf, file: &PathBuf) -> bool {
     println!("{:?}", &folder_path);
     file.to_string_lossy().to_string().starts_with(&folder_path)
 }
+/// To Lowercase basically
 pub fn to_value(s: &str) -> String {
     let mut chars = s.chars();
     match chars.next() {
@@ -64,6 +67,7 @@ pub fn to_value(s: &str) -> String {
         None => String::new(),
     }
 }
+/// Handle files imported externarlly
 pub fn handle_file_associations(app_handle: tauri::AppHandle, paths: Vec<PathBuf>) {
     let binding = app_handle.clone();
     let state = binding.try_state();
@@ -77,6 +81,7 @@ pub fn handle_file_associations(app_handle: tauri::AppHandle, paths: Vec<PathBuf
         .collect();
     import_paths(app_handle, string_paths, state);
 }
+/// Add new File to Database if doesn't exist already
 pub fn index_files(app_handle: tauri::AppHandle, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, ()> {
     let state = app_handle.state::<AppState>();
 
@@ -98,6 +103,7 @@ pub fn index_files(app_handle: tauri::AppHandle, paths: Vec<PathBuf>) -> Result<
     return Ok(new_files_clone);
 }
 
+/// Attempt to import files
 pub fn handle_import_files(
     app_handle: tauri::AppHandle,
     paths: Vec<PathBuf>,
@@ -208,6 +214,8 @@ pub fn is_supported_file(path: &PathBuf) -> bool {
         .map(|ext_str| SUPPORTED_EXTENSIONS.contains(&ext_str.to_lowercase().as_str()))
         .unwrap_or(false)
 }
+
+/// Read folder recursivley and return all supported files
 fn read_folder(path: PathBuf) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = vec![];
     let is_folder = metadata(&path).map(|m| m.is_dir()).unwrap_or(false);
@@ -237,6 +245,7 @@ fn systemtime_to_unix(time: SystemTime) -> i64 {
         .unwrap_or(Duration::from_secs(0))
         .as_secs() as i64
 }
+/// Remove File from db
 pub fn delete_file_path(app_handle: tauri::AppHandle, file_path: PathBuf) {
     let state = app_handle.state::<AppState>();
 
@@ -255,6 +264,8 @@ pub fn delete_file_path(app_handle: tauri::AppHandle, file_path: PathBuf) {
         return;
     }
 }
+
+/// Update file path in db when file is renamed or moved
 pub fn update_file_path(app_handle: tauri::AppHandle, old_path: PathBuf, new_path: PathBuf) {
     let state = app_handle.state::<AppState>();
 
@@ -297,6 +308,7 @@ pub fn update_file_path(app_handle: tauri::AppHandle, old_path: PathBuf, new_pat
     }
 }
 
+/// Insert new files into the database with pending status. If file already exists, update its metadata.
 fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Result<()> {
     let tx = conn.transaction()?;
 
@@ -331,6 +343,7 @@ fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Resul
     tx.commit()?;
     Ok(())
 }
+/// Check scanned files against database and return new files that are not in the database or have been modified since last scan, and existing files that are up to date.
 fn check_files_against_db(
     conn: &Connection,
     scanned_files: Vec<PathBuf>,
@@ -354,8 +367,8 @@ fn check_files_against_db(
 
         if exists {
             let disk_modified = metadata(&file_path).ok().and_then(|m| m.modified().ok());
+            // if no modified timestamp in file metaadata add to new files
             if disk_modified.is_none() {
-                println!("Failed to get disk modified time for file {}", path_str);
                 new_files.push(file_path);
                 continue;
             }
@@ -370,6 +383,8 @@ fn check_files_against_db(
                     },
                 )
                 .ok();
+            // if no modified timestamp in file metaadata add to new files
+
             if db_modified.is_none() {
                 println!("Failed to get DB modified time for file {}", path_str);
                 new_files.push(file_path);
@@ -400,6 +415,7 @@ fn check_files_against_db(
     (new_files, existing_files)
 }
 
+/// Get Root folders
 pub fn get_imported_folders(conn: &Connection) -> Vec<String> {
     let mut stmt = conn
         .prepare("SELECT path FROM import_roots WHERE status = 'active'")
@@ -421,6 +437,7 @@ enum ImportConflict {
     ChildrenExist(Vec<String>),
 }
 
+/// Check for import conflicts when adding a new import root.
 fn check_import_conflicts(conn: &Connection, new_path: &str) -> ImportConflict {
     let is_folder = metadata(new_path).map(|m| m.is_dir()).unwrap_or(false);
     if !is_folder {
@@ -466,6 +483,7 @@ fn check_import_conflicts(conn: &Connection, new_path: &str) -> ImportConflict {
     ImportConflict::None
 }
 
+/// Add new import root to database
 fn add_import_root(conn: &Connection, path: &str) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT INTO import_roots (path, last_scanned) VALUES (?1, strftime('%s', 'now'))",
@@ -473,7 +491,7 @@ fn add_import_root(conn: &Connection, path: &str) -> Result<(), rusqlite::Error>
     )?;
     Ok(())
 }
-
+/// Mark child roots as removed when a parent root is added. This keeps the history of imports intact while preventing duplicate scans. The actual scanning logic should ignore roots marked as removed.
 fn remove_child_roots(conn: &mut Connection, children: &[String]) -> Result<(), rusqlite::Error> {
     let tx = conn.transaction()?;
 
@@ -488,7 +506,7 @@ fn remove_child_roots(conn: &mut Connection, children: &[String]) -> Result<(), 
     tx.commit()?;
     Ok(())
 }
-
+/// useless for now
 fn update_root_scan_time(conn: &Connection, path: &str) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE import_roots SET last_scanned = strftime('%s', 'now') WHERE path = ?1",
@@ -496,7 +514,8 @@ fn update_root_scan_time(conn: &Connection, path: &str) -> Result<(), rusqlite::
     )?;
     Ok(())
 }
-
+/// Get tags from database if exists.
+/// If does not exist read file metadata from disk
 pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<File>> {
     let tag_backend = DefaultBackend::new();
     let mut files: Vec<File> = vec![];
@@ -628,7 +647,7 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
     }
     Ok(files)
 }
-
+/// Update metadata in database
 fn update_metadata_in_db(
     conn: &mut Connection,
     file_path: &str,
@@ -716,6 +735,7 @@ fn update_metadata_in_db(
     Ok(tags)
 }
 
+/// Get Tags from Database
 fn detected_tags_in_db(
     conn: &mut Connection,
     file_path: &str,

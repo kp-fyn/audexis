@@ -26,13 +26,13 @@ interface ChangesContext {
     SetStateAction<Record<string, SerializableTagFrameValue[]>>
   >;
 
-  setSelected: Dispatch<SetStateAction<string[]>>;
+  setSelected: Dispatch<SetStateAction<Set<string>>>;
   setFileTreeFolderSelected: Dispatch<SetStateAction<string[]>>;
   fileTreeFolderSelected: string[];
   setFilesToShow: Dispatch<SetStateAction<FileIdentifier[]>>;
   setFileTree: Dispatch<SetStateAction<FileNode[]>>;
   filesToShow: FileIdentifier[];
-  selected: string[];
+  selected: Set<string>;
   fileTree: FileNode[];
 
   saveChanges: () => void;
@@ -81,7 +81,7 @@ const ChangesContext = createContext<ChangesContext>({
   setSelected: () => {
     throw new Error("setIndex function must be overridden");
   },
-  selected: [],
+  selected: new Set<string>(),
   files: [],
   setFiles: () => {
     throw new Error("setFiles function must be overridden");
@@ -125,7 +125,7 @@ export function ChangesProvider({
     canRedo: false,
     canUndo: false,
   });
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [allFiles, setAllFiles] = useState<Map<string, File>>(new Map());
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
 
@@ -133,24 +133,25 @@ export function ChangesProvider({
   const nudgeSaveBar = () => setSaveBarNudge((n) => n + 1);
 
   const hasUnsavedChanges =
-    Object.keys(changes || {}).length > 0 && selected.length > 0;
+    Object.keys(changes || {}).length > 0 && selected.size > 0;
 
   useEffect(() => {
     if (files.length === 0) {
-      setSelected([]);
+      setSelected(new Set());
       return;
     }
 
     const validPaths = new Set(files.map((f) => f.path));
 
     setSelected((prevSelected) => {
-      const stillValid = prevSelected.filter((path) => validPaths.has(path));
+      const prev = [...prevSelected];
+      const stillValid = prev.filter((path) => validPaths.has(path));
 
-      if (stillValid.length !== prevSelected.length) {
-        return stillValid;
+      if (stillValid.length !== prev.length) {
+        return new Set(stillValid);
       }
 
-      return prevSelected;
+      return new Set(prev);
     });
   }, [files]);
   useEffect(() => {
@@ -168,7 +169,7 @@ export function ChangesProvider({
           nudgeSaveBar();
           return;
         }
-        setSelected([]);
+        setSelected(new Set());
       }
       if (event.target instanceof HTMLElement) {
         if (targets.includes(event.target.id)) {
@@ -176,7 +177,7 @@ export function ChangesProvider({
             nudgeSaveBar();
             return;
           }
-          setSelected([]);
+          setSelected(new Set());
         }
       }
     };
@@ -226,10 +227,10 @@ export function ChangesProvider({
             nudgeSaveBar();
             return;
           }
-          if (selected.length >= files.length) {
-            setSelected([]);
+          if (selected.size >= files.length) {
+            setSelected(new Set());
           } else {
-            setSelected(files.map((file) => file.path));
+            setSelected(new Set(files.map((file) => file.path)));
           }
         }
       }
@@ -279,7 +280,7 @@ export function ChangesProvider({
   async function saveChanges(): Promise<void> {
     console.log({ changes });
     if (!changes) return;
-    if (!selected || selected.length === 0) return;
+    if (!selected || selected.size === 0) return;
 
     const frames = [];
     for (const [key, value] of Object.entries(changes)) {

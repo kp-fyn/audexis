@@ -135,6 +135,7 @@ impl FileWatcher {
             old_debouncer.stop();
         }
         self.debouncer = Some(debouncer);
+
         Ok(())
     }
 
@@ -153,6 +154,16 @@ impl FileWatcher {
 
         for ev in events {
             let mut is_valid: bool = false;
+            println!("{:?}", ev.kind);
+            if ev.paths[0]
+                .file_name()
+                .unwrap_or(OsStr::new("file"))
+                .to_string_lossy()
+                .to_string()
+                == ".DS_STORE"
+            {
+                continue;
+            }
             if ev.event.paths.len() >= 2 {
                 let new_path = ev.event.paths[1].clone();
                 let file_exists = fs::exists(&new_path).unwrap_or(false);
@@ -161,11 +172,31 @@ impl FileWatcher {
                         .parent()
                         .unwrap_or(Path::new(MAIN_SEPARATOR_STR))
                         .to_path_buf();
+
+                    delete_file_path(app_handle.clone(), new_path.clone());
+
                     op_events.push(OpEvent::Remove(DeletedFile {
                         path: new_path.clone(),
                         parent_path,
                     }));
                     continue;
+                } else if ev.paths.len() > 0 {
+                    let new_path = ev.event.paths[0].clone();
+                    let file_exists = fs::exists(&new_path).unwrap_or(false);
+                    if file_exists == false {
+                        let parent_path = new_path
+                            .parent()
+                            .unwrap_or(Path::new(MAIN_SEPARATOR_STR))
+                            .to_path_buf();
+
+                        delete_file_path(app_handle.clone(), new_path.clone());
+
+                        op_events.push(OpEvent::Remove(DeletedFile {
+                            path: new_path.clone(),
+                            parent_path,
+                        }));
+                        continue;
+                    }
                 }
 
                 for root in &roots {
@@ -180,6 +211,7 @@ impl FileWatcher {
                         .parent()
                         .unwrap_or(Path::new(MAIN_SEPARATOR_STR))
                         .to_path_buf();
+                    delete_file_path(app_handle.clone(), new_path.clone());
                     op_events.push(OpEvent::Remove(DeletedFile {
                         path: new_path.clone(),
                         parent_path,
@@ -195,6 +227,7 @@ impl FileWatcher {
                         .parent()
                         .unwrap_or(Path::new(MAIN_SEPARATOR_STR))
                         .to_path_buf();
+                    delete_file_path(app_handle.clone(), p.clone());
                     op_events.push(OpEvent::Remove(DeletedFile {
                         path: p.clone(),
                         parent_path,
@@ -216,6 +249,7 @@ impl FileWatcher {
                         .parent()
                         .unwrap_or(Path::new(MAIN_SEPARATOR_STR))
                         .to_path_buf();
+                    delete_file_path(app_handle.clone(), p.clone());
                     op_events.push(OpEvent::Remove(DeletedFile {
                         path: p.clone(),
                         parent_path,

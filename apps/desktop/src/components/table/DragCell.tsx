@@ -25,7 +25,7 @@ export default function DragCell({ cell }: Props): ReactNode {
         ...style,
         width: `${cell.column.getSize()}px`,
         maxWidth: `${cell.column.getSize()}px`,
-        minWidth: `${cell.column.columnDef.minSize}px`,
+        minWidth: `20px`,
       }}
       ref={setNodeRef}
     >

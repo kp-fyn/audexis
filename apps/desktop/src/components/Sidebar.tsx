@@ -1,4 +1,4 @@
-import { ReactNode, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useSidebarWidth } from "@/ui/hooks/useSidebarWidth";
 import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
 import EditMenu from "./EditMenu";
@@ -47,6 +47,11 @@ export default function Sidebar(): ReactNode {
   // const { src } = useImage({
   //   srcList: [image?.url ?? "../assets/images/unknown.jpg"]
   // });
+  useEffect(() => {
+    if (sidebarWidth > width - 200) {
+      setSidebarWidth(width - 200);
+    }
+  }, [width, sidebarWidth]);
 
   return (
     <div

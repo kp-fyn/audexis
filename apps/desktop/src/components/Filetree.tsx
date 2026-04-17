@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import { useChanges } from "../hooks/useChanges";
 import { ExtendedFileNode, File, FileNode, FileEvent, RawFile } from "../types";
 import { invoke } from "@tauri-apps/api/core";
@@ -8,6 +8,7 @@ import { path } from "@tauri-apps/api";
 import { ContextMenuArea, MenuOptions } from "./ContextMenu";
 import { useRename } from "../hooks/useRename";
 import { useCleanup } from "../hooks/useCleanup";
+import { FolderConfigModal } from "./modals/FolderConfigModal";
 
 export default function TreeRoot(): ReactNode {
   const { fileTree, allFiles, setFiles, setAllFiles } = useChanges();
@@ -267,20 +268,12 @@ export default function TreeRoot(): ReactNode {
 
   if (!fileTree) return <></>;
   useEffect(() => {
-    const arr: File[] = [];
-    filesToShow.forEach(async (path) => {
-      const f = allFiles.get(path);
-      if (f) {
-        arr.push(f);
-      } else {
-      }
-    });
-    setFiles(arr);
+    setFiles(filesToShow.map((p) => allFiles.get(p)).filter(Boolean) as File[]);
   }, [filesToShow, allFiles]);
 
   return (
     <div>
-      <div className="flex flex-col w-full text-nowrap text-muted-foreground text-xs">
+      <div className="flex font-light flex-col w-full text-nowrap text-muted-foreground text-xs">
         {rootNodes.map((node) => (
           <FiletreeNode
             setFilesToShow={setFilesToShow}
@@ -324,14 +317,9 @@ function FiletreeNode({
 }): ReactNode {
   const [expanded, setExpanded] = useState(false);
   const { selected, setSelected } = useChanges();
-  const [isSelected, setIsSelected] = useState(false);
-  useEffect(() => {
-    if (selected.findIndex((ch) => ch === node.path) !== -1) {
-      setIsSelected(true);
-    } else {
-      setIsSelected(false);
-    }
-  }, [selected]);
+  const [folderConfigOpened, setFolderConfigOpened] = useState(false);
+  const isSelected = selected.has(node.path);
+
   async function handleClick(fromChild = false) {
     if (node.is_directory) {
       const realNode = loadedFileTree.find((n) => n.path === node.path);
@@ -403,6 +391,7 @@ function FiletreeNode({
       }
       if (!fromChild) setExpanded((prev) => !prev);
     } else {
+      setSelected((sel) => new Set([node.path]));
       const parentPath = await path.dirname(node.path);
       const parentPathName = await path.basename(parentPath);
       const realNode = loadedFileTree.find((n) => n.path === parentPath);
@@ -448,10 +437,8 @@ function FiletreeNode({
             .map((f) => f.path),
         );
       }
-      setSelected((sel) => [node.path]);
     }
   }
-  useEffect(() => {}, []);
 
   const stickyTop = `${depth * 1.25}rem`;
   const zIndex = 500 - depth;
@@ -461,41 +448,51 @@ function FiletreeNode({
   const { start: startCleanup } = useCleanup();
   const realChildren = realNode.children || [];
   const otherItems: MenuOptions = node.is_directory
-    ? []
+    ? [
+        {
+          text: "Default Values for files...",
+          action: () => {
+            const sel = realNode.path;
+            setFolderConfigOpened(true);
+          },
+        },
+      ]
     : [
         {
           text: "Rename using pattern…",
           action: () => {
-            const targets = selected.length > 0 ? selected : [node.path];
+            const targets = selected.size > 0 ? [...selected] : [node.path];
             startRename(targets, "{artist} - {title}.{ext}");
           },
         },
         {
           text: "Cleanup filenames…",
           action: () => {
-            const targets = selected.length > 0 ? selected : [node.path];
+            const targets = selected.size > 0 ? [...selected] : [node.path];
 
             startCleanup(targets);
           },
         },
         { item: "Separator" },
       ];
-  const sortedChildren = realChildren.sort((a: FileNode, b: FileNode) => {
-    const isDir = (b.is_directory ? 1 : 0) - (a.is_directory ? 1 : 0);
+  const sortedChildren = useMemo(() => {
+    return [...realChildren].sort((a: FileNode, b: FileNode) => {
+      const isDir = (b.is_directory ? 1 : 0) - (a.is_directory ? 1 : 0);
 
-    if (isDir !== 0) {
-      return isDir;
-    }
+      if (isDir !== 0) {
+        return isDir;
+      }
 
-    return a.name.localeCompare(b.name);
-  });
+      return a.name.localeCompare(b.name);
+    });
+  }, [realChildren]);
   return (
     <div className="relative w-full">
       <ContextMenuArea
         items={() => [
           ...otherItems,
           {
-            text: "Copy Path",
+            text: "Copy Path" as string,
             action: () => navigator.clipboard.writeText(node.path),
           },
           {
@@ -518,7 +515,7 @@ function FiletreeNode({
         ]}
       >
         <div
-          className={`flex gap-2 ${isSelected ? "bg-primary/15 " : "hover:bg-hover hover:text-hover-foreground bg-background"}  items-center w-full text-nowrap text-muted-foreground text-xs truncate py-1 sticky `}
+          className={`flex gap-2 ${isSelected ? "bg-primary/15 " : "hover:bg-hover hover:text-hover-foreground bg-background"} font-light  items-center w-full text-nowrap text-foreground text-xs truncate py-1 sticky `}
           style={{
             top: stickyTop,
             zIndex: zIndex,
@@ -538,7 +535,7 @@ function FiletreeNode({
             <FileAudio className="size-4 shrink-0 ml-2" />
           )}
           <span
-            className={` truncate  ${node.is_directory ? "font-semibold" : "file"}`}
+            className={` truncate  ${node.is_directory ? "font-normale" : "file"}`}
           >
             {node.name}
           </span>
@@ -577,6 +574,10 @@ function FiletreeNode({
           </div>
         </div>
       )}
+      <FolderConfigModal
+        open={folderConfigOpened}
+        onClose={() => setFolderConfigOpened(false)}
+      />
     </div>
   );
 }

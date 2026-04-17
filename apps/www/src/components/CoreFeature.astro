@@ -10,7 +10,7 @@ const { title, description, img, alt, switched } = Astro.props;
 ---
 
 <div
-  class={`bg-primary-washed border border-primary gap-4 xl:px-20 rounded py-8 px-6 flex flex-col ${switched ? "lg:flex-row-reverse" : "lg:flex-row"} mt-12`}
+  class={`bg-primary-washed border border-primary gap-y-4 xl:px-20 rounded py-8 px-6 flex flex-col gap-x-12 ${switched ? "lg:flex-row-reverse" : "lg:flex-row"} mt-12`}
 >
   <div
     class={`${switched && "ml-auto"} lg:mt-12 flex flex-col w-full lg:max-w-lg wrap-break-word`}

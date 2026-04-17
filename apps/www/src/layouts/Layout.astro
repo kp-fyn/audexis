@@ -80,6 +80,14 @@ const url = Astro.url.pathname;
         let newTheme = th === "dark" ? "dark" : "light";
         let oldTheme = newTheme === "dark" ? "light" : "dark";
         const images = document.getElementsByClassName("theme-img");
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        if (themeColor) {
+          if (newTheme === "dark") {
+            themeColor.setAttribute("content", "#0a0a0a");
+          } else {
+            themeColor.setAttribute("content", "#f1f1f1");
+          }
+        }
 
         for (let i = 0; i < images.length; i++) {
           if (images[i].tagName.toLowerCase() === "image") {
@@ -150,18 +158,28 @@ const url = Astro.url.pathname;
     <script>
       fetch("https://api.github.com/repos/kp-fyn/audexis/releases/latest")
         .then((response) => response.json())
-        .then((release) => {
+        .then((release: any) => {
+          type ReleaseAsset = {
+            name: string;
+            browser_download_url: string;
+            size: number;
+          };
+
           console.log({ release });
           let defaultUrl = "https://github.com/kp-fyn/audexis/releases/latest";
           let macDownloadUrl = defaultUrl;
           let windowsDownloadUrl = defaultUrl;
 
+          const assets: ReleaseAsset[] = Array.isArray(release?.assets)
+            ? (release.assets as ReleaseAsset[])
+            : [];
+
           const os = window.navigator.platform.toLowerCase();
-          const dmgAsset = release.assets.find((a) => a.name.endsWith(".dmg"));
+          const dmgAsset = assets.find((a) => a.name.endsWith(".dmg"));
           if (dmgAsset) {
             macDownloadUrl = dmgAsset.browser_download_url;
           }
-          const exeAsset = release.assets.find((a) => a.name.endsWith(".exe"));
+          const exeAsset = assets.find((a) => a.name.endsWith(".exe"));
           if (exeAsset) {
             windowsDownloadUrl = exeAsset.browser_download_url;
           }
@@ -222,6 +240,12 @@ const url = Astro.url.pathname;
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
+    <meta theme-color="#f1f1f1" />
+    <meta
+      name="theme-color"
+      content="#f1f1f1"
+      media="(prefers-color-scheme: dark)"
+    />
 
     <link rel="icon" href="/logo.ico" />
   </head>
@@ -237,7 +261,7 @@ const url = Astro.url.pathname;
       <div
         class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground"
       >
-        <div>MIT {new Date().getFullYear()} © Audexis</div>
+        <div>MIT {new Date().getFullYear()} © Kp Adeyinka</div>
         <div class="flex items-center gap-6">
           <a href="/docs" class="hover:text-foreground transition-colors">
             Documentation

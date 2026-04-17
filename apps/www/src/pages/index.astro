@@ -31,16 +31,18 @@ const supportedFiles = [
   title="Home"
   description="A powerful and intuitive audio metadata editor for macOS and Windows. Edit MP3 tags, manage album art, batch rename files, and organize your music library with ease. Free & Open Source."
 >
-  <div class="flex flex-col w-full pt-12">
-    <section class="flex flex-col w-full items-center text-center pt-12 pb-32">
+  <div class="flex flex-col w-full pt-8 sm:pt-12">
+    <section
+      class="flex flex-col w-full items-center text-center px-4 sm:px-6 lg:px-8 mx-auto max-w-7xl pt-12 pb-16 sm:pb-24 lg:pb-32"
+    >
       <h1
-        class="text-6xl sm:text-7xl md:text-8xl text-center font-bold tracking-tight text-foreground"
+        class="text-6xl sm:text-7xl md:text-8xl text-center font-semibold tracking-tight text-foreground"
       >
         Audio Metadata
         <br />
         <span class="text-primary">Simplified</span>
       </h1>
-      <span class="w-full mt-4 max-w-3xl text-muted-foreground text-lg">
+      <span class="w-full mt-4 max-w-2xl text-muted-foreground text-lg">
         A powerful and intuitive audio metadata editor for macOS and Windows.
         Edit MP3 tags, manage album art, batch rename files, and organize your
         music library with ease. Free & Open Source.
@@ -55,8 +57,8 @@ const supportedFiles = [
     </section>
 
     <FeatureSection
-      title=" Powerful Audio Tag Editing"
-      description={`  Edit all common audio metadata fields including title, artwork, artist,
+      title="Powerful Audio Tag Editing"
+      description={`Edit all common audio metadata fields including title, artwork, artist,
         album, album artist, track number, genre, year, composer and more. With
         full support for multiple values per field.`}
     >
@@ -65,7 +67,7 @@ const supportedFiles = [
         switched={true}
         alt="Audexis interface showing embedded artwork manager with multiple album covers including front cover, back cover, and disc art"
         img="/img-dark.webp"
-        description={` Audexis lets you view, add, replace, and remove multiple embedded images
+        description={`Audexis lets you view, add, replace, and remove multiple embedded images
       within a single audio file, not just the main album cover. Many formats
       support secondary artwork like back covers, disc images, logos, and
       booklets, and Audexis gives you full control over all of them. Whether
@@ -87,8 +89,8 @@ const supportedFiles = [
       />
     </FeatureSection>
     <FeatureSection
-      title=" Customization & Workflow"
-      description={` Tailor Audexis to fit your workflow and aesthetic preferences with a
+      title="Customization & Workflow"
+      description={`Tailor Audexis to fit your workflow and aesthetic preferences with a
         variety of customization options.`}
     >
       <div class="flex flex-col lg:flex-row gap-x-12 gap-y-12 mt-12">
@@ -124,8 +126,8 @@ const supportedFiles = [
           <div class="flex flex-col w-full lg:max-w-xl py-8">
             <h3 class="text-2xl font-semibold">Sidebar Customization</h3>
             <span class="text-muted-foreground text-base">
-              Choose the tags you want to edit. Where it is the title or the
-              album cover you chose whats on there.
+              Choose the tags you want to edit. Whether it’s the title or the
+              album cover, you decide what appears there.
             </span>
           </div>
         </div>
@@ -138,7 +140,7 @@ const supportedFiles = [
     </FeatureSection>
     <FeatureSection
       title="Batch editing"
-      description={` Batch Editing, Done Right Apply precise metadata changes across multiple
+      description={`Batch editing, done right. Apply precise metadata changes across multiple
         files at once. With full support for mixed values, multi-value fields,
         and safe previews before saving.`}
     >
@@ -194,7 +196,7 @@ const supportedFiles = [
 
     <FeatureSection
       title="Supports Your Music Library"
-      description="  Works with the most popular audio formats"
+      description="Works with the most popular audio formats"
       centered
     >
       <div class="flex flex-wrap justify-center gap-4 mt-4">
@@ -211,7 +213,7 @@ const supportedFiles = [
     </FeatureSection>
 
     <section
-      class="mt-32 px-4 lg:px-24 py-12 bg-primary-washed flex flex-col lg:flex-row gap-6 rounded-lg"
+      class="mt-16 sm:mt-24 lg:mt-32 px-4 sm:px-6 lg:px-8 mx-auto max-w-7xl py-12 bg-primary-washed flex flex-col lg:flex-row gap-6 rounded-lg"
     >
       <div class="flex flex-col">
         <h3 class="text-4xl font-semibold text-foreground mb-2">

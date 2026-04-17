@@ -188,6 +188,11 @@ impl Default for UserConfig {
                     ..Default::default()
                 },
                 Column {
+                    value: "fileName".into(),
+                    label: "File Name".into(),
+                    ..Default::default()
+                },
+                Column {
                     value: "path".into(),
                     label: "Path".into(),
                     ..Default::default()

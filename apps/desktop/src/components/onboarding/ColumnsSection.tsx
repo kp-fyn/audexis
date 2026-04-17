@@ -13,7 +13,7 @@ export function ColumnsPresetSection({
     <section className="space-y-4 animate-in fade-in">
       <SectionHeader
         title="Preset Columns"
-        description="Start with a sensible column layout – you can change later."
+        description="Choose  column layout – you can change later."
       />
       <div className="space-y-4">
         <div className="flex gap-3">
@@ -37,6 +37,7 @@ export function ColumnsPresetSection({
                       "Title",
                       "Artist",
                       "Album",
+                      "Album Artist",
                       "Genre",
                       "Track",
                       "Year",

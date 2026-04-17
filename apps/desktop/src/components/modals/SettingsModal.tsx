@@ -201,9 +201,12 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             onClick={() => setActiveNum(4)}
           />
           <div className="mt-auto pt-4 space-y-2">
-            <div className="text-[10px] text-foreground/40 leading-relaxed">
-              Use up and down arrow keys to navigate
-            </div>
+            <span className="text-[10px] text-foreground/40 leading-relaxed flex gap-1">
+              Use
+              <p className="border px-1 border-border w-max h-max ">↑</p> and
+              <p className="border px-1 border-border w-max h-max">↓</p> keys to
+              navigate
+            </span>
             {appVersion && (
               <div className="text-[10px] text-foreground/30 font-mono">
                 v{appVersion}

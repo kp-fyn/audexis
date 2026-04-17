@@ -13,7 +13,7 @@ export default function SaveBar() {
   const [show_diff_modal, setshow_diff_modal] = useState(false);
 
   const hasChanges = useMemo(() => {
-    return changes && Object.keys(changes).length > 0 && selected.length > 0;
+    return changes && Object.keys(changes).length > 0 && selected.size > 0;
   }, [changes, selected]);
 
   const countChanged = useMemo(
@@ -22,8 +22,8 @@ export default function SaveBar() {
   );
 
   const selectedFiles = useMemo(() => {
-    if (!selected || selected.length === 0) return [];
-    return files.filter((f) => selected.includes(f.path));
+    if (!selected || selected.size === 0) return [];
+    return files.filter((f) => selected.has(f.path));
   }, [files, selected]);
 
   useEffect(() => {
@@ -76,8 +76,8 @@ export default function SaveBar() {
           <div className="flex-1 text-[12px] leading-tight text-foreground/80">
             <div className="font-medium text-foreground">Unsaved changes</div>
             <div className="text-foreground/70">
-              {selected.length} file{selected.length === 1 ? "" : "s"} selected
-              • {countChanged} field{countChanged === 1 ? "" : "s"} modified
+              {selected.size} file{selected.size === 1 ? "" : "s"} selected •{" "}
+              {countChanged} field{countChanged === 1 ? "" : "s"} modified
             </div>
           </div>
           <div className="flex items-center gap-2">

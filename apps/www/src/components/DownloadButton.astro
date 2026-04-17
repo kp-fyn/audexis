@@ -7,7 +7,7 @@ const { showOtherPlatforms = false } = Astro.props;
 
 <div class="flex flex-col">
   <a
-    class="download-latest-release bg-primary text-primary-foreground hover:bg-primary/70 rounded text-base px-6 py-3"
+    class="download-latest-release bg-primary text-primary-foreground hover:bg-primary/70 rounded text-base px-8 py-4"
   >
     Download Latest Release
   </a>
@@ -15,8 +15,12 @@ const { showOtherPlatforms = false } = Astro.props;
     showOtherPlatforms && (
       <div class="mt-4 text-sm text-muted-foreground">
         <span>Available for </span>
-        <a class="underline hover:text-primary" href="#" data-dmg-download-link>
-          macOS
+        <a
+          class="border-b border-border w-max hover:text-primary"
+          href="#"
+          data-dmg-download-link
+        >
+          macOS.
         </a>
         <span>(</span>
         <span data-latest-dmg-size>0</span>

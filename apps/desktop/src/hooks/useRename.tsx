@@ -1,17 +1,12 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
+import { useChanges } from "./useChanges";
 
 type RenameContextType = {
   open: boolean;
   paths: string[];
   pattern: string;
   setPattern: (p: string) => void;
-  start: (paths: string[], pattern?: string) => void;
+  start: (paths: string, pattern: string) => void;
   close: () => void;
 };
 
@@ -27,21 +22,30 @@ export function RenameProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [paths, setPaths] = useState<string[]>([]);
   const [pattern, setPattern] = useState<string>("{artist} - {title}.{ext}");
+  const { selected } = useChanges();
 
-  const start = useCallback((p: string[], pat?: string) => {
-    setPaths(p);
+  const start = (p: string, pat: string) => {
+    const f = selected;
+    let targets: string[] = [];
+    if (f.has(p)) {
+      targets = [...f];
+    } else {
+      targets = [p];
+    }
+    setPaths(targets);
+
+    console.log({ selected });
     if (pat) setPattern(pat);
     setOpen(true);
-  }, []);
+  };
 
   const close = useCallback(() => setOpen(false), []);
 
-  const value = useMemo(
-    () => ({ open, paths, pattern, setPattern, start, close }),
-    [open, paths, pattern, setPattern, start, close]
-  );
-
   return (
-    <RenameContext.Provider value={value}>{children}</RenameContext.Provider>
+    <RenameContext.Provider
+      value={{ open, paths, pattern, setPattern, start, close }}
+    >
+      {children}
+    </RenameContext.Provider>
   );
 }

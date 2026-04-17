@@ -37,6 +37,7 @@ export default function ValueListEditor({
       open={open}
       onClose={onClose}
       title={title}
+      description="Not all tag formats support multiple values(Id3v2.3 and below, Mpeg files etc)! You are better off using regular seprators like `&` to seperate multiple values for complete compatbility."
       bodyClassName="p-5 space-y-2"
       footer={
         <>

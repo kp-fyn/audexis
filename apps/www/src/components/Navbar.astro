@@ -8,43 +8,47 @@ console.log("astro");
 ---
 
 <div
-  class="flex sticky z-50 px-4 top-0 backdrop-blur-3xl bg-transparent w-full h-18 py-3 lg:px-24 items-center border-b border-border"
+  class="flex sticky top-4 px-0 z-50 md:px-4 bg-transparent w-full h-14 lg:px-12"
 >
-  <a class="flex items-center" href="/">
-    <Image loading="eager" src={logo} alt="logo" width={40} height={40} />
-
-    <span class="px-2 text-xl font-semibold">Audexis</span>
-  </a>
-
-  <div class="gap-8 ml-4 md:flex hidden text-sm text-muted-foreground">
-    <a href="/docs">Docs</a>
-    <a href="/blog">Blog</a>
-    <a href="/releases">Releases</a>
-    <a href="https://github.com/kp-fyn/audexis">Github</a>
-  </div>
-  <div class="ml-auto flex items-center h-full gap-2">
-    <button id="theme-toggle" class="py-2 px-2 rounded hover:bg-hover">
-      <Image
-        id="light"
-        loading="eager"
-        src={moon}
-        alt="Dark mode"
-        height={20}
-        color={"#fff"}
-        width={20}
-      />
-      <Image
-        id="dark"
-        loading="eager"
-        src={sun}
-        alt="Dark mode"
-        height={20}
-        color={"#fff"}
-        width={20}
-      />
-    </button>
-    <div class="md:block hidden">
-      <DownloadButton />
+  <div
+    class="rounded-2xl px-2 w-full h-full flex items-center bg-background md:px-8 gap-4 border border-border"
+  >
+    <div class="gap-8 flex text-sm text-muted-foreground">
+      <a href="/docs">Docs</a>
+      <a href="/blog">Blog</a>
+      <a href="/releases">Releases</a>
+      <a href="https://github.com/kp-fyn/audexis">Github</a>
+    </div>
+    <div class="ml-auto flex items-center h-full gap-2">
+      <div class="md:block hidden">
+        <div class="flex flex-col">
+          <a
+            class="download-latest-release text-muted-foreground rounded text-sm px-4 py-2 border border-primary hover:bg-hover"
+          >
+            Download Latest Release
+          </a>
+        </div>
+      </div>
+      <button id="theme-toggle" class="py-2 px-2 rounded hover:bg-hover">
+        <Image
+          id="light"
+          loading="eager"
+          src={moon}
+          alt="Dark mode"
+          height={20}
+          color={"#fff"}
+          width={20}
+        />
+        <Image
+          id="dark"
+          loading="eager"
+          src={sun}
+          alt="Dark mode"
+          height={20}
+          color={"#fff"}
+          width={20}
+        />
+      </button>
     </div>
   </div>
 </div>

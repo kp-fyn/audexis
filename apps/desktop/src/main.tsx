@@ -15,7 +15,7 @@ import { Toaster } from "react-hot-toast";
 import { AutoUpdaterProvider } from "@/ui/hooks/useAutoUpdater";
 
 import SaveBar from "@/ui/components/SaveBar";
-import { RenameProvider } from "@/ui/hooks/useRename";
+import { RenameProvider, useRename } from "@/ui/hooks/useRename";
 import RenameModal from "@/ui/components/RenameModal";
 import { FindReplaceProvider } from "@/ui/hooks/useFindReplace";
 import FindReplaceBar from "@/ui/components/FindReplaceBar";
@@ -49,6 +49,7 @@ function Root() {
     query.onboarding === "true",
   );
 
+  const { open: renameOpen } = useRename();
   const handleCloseOnboarding = () => {
     setShowOnboarding(false);
     const params = new URLSearchParams(window.location.search);
@@ -78,7 +79,7 @@ function Root() {
         <TagEditorError />
         <FindReplaceBar />
         <SaveBar />
-        <RenameModal />
+        {renameOpen && <RenameModal />}
         <CleanupModal />
       </div>
       {showOnboarding && (

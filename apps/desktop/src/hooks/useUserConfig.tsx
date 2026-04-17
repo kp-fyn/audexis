@@ -73,7 +73,6 @@ export function useUserConfig(): Config {
 export function UserConfigProvider({
   children,
   initialTheme,
-  initialView,
 }: {
   children: ReactNode;
   initialTheme: string;
@@ -84,7 +83,7 @@ export function UserConfigProvider({
   const [userConfig, setUserConfig] = useState<UserConfig>({
     theme: initialTheme ? (initialTheme as "light" | "dark") : "light",
     onboarding: false,
-    view: viewMode,
+    view: viewMode as "simple" | "folder",
     columns: [],
     albums: [],
     density: "default",

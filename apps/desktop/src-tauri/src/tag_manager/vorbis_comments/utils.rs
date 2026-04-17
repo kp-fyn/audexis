@@ -94,7 +94,7 @@ pub fn raw_to_tags(raw: &HashMap<String, Vec<TagValue>>) -> HashMap<FrameKey, Ve
             match v {
                 TagValue::Text(s)
                     if matches!(frame_key, FrameKey::Artist | FrameKey::Genre)
-                        && (s.contains('/') || s.contains('\u{0}')) =>
+                        && (s.contains('\\') || s.contains('\u{0}')) =>
                 {
                     expanded.push(TagValue::Text(s.clone()));
                 }

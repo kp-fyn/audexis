@@ -221,13 +221,16 @@ pub struct FreeformTag {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// File struct that can be sent to frontend via ipc
 pub struct SerializableFile {
     pub path: String,
+    pub file_name: String,
     pub tag_format: String,
     pub tag_formats: Vec<String>,
     pub tags: HashMap<String, Vec<SerializableTagValue>>,
     pub freeforms: Vec<SerializableFreeform>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Changes {
     pub paths: Vec<String>,
@@ -286,10 +289,12 @@ pub struct SerializableFreeform {
     pub value: String,
 }
 
+/// Internal File Struct
 #[derive(Debug, Clone)]
 pub struct File {
     pub id: Uuid,
     pub path: PathBuf,
+
     pub tags: HashMap<FrameKey, Vec<TagValue>>,
     pub tag_format: Formats,
     pub tag_formats: Vec<Formats>,
@@ -333,6 +338,8 @@ impl fmt::Display for TagValue {
         }
     }
 }
+
+/// FrameKey to string
 
 impl fmt::Display for FrameKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -603,6 +610,7 @@ impl FrameKey {
 }
 // string to frame key
 
+/// Internal File struct to file that can be sent via ipc
 impl From<File> for SerializableFile {
     fn from(file: File) -> Self {
         let mut tags: HashMap<String, Vec<SerializableTagValue>> = HashMap::new();
@@ -644,6 +652,12 @@ impl From<File> for SerializableFile {
         SerializableFile {
             path: file.path.display().to_string(),
             tag_format: file.tag_format.to_string(),
+            file_name: file
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
             tag_formats: file
                 .tag_formats
                 .into_iter()
@@ -663,22 +677,7 @@ impl From<File> for SerializableFile {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct TagFrame {
-    pub key: FrameKey,
-    pub values: Vec<TagValue>,
-}
-
-#[allow(dead_code)]
-pub fn map_to_frames(map: &HashMap<FrameKey, Vec<TagValue>>) -> Vec<TagFrame> {
-    map.iter()
-        .map(|(k, v)| TagFrame {
-            key: *k,
-            values: v.clone(),
-        })
-        .collect()
-}
+/// Generates a temporary file path for a given target file.
 pub fn temp_path_for(target: &Path) -> PathBuf {
     let mut p = target.to_path_buf();
     let file_name = target
@@ -690,6 +689,7 @@ pub fn temp_path_for(target: &Path) -> PathBuf {
     p
 }
 
+//// Replaces the target file with the temporary file.
 pub fn replace_tmp(tmp: &Path, target: &Path) -> Result<(), ()> {
     #[cfg(not(windows))]
     {

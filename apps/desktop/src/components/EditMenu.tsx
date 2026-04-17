@@ -33,9 +33,9 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
     setDefaultValues({});
     // console.log(defaultValues);
 
-    if (selected.length === 0) return;
+    if (selected.size === 0) return;
 
-    const sf = selected.map((fp) => {
+    const sf = [...selected].map((fp) => {
       const file = files.find((f) => f.path === fp);
 
       if (!file) return;
@@ -69,7 +69,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
       setDefaultValues(map);
 
-      const selectedPath = selected[0];
+      const selectedPath = [...selected][0];
       const fileObj = files.find((f) => f.path === selectedPath);
       const framePics: TagPicture[] = Array.isArray(
         (fileObj as any)?.frames?.attachedPicture,
@@ -134,7 +134,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         (f) => f.attachedPicture === selectedFiles[0].attachedPicture,
       );
       if (picTheSame) {
-        const selectedPath = selected[0];
+        const selectedPath = [...selected][0];
         const fileObj = files.find((f) => f.path === selectedPath);
         const framePics: TagPicture[] = Array.isArray(
           (fileObj as any)?.frames?.attachedPicture,
@@ -199,7 +199,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                         value={(() => {
                           let df: string = "";
                           if (disabled) return df;
-                          if (selected.length > 0) {
+                          if (selected.size > 0) {
                             if (
                               changes[item.value] &&
                               changes[item.value][0] &&
@@ -238,7 +238,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                         }}
                       />
                       {multiFrameKeys.includes(item.value) &&
-                        selected.length === 1 && (
+                        selected.size === 1 && (
                           <Button
                             variant="outline"
                             disabled={disabled}
@@ -280,7 +280,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               return Img;
             })()}
             onClick={() => {
-              const selectedFormats = selected
+              const selectedFormats = [...selected]
                 .map((fp) => files.find((f) => f.path === fp))
                 .filter(Boolean)
                 .map((f) => (f as any).tag_format as string);
@@ -303,7 +303,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           <Button
             className="ml-12 mt-5"
             onClick={() => {
-              const selectedFormats = selected
+              const selectedFormats = [...selected]
                 .map((fp) => files.find((f) => f.path === fp))
                 .filter(Boolean)
                 .map((f) => (f as any).tag_format as string);
@@ -324,6 +324,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             Edit Artwork
           </Button>
         )}
+
         <ImageManagerModal
           open={artworkOpen}
           onClose={() => setArtworkOpen(false)}
@@ -368,12 +369,15 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               );
           }}
         />
+
         <ValueListEditor
           open={listEditor.open}
           title={listEditor.field ? `Edit ${listEditor.field}` : "Edit Values"}
           values={(() => {
-            if (!listEditor.open || selected.length !== 1) return [];
-            const f = files.find((ff) => ff.path === selected[0]);
+            if (!listEditor.open || selected.size !== 1) return [];
+            const f = files.find(
+              (ff) => ff.path === selected.values().next().value,
+            );
             if (!f || !f.frames) return [];
             const key = listEditor.field;
             if (!key) return [];

@@ -73,7 +73,7 @@ function SortableColumnRow({
         className={`group relative rounded-md px-1.5 py-1.5 border transition-all duration-200 ${
           disabled
             ? "border-border/60 bg-background/40 hover:bg-primary/10 hover:border-primary/50"
-            : "border-border/60 bg-muted/20 hover:bg-destructive/10 hover:border-destructive/50"
+            : "border-border/60 bg-accent/20 hover:bg-destructive/10 hover:border-destructive/50"
         }`}
         aria-label={disabled ? `Add ${col.label}` : `Remove ${col.label}`}
       >
@@ -100,11 +100,11 @@ export function ColumnsSection({
     ...allColumns.filter((c) => !columns.find((col) => col.value === c.value)),
   ];
   const filteredColumns = combined.filter((c) =>
-    c.label.toLowerCase().includes(columnQuery.trim().toLowerCase())
+    c.label.toLowerCase().includes(columnQuery.trim().toLowerCase()),
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
