@@ -3,21 +3,41 @@ import logo from "../assets/old.svg";
 import moon from "../assets/moon.svg";
 import sun from "../assets/sun.svg";
 import { Image } from "astro:assets";
-import DownloadButton from "./DownloadButton.astro";
-console.log("astro");
 ---
 
 <div
-  class="flex sticky top-4 px-0 z-50 md:px-4 bg-transparent w-full h-14 lg:px-12"
+  class="sticky flex top-0 p-7 px-0 z-50 bg-background border-b border-primary w-full h-14"
 >
   <div
-    class="rounded-2xl px-2 w-full h-full flex items-center bg-background md:px-8 gap-4 border border-border"
+    class="px-2 w-full h-full flex items-center bg-transparent backdrop-blur-3xl md:px-8 gap-4"
   >
-    <div class="gap-8 flex text-sm text-muted-foreground">
-      <a href="/docs">Docs</a>
-      <a href="/blog">Blog</a>
-      <a href="/releases">Releases</a>
-      <a href="https://github.com/kp-fyn/audexis">Github</a>
+    <div class="flex items-center gap-4 min-w-0">
+      <button
+        id="mobile-menu-toggle"
+        class="md:hidden py-2 px-2 rounded hover:bg-hover text-muted-foreground"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        type="button"
+      >
+        <span class="sr-only">Menu</span>
+        <span class="block w-5">
+          {/* Burger! */}
+          <span class="block h-0.5 w-full bg-current"></span>
+          <span class="block h-0.5 w-full bg-current mt-1"></span>
+          <span class="block h-0.5 w-full bg-current mt-1"></span>
+        </span>
+      </button>
+      <a href="/" class="flex items-center gap-2 shrink-0">
+        <Image src={logo} alt="Audexis logo" width={26} height={26} />
+        <span class="text-lg font- text-foreground">Audexis</span>
+      </a>
+      <div class="hidden md:flex gap-8 text-sm text-muted-foreground">
+        <a href="/docs">Docs</a>
+        <a href="/blog">Blog</a>
+        <a href="/releases">Releases</a>
+        <a href="https://github.com/kp-fyn/audexis">Github</a>
+      </div>
     </div>
     <div class="ml-auto flex items-center h-full gap-2">
       <div class="md:block hidden">
@@ -48,17 +68,48 @@ console.log("astro");
           color={"#fff"}
           width={20}
         />
+        <span class="sr-only">Toggle theme</span>
       </button>
+    </div>
+  </div>
+
+  <div
+    id="mobile-menu"
+    class="hidden md:hidden absolute left-0 right-0 top-full px-2 md:px-8"
+  >
+    <div
+      class="mt-2 rounded border border-primary bg-transparent backdrop-blur-2xl"
+    >
+      <div class="flex flex-col py-2">
+        <a
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-"
+          href="/docs">Docs</a
+        >
+        <a
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          href="/blog">Blog</a
+        >
+        <a
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          href="/releases">Releases</a
+        >
+        <a
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          href="https://github.com/kp-fyn/audexis">Github</a
+        >
+        <a
+          class="download-latest-release px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          >Download Latest Release</a
+        >
+      </div>
     </div>
   </div>
 </div>
 
 <script is:inline>
   function showCorrectIcon(newTheme) {
-    console.log("hi");
     const iconToHideId = newTheme === "light" ? "dark" : "light";
     const iconToShowId = newTheme;
-    console.log(iconToHideId);
 
     const iconToHide = document.getElementById(iconToHideId);
     if (iconToHide) {
@@ -121,5 +172,29 @@ console.log("astro");
         showCorrectIcon(defaultTheme);
       }
     }
+  }
+
+  const mobileMenuToggle = document.getElementById("mobile-menu-toggle");
+  const mobileMenu = document.getElementById("mobile-menu");
+
+  if (mobileMenuToggle && mobileMenu) {
+    mobileMenuToggle.addEventListener("click", () => {
+      const isOpen = mobileMenu.classList.contains("hidden") === false;
+      if (isOpen) {
+        mobileMenu.classList.add("hidden");
+        mobileMenuToggle.setAttribute("aria-expanded", "false");
+      } else {
+        mobileMenu.classList.remove("hidden");
+        mobileMenuToggle.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    mobileMenu.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target && target instanceof HTMLElement && target.tagName === "A") {
+        mobileMenu.classList.add("hidden");
+        mobileMenuToggle.setAttribute("aria-expanded", "false");
+      }
+    });
   }
 </script>
