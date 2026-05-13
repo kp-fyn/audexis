@@ -332,8 +332,6 @@ function App() {
     const unlisten = listen(
       "workspace-roots",
       async (event: TauriEvent<ExtendedFileNode[]>) => {
-        console.log(event.payload);
-
         setFileTree(event.payload);
       },
     );
@@ -386,10 +384,9 @@ function App() {
   useEffect(() => {
     const unlisten = listen("workspace-updated", (event: TauriEvent<any[]>) => {
       const normalized = normalizeFilesPayload(event.payload as any[]);
-      console.log({ viewMode });
+
       if (viewMode === "simple") {
         setFiles(Array.from(normalized.values()));
-        console.log("setfiles");
       }
       setAllFiles(
         (prev) =>
@@ -398,7 +395,7 @@ function App() {
             ...Array.from(normalized.entries()),
           ]),
       );
-      console.log({ normalized });
+
       setIsLoading(false);
     });
 
@@ -433,7 +430,6 @@ function App() {
           break;
         default:
           setIsFileDragOver(false);
-          console.log("File drop cancelled");
       }
     });
     return () => {
@@ -452,7 +448,6 @@ function App() {
 
       invoke("get_all_columns")
         .then((cols: any) => {
-          console.log({ cols });
           setAllColumns(cols);
         })
         .catch(() => {

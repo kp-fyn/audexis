@@ -20,7 +20,6 @@ export function AppearanceSection({
   view,
   onViewChange,
 }: AppearanceSectionProps) {
-  console.log({ view });
   return (
     <section className="space-y-4 animate-in fade-in">
       <SectionHeader

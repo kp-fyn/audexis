@@ -34,7 +34,6 @@ export function RenameProvider({ children }: { children: React.ReactNode }) {
     }
     setPaths(targets);
 
-    console.log({ selected });
     if (pat) setPattern(pat);
     setOpen(true);
   };

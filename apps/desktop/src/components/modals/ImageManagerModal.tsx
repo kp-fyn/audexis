@@ -51,7 +51,7 @@ export function ImageManagerModal({
   const current = items[index];
 
   const currentTypeId = current?.picture_type ?? types[index] ?? 3;
-  console.log({ currentTypeId });
+
   const currentTypeName =
     PICTURE_TYPES.find((t) => t.id === currentTypeId)?.name || "Front Cover";
   const typeOptions = useMemo(

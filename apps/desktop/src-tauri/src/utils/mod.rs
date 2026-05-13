@@ -1,5 +1,6 @@
 use crate::commands::import_paths::import_paths;
 use crate::config::user::ViewMode;
+use crate::database::Database;
 use std::path::MAIN_SEPARATOR_STR;
 // use crate::tag_manager::utils::SerializableFile;
 use crate::tag_manager::tag_backend::{BackendError, DefaultBackend, TagBackend};
@@ -7,10 +8,9 @@ use crate::tag_manager::utils::{
     File, FrameKey, SerializableFile, TagValue, UserTextEntry, UserUrlEntry,
 };
 
-use crate::AppState;
-
-use rusqlite::{params, Connection, Result};
+use crate::{AppState, FileNode};
 use serde::Serialize;
+use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{self, metadata};
@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::thread;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{Emitter, Manager, State};
+use tauri::{async_runtime, Emitter, Manager, State};
 use walkdir::WalkDir;
 
 #[derive(Serialize)]
@@ -85,22 +85,16 @@ pub fn handle_file_associations(app_handle: tauri::AppHandle, paths: Vec<PathBuf
 pub fn index_files(app_handle: tauri::AppHandle, paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, ()> {
     let state = app_handle.state::<AppState>();
 
-    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+    let db = state.db.clone();
+    let result = async_runtime::block_on(async {
+        let (new_files, _existing_files) = check_files_against_db(&db.pool, paths).await;
+        if let Err(e) = insert_pending_files(&db.pool, new_files.clone()).await {
+            println!("insert_pending_files failed: {e}");
+        }
+        Ok::<_, ()>(new_files)
+    });
 
-    let conn = db.lock();
-    if conn.is_err() {
-        drop(conn);
-        return Err(());
-    }
-    let mut conn = conn.unwrap();
-
-    let (new_files, _existing_files) = check_files_against_db(&mut conn, paths);
-    let new_files_clone = new_files.clone();
-    if let Err(e) = insert_pending_files(&mut conn, new_files) {
-        println!("insert_pending_files failed: {:?}", e);
-    }
-    drop(conn);
-    return Ok(new_files_clone);
+    result
 }
 
 /// Attempt to import files
@@ -143,44 +137,39 @@ pub fn handle_import_files(
             let _ = watcher.watch_workspace();
         }
     } else {
-        let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
+        let db = state.db.clone();
         println!("importing files: {:?}", paths.clone().len());
 
-        thread::spawn(move || {
-            println!("import thread started");
+        let app_handle = app_handle.clone();
+        async_runtime::spawn(async move {
+            println!("import task started");
 
-            let folder = paths.get(0);
-            // print!("importing folder: {:?}", folder);
+            let folder = paths.get(0).cloned();
             if folder.is_none() {
                 return;
             }
-            let mut conn = match db.lock() {
-                Ok(c) => c,
-                Err(poisoned) => poisoned.into_inner(),
-            };
 
-            let folder = folder.unwrap().clone();
-            let folder_path = folder.clone().to_string_lossy().to_string();
-            match check_import_conflicts(&conn, &folder_path) {
+            let folder = folder.unwrap();
+            let folder_path = folder.to_string_lossy().to_string();
+
+            match check_import_conflicts(&db.pool, &folder_path).await {
                 ImportConflict::ParentExists => {
                     println!("parent folder already imported");
-                    drop(conn);
                     return;
                 }
                 ImportConflict::ChildrenExist(children) => {
-                    remove_child_roots(&mut conn, &children).ok();
-                    add_import_root(&conn, &folder_path).ok();
+                    let _ = remove_child_roots(&db.pool, &children).await;
+                    let _ = add_import_root(&db.pool, &folder_path).await;
                 }
                 ImportConflict::Exact => {
-                    update_root_scan_time(&conn, &folder_path).ok();
+                    let _ = update_root_scan_time(&db.pool, &folder_path).await;
                 }
                 ImportConflict::NotFolder => {
                     println!("not a folder");
-                    drop(conn);
                     return;
                 }
                 ImportConflict::None => {
-                    add_import_root(&conn, &folder_path).ok();
+                    let _ = add_import_root(&db.pool, &folder_path).await;
                 }
             }
 
@@ -189,15 +178,35 @@ pub fn handle_import_files(
                 println!("emit failed: {:?}", e);
             }
 
-            let (new_files, _existing_files) = check_files_against_db(&conn, scanned_files);
-
-            if let Err(e) = insert_pending_files(&mut conn, new_files) {
-                println!("insert_pending_files failed: {:?}", e);
+            let (new_files, _existing_files) =
+                check_files_against_db(&db.pool, scanned_files).await;
+            if let Err(e) = insert_pending_files(&db.pool, new_files).await {
+                println!("insert_pending_files failed: {e}");
             }
-            drop(conn);
-        });
 
-        println!("import thread spawned");
+            let roots: Vec<String> = sqlx::query_scalar(
+                "SELECT path FROM import_roots WHERE status = 'active' ORDER BY path",
+            )
+            .fetch_all(&db.pool)
+            .await
+            .unwrap_or_default();
+
+            let mut result = Vec::new();
+            for root_path in roots {
+                let name = match std::path::Path::new(&root_path).file_name() {
+                    Some(name) => name.to_string_lossy().to_string(),
+                    None => root_path.clone(),
+                };
+
+                result.push(FileNode {
+                    path: root_path,
+                    name,
+                    is_directory: true,
+                });
+            }
+
+            let _ = app_handle.emit("workspace-roots", result);
+        });
 
         if let Ok(mut watcher) = state.file_watcher.lock() {
             let _ = watcher.watch_workspace();
@@ -249,68 +258,63 @@ fn systemtime_to_unix(time: SystemTime) -> i64 {
 pub fn delete_file_path(app_handle: tauri::AppHandle, file_path: PathBuf) {
     let state = app_handle.state::<AppState>();
 
-    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
-
-    let conn = db.lock();
-    if conn.is_err() {
-        drop(conn);
-        return;
-    }
-    let conn = conn.unwrap();
+    let db = state.db.clone();
     let file_path_str = file_path.to_string_lossy().to_string();
 
-    let delete_result = conn.execute("DELETE FROM files WHERE path = ?1", [file_path_str]);
-    if delete_result.is_err() {
-        return;
-    }
+    let _ = async_runtime::block_on(async {
+        let _ = sqlx::query("DELETE FROM files WHERE path = ?1")
+            .bind(file_path_str)
+            .execute(&db.pool)
+            .await;
+    });
 }
 
 /// Update file path in db when file is renamed or moved
 pub fn update_file_path(app_handle: tauri::AppHandle, old_path: PathBuf, new_path: PathBuf) {
     let state = app_handle.state::<AppState>();
 
-    let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
-
-    let conn = db.lock();
-    if conn.is_err() {
-        drop(conn);
-        return;
-    }
-    let conn = conn.unwrap();
+    let db = state.db.clone();
 
     let new_path_str = new_path.to_string_lossy().to_string();
     let old_path_str = old_path.to_string_lossy().to_string();
-    let r = conn.query_row(
-        "SELECT 1 FROM files WHERE path = ?1",
-        [new_path_str.as_str()],
-        |_e| Ok(true),
-    );
 
-    let exists: bool = r.unwrap_or(false);
-    if exists {
-        let delete_result = conn.execute("DELETE FROM files WHERE path = ?1", [old_path_str]);
-        if delete_result.is_err() {
-            return;
+    let _ = async_runtime::block_on(async {
+        let exists = sqlx::query_scalar::<_, i64>("SELECT 1 FROM files WHERE path = ?1")
+            .bind(&new_path_str)
+            .fetch_optional(&db.pool)
+            .await
+            .ok()
+            .flatten()
+            .is_some();
+
+        if exists {
+            let _ = sqlx::query("DELETE FROM files WHERE path = ?1")
+                .bind(&old_path_str)
+                .execute(&db.pool)
+                .await;
+        } else {
+            let new_file_name = new_path
+                .file_name()
+                .unwrap_or(OsStr::new("file"))
+                .to_string_lossy()
+                .to_string();
+
+            let _ = sqlx::query("UPDATE files SET path = ?2, file_name = ?3 WHERE path = ?1")
+                .bind(&old_path_str)
+                .bind(&new_path_str)
+                .bind(new_file_name)
+                .execute(&db.pool)
+                .await;
         }
-    } else {
-        let new_file_name = new_path
-            .file_name()
-            .unwrap_or(OsStr::new("file"))
-            .to_string_lossy()
-            .to_string();
-        let update_result = conn.execute(
-            "UPDATE files SET path = ?2, file_name = ?3 WHERE path = ?1",
-            params![old_path_str, new_path_str, new_file_name],
-        );
-        if update_result.is_err() {
-            return;
-        }
-    }
+    });
 }
 
 /// Insert new files into the database with pending status. If file already exists, update its metadata.
-fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Result<()> {
-    let tx = conn.transaction()?;
+async fn insert_pending_files(
+    pool: &SqlitePool,
+    new_files: Vec<PathBuf>,
+) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
 
     for file_path in new_files {
         let path_str: String = file_path.to_string_lossy().to_string();
@@ -322,30 +326,31 @@ fn insert_pending_files(conn: &mut Connection, new_files: Vec<PathBuf>) -> Resul
             .ok()
             .and_then(|m| m.modified().ok());
 
-        let res = tx.execute(
-            "INSERT INTO files (path, file_name, file_size, last_modified, status) 
-             VALUES (?1, ?2, ?3, ?4, 'pending') 
-             ON CONFLICT(path)
+        let res = sqlx::query(
+            "INSERT INTO files (path, file_name, file_size, last_modified, status) \
+             VALUES (?1, ?2, ?3, ?4, 'pending') \
+             ON CONFLICT(path)\
               DO UPDATE SET file_name=?2, file_size=?3",
-            params![
-                path_str.as_str(),
-                file_name,
-                file_size.map(|size| size as i64).unwrap_or(0),
-                last_modified.map(|t| systemtime_to_unix(t)).unwrap_or(0),
-            ],
-        );
+        )
+        .bind(path_str.as_str())
+        .bind(file_name)
+        .bind(file_size.map(|size| size as i64).unwrap_or(0))
+        .bind(last_modified.map(systemtime_to_unix).unwrap_or(0))
+        .execute(&mut *tx)
+        .await;
+
         if let Err(e) = res {
             println!("Failed to insert file {}: {:?}", path_str, e);
             continue;
         }
     }
 
-    tx.commit()?;
+    tx.commit().await?;
     Ok(())
 }
 /// Check scanned files against database and return new files that are not in the database or have been modified since last scan, and existing files that are up to date.
-fn check_files_against_db(
-    conn: &Connection,
+async fn check_files_against_db(
+    pool: &SqlitePool,
     scanned_files: Vec<PathBuf>,
 ) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut new_files = Vec::new();
@@ -353,17 +358,13 @@ fn check_files_against_db(
 
     for file_path in scanned_files {
         let path_str: String = file_path.to_string_lossy().to_string();
-        let r = conn.query_row(
-            "SELECT 1 FROM files WHERE path = ?1",
-            [path_str.as_str()],
-            |_e| Ok(true),
-        );
-        if r.is_err() {
-            println!("DB query error for file {}: {:?}", path_str, r.err());
-            new_files.push(file_path);
-            continue;
-        }
-        let exists: bool = r.unwrap_or(false);
+        let exists = sqlx::query_scalar::<_, i64>("SELECT 1 FROM files WHERE path = ?1")
+            .bind(path_str.as_str())
+            .fetch_optional(pool)
+            .await
+            .ok()
+            .flatten()
+            .is_some();
 
         if exists {
             let disk_modified = metadata(&file_path).ok().and_then(|m| m.modified().ok());
@@ -373,16 +374,14 @@ fn check_files_against_db(
                 continue;
             }
 
-            let db_modified: Option<SystemTime> = conn
-                .query_row(
-                    "SELECT last_modified FROM files WHERE path = ?1",
-                    [path_str.as_str()],
-                    |row| {
-                        let timestamp: i64 = row.get(0)?;
-                        Ok(unix_to_systemtime(timestamp))
-                    },
-                )
-                .ok();
+            let db_modified: Option<SystemTime> =
+                sqlx::query_scalar::<_, i64>("SELECT last_modified FROM files WHERE path = ?1")
+                    .bind(path_str.as_str())
+                    .fetch_optional(pool)
+                    .await
+                    .ok()
+                    .flatten()
+                    .map(unix_to_systemtime);
             // if no modified timestamp in file metaadata add to new files
 
             if db_modified.is_none() {
@@ -416,16 +415,12 @@ fn check_files_against_db(
 }
 
 /// Get Root folders
-pub fn get_imported_folders(conn: &Connection) -> Vec<String> {
-    let mut stmt = conn
-        .prepare("SELECT path FROM import_roots WHERE status = 'active'")
-        .unwrap();
-
-    let imported_folders: Vec<String> = stmt
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+pub async fn get_imported_folders(db: &Database) -> Vec<String> {
+    let imported_folders =
+        sqlx::query_scalar("SELECT path FROM import_roots WHERE status = 'active'")
+            .fetch_all(&db.pool)
+            .await
+            .unwrap_or_default();
 
     imported_folders
 }
@@ -438,32 +433,31 @@ enum ImportConflict {
 }
 
 /// Check for import conflicts when adding a new import root.
-fn check_import_conflicts(conn: &Connection, new_path: &str) -> ImportConflict {
+async fn check_import_conflicts(pool: &SqlitePool, new_path: &str) -> ImportConflict {
     let is_folder = metadata(new_path).map(|m| m.is_dir()).unwrap_or(false);
     if !is_folder {
         return ImportConflict::NotFolder;
     }
-    let exact_exists: bool = conn
-        .query_row(
-            "SELECT 1 FROM import_roots WHERE path = ?1 AND status = 'active'",
-            [new_path],
-            |_| Ok(true),
-        )
-        .unwrap_or(false);
+
+    let exact_exists = sqlx::query_scalar::<_, i64>(
+        "SELECT 1 FROM import_roots WHERE path = ?1 AND status = 'active'",
+    )
+    .bind(new_path)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten()
+    .is_some();
 
     if exact_exists {
         return ImportConflict::Exact;
     }
 
-    let mut stmt = conn
-        .prepare("SELECT path FROM import_roots WHERE status = 'active'")
-        .unwrap();
-
-    let existing_roots: Vec<String> = stmt
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let existing_roots: Vec<String> =
+        sqlx::query_scalar("SELECT path FROM import_roots WHERE status = 'active'")
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
 
     for root in &existing_roots {
         if new_path.starts_with(root) && new_path != root {
@@ -484,99 +478,82 @@ fn check_import_conflicts(conn: &Connection, new_path: &str) -> ImportConflict {
 }
 
 /// Add new import root to database
-fn add_import_root(conn: &Connection, path: &str) -> Result<(), rusqlite::Error> {
-    conn.execute(
-        "INSERT INTO import_roots (path, last_scanned) VALUES (?1, strftime('%s', 'now'))",
-        [path],
-    )?;
+async fn add_import_root(pool: &SqlitePool, path: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO import_roots (path, last_scanned, status) VALUES (?1, strftime('%s', 'now'), 'active')\
+         ON CONFLICT(path) DO UPDATE SET status = 'active', last_scanned = strftime('%s', 'now')",
+    )
+    .bind(path)
+    .execute(pool)
+    .await?;
+
     Ok(())
 }
 /// Mark child roots as removed when a parent root is added. This keeps the history of imports intact while preventing duplicate scans. The actual scanning logic should ignore roots marked as removed.
-fn remove_child_roots(conn: &mut Connection, children: &[String]) -> Result<(), rusqlite::Error> {
-    let tx = conn.transaction()?;
+async fn remove_child_roots(pool: &SqlitePool, children: &[String]) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
 
     for child in children {
-        // keep for history
-        tx.execute(
-            "UPDATE import_roots SET status = 'removed' WHERE path = ?1",
-            [child],
-        )?;
+        sqlx::query("UPDATE import_roots SET status = 'removed' WHERE path = ?1")
+            .bind(child)
+            .execute(&mut *tx)
+            .await?;
     }
 
-    tx.commit()?;
+    tx.commit().await?;
     Ok(())
 }
 /// useless for now
-fn update_root_scan_time(conn: &Connection, path: &str) -> Result<(), rusqlite::Error> {
-    conn.execute(
-        "UPDATE import_roots SET last_scanned = strftime('%s', 'now') WHERE path = ?1",
-        [path],
-    )?;
+async fn update_root_scan_time(pool: &SqlitePool, path: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE import_roots SET last_scanned = strftime('%s', 'now') WHERE path = ?1")
+        .bind(path)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 /// Get tags from database if exists.
 /// If does not exist read file metadata from disk
-pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<File>> {
+pub async fn get_tags(
+    db: &Database,
+    file_paths: Vec<String>,
+) -> std::result::Result<Vec<File>, String> {
     let tag_backend = DefaultBackend::new();
     let mut files: Vec<File> = vec![];
     for file_path in file_paths {
-        let r = conn.query_row(
-            "SELECT 1 FROM files WHERE path = ?1",
-            [file_path.as_str()],
-            |_e| Ok(true),
-        );
+        let file_exists_in_db = sqlx::query_scalar::<_, i64>("SELECT 1 FROM files WHERE path = ?1")
+            .bind(&file_path)
+            .fetch_optional(&db.pool)
+            .await
+            .map_err(|e| e.to_string())?
+            .is_some();
 
-        let file_exists_in_db: bool = r.unwrap_or(false);
-        if file_exists_in_db == false {
+        if !file_exists_in_db {
             let real_path = PathBuf::from(&file_path);
             if real_path.exists() == false {
                 continue;
             }
-            let file_name = real_path
-                .file_name()
-                .unwrap_or(OsStr::new("file"))
-                .to_string_lossy()
-                .to_string();
-            let file_size = metadata(&file_path)
-                .ok()
-                .map(|m| m.len())
-                .map(|size| size as i64)
-                .unwrap_or(0);
-            let last_modified = fs::metadata(&file_path)
-                .ok()
-                .and_then(|m| m.modified().ok())
-                .map(|t| systemtime_to_unix(t))
-                .unwrap_or(0);
 
-            let res = conn.execute(
-                "INSERT INTO files (path, file_name, file_size, last_modified, status) 
-             VALUES (?1, ?2, ?3, ?4, 'pending') 
-             ON CONFLICT(path)
-              DO UPDATE SET file_name=?2, file_size=?3",
-                params![file_path, file_name, file_size, last_modified],
-            );
-            if res.is_err() {
-                println!("Err inserting");
+            if let Err(e) = insert_pending_files(&db.pool, vec![real_path]).await {
+                println!("Err inserting: {e}");
             }
         }
 
-        let is_indexed: bool = conn
-            .query_row(
-                "SELECT 1 FROM files WHERE path = ?1 AND metadata_status = 'indexed'",
-                [file_path.as_str()],
-                |_| Ok(true),
-            )
-            .unwrap_or(false);
-        let db_modified: Option<SystemTime> = conn
-            .query_row(
-                "SELECT last_modified FROM files WHERE path = ?1",
-                [file_path.as_str()],
-                |row| {
-                    let timestamp: i64 = row.get(0)?;
-                    Ok(unix_to_systemtime(timestamp))
-                },
-            )
-            .ok();
+        let is_indexed = sqlx::query_scalar::<_, i64>(
+            "SELECT 1 FROM files WHERE path = ?1 AND metadata_status = 'indexed'",
+        )
+        .bind(file_path.as_str())
+        .fetch_optional(&db.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .is_some();
+
+        let db_modified: Option<SystemTime> =
+            sqlx::query_scalar::<_, i64>("SELECT last_modified FROM files WHERE path = ?1")
+                .bind(file_path.as_str())
+                .fetch_optional(&db.pool)
+                .await
+                .map_err(|e| e.to_string())?
+                .map(unix_to_systemtime);
 
         let disk_modified = metadata(&file_path).ok().and_then(|m| m.modified().ok());
         let needs_update = if let (Some(db_mod), Some(disk_mod)) = (db_modified, disk_modified) {
@@ -594,16 +571,13 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
         };
 
         if !is_indexed || needs_update || !file_exists_in_db {
-            let tags = update_metadata_in_db(conn, &file_path, &tag_backend);
-            if tags.is_err() {
-                println!(
-                    "Error updating metadata for file {}: {:?}",
-                    file_path,
-                    tags.err()
-                );
-                continue;
-            }
-            let tags = tags.unwrap();
+            let tags = match update_metadata_in_db(&db.pool, &file_path, &tag_backend).await {
+                Ok(t) => t,
+                Err(e) => {
+                    println!("Error updating metadata for file {}: {e}", file_path);
+                    continue;
+                }
+            };
             let tag_format = tag_backend.resolve_format(&PathBuf::from(&file_path));
             let tag_formats =
                 tag_backend.detect_all_formats(&PathBuf::from(&file_path), &tag_format);
@@ -620,16 +594,14 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
             println!("Updated tags for file: {}", file_path);
         } else {
             println!("File already indexed: {}", file_path);
-            let tags = detected_tags_in_db(conn, &file_path);
-            if tags.is_err() {
-                println!(
-                    "Error retrieving metadata for file {}: {:?}",
-                    file_path,
-                    tags.err()
-                );
-                continue;
-            }
-            let tags = tags.unwrap();
+
+            let tags = match detected_tags_in_db(&db.pool, &file_path).await {
+                Ok(t) => t,
+                Err(e) => {
+                    println!("Error retrieving metadata for file {}: {e}", file_path);
+                    continue;
+                }
+            };
             let tag_format = tag_backend.resolve_format(&PathBuf::from(&file_path));
             let tag_formats =
                 tag_backend.detect_all_formats(&PathBuf::from(&file_path), &tag_format);
@@ -648,25 +620,43 @@ pub fn get_tags(conn: &mut Connection, file_paths: Vec<String>) -> Result<Vec<Fi
     Ok(files)
 }
 /// Update metadata in database
-fn update_metadata_in_db(
-    conn: &mut Connection,
+async fn update_metadata_in_db(
+    pool: &SqlitePool,
     file_path: &str,
     tag_backend: &DefaultBackend,
-) -> Result<HashMap<FrameKey, Vec<TagValue>>> {
-    let r = tag_backend.read(&PathBuf::from(file_path));
-    if r.is_err() {
-        return Result::Err(rusqlite::Error::InvalidQuery);
-    }
+) -> std::result::Result<HashMap<FrameKey, Vec<TagValue>>, String> {
+    let f = tag_backend
+        .read(&PathBuf::from(file_path))
+        .map_err(|e| format!("{e:?}"))?;
 
-    conn.execute("DELETE FROM tag_text WHERE file_path = ?1", [file_path])?;
-    conn.execute("DELETE FROM tag_pictures WHERE file_path = ?1", [file_path])?;
-    conn.execute(
-        "DELETE FROM tag_user_text WHERE file_path = ?1",
-        [file_path],
-    )?;
-    conn.execute("DELETE FROM tag_user_url WHERE file_path = ?1", [file_path])?;
-    conn.execute("DELETE FROM tag_comment WHERE file_path = ?1", [file_path])?;
-    let f = r.unwrap();
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    sqlx::query("DELETE FROM tag_text WHERE file_path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM tag_pictures WHERE file_path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM tag_user_text WHERE file_path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM tag_user_url WHERE file_path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM tag_comment WHERE file_path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
     let tags = f.tags;
     for (frame_key, tag_values) in &tags {
         for tag_value in tag_values {
@@ -675,221 +665,196 @@ fn update_metadata_in_db(
                     if text.is_empty() {
                         continue;
                     }
-                    println!("Inserting tag: {} -> text: {}", frame_key, text);
-
-                    conn.execute(
-                        "INSERT INTO tag_text (file_path, key, value) VALUES (?1, ?2, ?3)",
-                        params![file_path, frame_key.to_string(), text],
-                    )?;
+                    sqlx::query("INSERT INTO tag_text (file_path, key, value) VALUES (?1, ?2, ?3)")
+                        .bind(file_path)
+                        .bind(frame_key.to_string())
+                        .bind(text)
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(|e| e.to_string())?;
                 }
                 TagValue::Picture {
                     mime,
                     data,
                     picture_type,
-                    description: _,
+                    description,
                 } => {
-                    println!("Inserting tag: {} -> picture", frame_key);
-                    conn.execute(
-                        "INSERT INTO tag_pictures (file_path, key, mime_type, data, picture_type) VALUES (?1, ?2, ?3, ?4, ?5)",
-                        params![file_path, frame_key.to_string(), mime, data, picture_type.unwrap_or(3)],
-                    )?;
+                    sqlx::query(
+                        "INSERT INTO tag_pictures (file_path, key, mime_type, data, picture_type, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    )
+                    .bind(file_path)
+                    .bind(frame_key.to_string())
+                    .bind(mime)
+                    .bind(data)
+                    .bind(picture_type.unwrap_or(3) as i64)
+                    .bind(description.clone().unwrap_or_default())
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 }
                 TagValue::UserText(ut) => {
-                    println!("Inserting tag: {} -> user text", frame_key);
-                    conn.execute(
+                    sqlx::query(
                         "INSERT INTO tag_user_text (file_path, key, value, description) VALUES (?1, ?2, ?3, ?4)",
-                        params![file_path, frame_key.to_string(), ut.value, ut.description],
-                    )?;
+                    )
+                    .bind(file_path)
+                    .bind(frame_key.to_string())
+                    .bind(&ut.value)
+                    .bind(&ut.description)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 }
                 TagValue::UserUrl(uu) => {
-                    println!("Inserting tag: {} -> user url", frame_key);
-                    conn.execute(
+                    sqlx::query(
                         "INSERT INTO tag_user_url (file_path, key, url, description) VALUES (?1, ?2, ?3, ?4)",
-                        params![file_path, frame_key.to_string(), uu.url, uu.description],
-                    )?;
+                    )
+                    .bind(file_path)
+                    .bind(frame_key.to_string())
+                    .bind(&uu.url)
+                    .bind(&uu.description)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 }
-
                 TagValue::Comment {
                     text,
                     encoding,
                     language,
                     description,
                 } => {
-                    conn.execute(
-                        "INSERT INTO tag_comment (file_path, key, text, endcoding, language, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                        params![file_path, frame_key.to_string(), text, encoding, language, description],
-                    )?;
+                    sqlx::query(
+                        "INSERT INTO tag_comment (file_path, key, text, encoding, language, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    )
+                    .bind(file_path)
+                    .bind(frame_key.to_string())
+                    .bind(text)
+                    .bind(encoding)
+                    .bind(language)
+                    .bind(description)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 }
             }
         }
     }
-    conn.execute(
-        "UPDATE files SET metadata_status = 'indexed' WHERE path = ?1",
-        [file_path],
-    )?;
-    conn.execute(
-        "UPDATE files SET last_modified = strftime('%s', 'now') WHERE path = ?1",
-        [file_path],
-    )?;
+
+    sqlx::query("UPDATE files SET metadata_status = 'indexed' WHERE path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE files SET last_modified = strftime('%s', 'now') WHERE path = ?1")
+        .bind(file_path)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
 
     Ok(tags)
 }
 
 /// Get Tags from Database
-fn detected_tags_in_db(
-    conn: &mut Connection,
+async fn detected_tags_in_db(
+    pool: &SqlitePool,
     file_path: &str,
-) -> Result<HashMap<FrameKey, Vec<TagValue>>> {
-    let mut text_stmt = conn.prepare("SELECT key, value FROM tag_text WHERE file_path = ?1")?;
-    let tag_txt = text_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0)?;
-        let value: String = row.get(1)?;
-        Ok((key, value))
-    });
+) -> std::result::Result<HashMap<FrameKey, Vec<TagValue>>, String> {
+    let tag_txt: Vec<(String, String)> =
+        sqlx::query_as("SELECT key, value FROM tag_text WHERE file_path = ?1")
+            .bind(file_path)
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
 
-    let mut picture_stmt = conn.prepare(
+    let tag_pics: Vec<(String, String, Vec<u8>, i64, String)> = sqlx::query_as(
         "SELECT key, mime_type, data, picture_type, description FROM tag_pictures WHERE file_path = ?1",
-    )?;
-    let tag_pics = picture_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0).unwrap_or_default();
-        let mime_type: String = row.get(1).unwrap_or_default();
-        let data: Vec<u8> = row.get(2).unwrap_or_default();
-        let picture_type: u8 = row.get(3).unwrap_or(3);
-        let description: String = row.get(4).unwrap_or_default();
-        Ok((key, mime_type, data, picture_type, description))
-    });
-    let mut user_text_stmt =
-        conn.prepare("SELECT key, value, description FROM tag_user_text WHERE file_path = ?1")?;
-    let tag_user_texts = user_text_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0).unwrap_or_default();
-        let value: String = row.get(1).unwrap_or_default();
-        let description: String = row.get(2).unwrap_or_default();
-        Ok((key, value, description))
-    });
-    let mut user_url_stmt =
-        conn.prepare("SELECT key, url, description FROM tag_user_url WHERE file_path = ?1")?;
-    let tag_user_urls = user_url_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0).unwrap_or(String::new());
-        let url: String = row.get(1).unwrap_or(String::new());
-        let description: String = row.get(1).unwrap_or(String::new());
-        Ok((key, url, description))
-    });
-    let mut comment_stmt = conn.prepare(
-        "SELECT key, text, encoding, language, description FROM tag_comment WHERE file_path
-    = ?1",
-    )?;
-    let tag_comments = comment_stmt.query_map([file_path], |row| {
-        let key: String = row.get(0).unwrap_or_default();
-        let text: String = row.get(1).unwrap_or_default();
-        let encoding: String = row.get(2).unwrap_or_default();
-        let language: String = row.get(3).unwrap_or_default();
-        let description: String = row.get(4).unwrap_or_default();
+    )
+    .bind(file_path)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
 
-        Ok((key, text, encoding, language, description))
-    });
+    let tag_user_texts: Vec<(String, String, String)> =
+        sqlx::query_as("SELECT key, value, description FROM tag_user_text WHERE file_path = ?1")
+            .bind(file_path)
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+
+    let tag_user_urls: Vec<(String, String, String)> =
+        sqlx::query_as("SELECT key, url, description FROM tag_user_url WHERE file_path = ?1")
+            .bind(file_path)
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+
+    let tag_comments: Vec<(String, String, String, String, String)> = sqlx::query_as(
+        "SELECT key, text, encoding, language, description FROM tag_comment WHERE file_path = ?1",
+    )
+    .bind(file_path)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
     let mut tags: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
-    if tag_txt.is_ok() {
-        let tag_txt = tag_txt.unwrap();
 
-        for tag in tag_txt {
-            if tag.is_err() {
-                continue;
-            }
-            let tag = tag.unwrap();
-            let (key, value) = tag;
-            let frame_key = FrameKey::from_str(&key);
-            if frame_key.is_none() {
-                continue;
-            }
-            let frame_key = frame_key.unwrap();
-            tags.entry(frame_key.clone())
-                .or_insert_with(Vec::new)
-                .push(TagValue::Text(value.clone()));
-        }
+    for (key, value) in tag_txt {
+        let Some(frame_key) = FrameKey::from_str(&key) else {
+            continue;
+        };
+        tags.entry(frame_key)
+            .or_insert_with(Vec::new)
+            .push(TagValue::Text(value));
     }
-    if tag_pics.is_ok() {
-        let tag_pics = tag_pics.unwrap();
-        for tag in tag_pics {
-            if tag.is_err() {
-                continue;
-            }
-            let (key, mime_type, data, picture_type, description) = tag.unwrap();
-            if key.is_empty() || mime_type.is_empty() || data.is_empty() {
-                continue;
-            }
-            let frame_key = FrameKey::from_str(&key);
-            if frame_key.is_none() {
-                continue;
-            }
-            let frame_key = frame_key.unwrap();
-            tags.entry(frame_key.clone())
-                .or_insert_with(Vec::new)
-                .push(TagValue::Picture {
-                    mime: mime_type.clone(),
-                    data: data.clone(),
-                    picture_type: Some(picture_type.clone()),
-                    description: Some(description.clone()),
-                });
-        }
-    }
-    if tag_user_texts.is_ok() {
-        let tag_user_texts = tag_user_texts.unwrap();
-        for tag in tag_user_texts {
-            if tag.is_err() {
-                continue;
-            }
-            let (key, value, description) = tag.unwrap();
 
-            let frame_key = FrameKey::from_str(&key);
-            if frame_key.is_none() {
-                continue;
-            }
-            let frame_key = frame_key.unwrap();
-            tags.entry(frame_key.clone())
-                .or_insert_with(Vec::new)
-                .push(TagValue::UserText(UserTextEntry { description, value }))
+    for (key, mime_type, data, picture_type, description) in tag_pics {
+        if key.is_empty() || mime_type.is_empty() || data.is_empty() {
+            continue;
         }
+        let Some(frame_key) = FrameKey::from_str(&key) else {
+            continue;
+        };
+        tags.entry(frame_key)
+            .or_insert_with(Vec::new)
+            .push(TagValue::Picture {
+                mime: mime_type,
+                data,
+                picture_type: Some(picture_type as u8),
+                description: Some(description),
+            });
     }
-    if tag_user_urls.is_ok() {
-        let tag_user_urls = tag_user_urls.unwrap();
-        for tag in tag_user_urls {
-            if tag.is_err() {
-                continue;
-            }
-            let (key, url, description) = tag.unwrap();
 
-            let frame_key = FrameKey::from_str(&key);
-            if frame_key.is_none() {
-                continue;
-            }
-            let frame_key = frame_key.unwrap();
-            tags.entry(frame_key.clone())
-                .or_insert_with(Vec::new)
-                .push(TagValue::UserUrl(UserUrlEntry { description, url }))
-        }
+    for (key, value, description) in tag_user_texts {
+        let Some(frame_key) = FrameKey::from_str(&key) else {
+            continue;
+        };
+        tags.entry(frame_key)
+            .or_insert_with(Vec::new)
+            .push(TagValue::UserText(UserTextEntry { description, value }));
     }
-    if tag_comments.is_ok() {
-        let tag_comments = tag_comments.unwrap();
-        for tag in tag_comments {
-            if tag.is_err() {
-                continue;
-            }
-            let (key, text, encoding, language, description) = tag.unwrap();
 
-            let frame_key = FrameKey::from_str(&key);
-            if frame_key.is_none() {
-                continue;
-            }
-            let frame_key = frame_key.unwrap();
-            tags.entry(frame_key.clone())
-                .or_insert_with(Vec::new)
-                .push(TagValue::Comment {
-                    encoding,
-                    text,
-                    language,
-                    description,
-                })
-        }
+    for (key, url, description) in tag_user_urls {
+        let Some(frame_key) = FrameKey::from_str(&key) else {
+            continue;
+        };
+        tags.entry(frame_key)
+            .or_insert_with(Vec::new)
+            .push(TagValue::UserUrl(UserUrlEntry { description, url }));
+    }
+
+    for (key, text, encoding, language, description) in tag_comments {
+        let Some(frame_key) = FrameKey::from_str(&key) else {
+            continue;
+        };
+        tags.entry(frame_key)
+            .or_insert_with(Vec::new)
+            .push(TagValue::Comment {
+                encoding,
+                text,
+                language,
+                description,
+            });
     }
 
     Ok(tags)

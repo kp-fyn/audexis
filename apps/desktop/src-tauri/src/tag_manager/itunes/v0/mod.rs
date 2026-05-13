@@ -93,6 +93,7 @@ impl V0 {
                 .iter()
                 .find(|atom| atom.atom_type == "ilst")
                 .cloned();
+            println!("onl");
         }
 
         if ilst_atom.is_some() {

@@ -5,7 +5,7 @@ import { useState } from "react";
 export function TagEditorError() {
   const { isOpen, close, errors } = useTagEditorErrors();
   const [collapsed, setCollapsed] = useState(false);
-  console.log(errors);
+
   return (
     <Modal
       open={isOpen}

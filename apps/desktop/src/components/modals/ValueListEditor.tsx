@@ -17,9 +17,7 @@ export default function ValueListEditor({
   onSave,
   onClose,
 }: Props) {
-  useEffect(() => {
-    console.log({ open, values });
-  }, [open]);
+  useEffect(() => {}, [open]);
   const [items, setItems] = useState<string[]>(values || []);
 
   useEffect(() => setItems(values || []), [values]);

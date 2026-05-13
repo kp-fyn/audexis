@@ -9,21 +9,22 @@ mod utils;
 mod workspace;
 
 use crate::config::user::{load_config, Theme, ViewMode, CONFIG_FILE};
+use crate::database::Database;
 use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
 use crate::workspace::Workspace;
-use rusqlite::Connection;
+
 use serde::Serialize;
 
 use std::env;
-use std::sync::{Arc, Mutex};
-use tauri::{Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
+use std::sync::Mutex;
+use tauri::{async_runtime, Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
-    pub conn: Arc<Mutex<Connection>>,
+    pub db: Database,
     pub view_mode: ViewMode,
 }
 #[derive(Debug, Clone, Serialize)]
@@ -43,7 +44,13 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("Failed to get app data directory");
-            let conn = database::init_database(&path.join("audexis.db"))?;
+            let db_path = app.path().app_data_dir()?.join("audexis.db");
+
+            let db = async_runtime::block_on(async {
+                Database::init(&db_path)
+                    .await
+                    .expect("Database failed to initialize")
+            });
             let config_path = path.join(CONFIG_FILE);
 
             let user_config = load_config(&config_path);
@@ -61,7 +68,7 @@ pub fn run() {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
-                conn: Arc::new(Mutex::new(conn)),
+                db: db,
                 view_mode: user_config.view,
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {

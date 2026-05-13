@@ -278,7 +278,6 @@ export function ChangesProvider({
   );
 
   async function saveChanges(): Promise<void> {
-    console.log({ changes });
     if (!changes) return;
     if (!selected || selected.size === 0) return;
 
@@ -298,7 +297,6 @@ export function ChangesProvider({
       setChanges({});
       toast.success("Changes saved successfully");
     } catch (err: unknown) {
-      console.log(err);
       const message = err instanceof Error ? err.message : "Unknown error";
       toast.error(`Failed to save changes: ${message}`);
     }

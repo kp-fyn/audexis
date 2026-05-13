@@ -1,29 +1,37 @@
-use rusqlite::{Connection, Result};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::Executor;
+use std::fs;
 use std::path::PathBuf;
 
-mod utils;
-pub use utils::{create_indexes, create_tables, create_triggers};
-pub fn init_database(db_path: &PathBuf) -> Result<Connection> {
-    let conn = Connection::open(db_path)?;
-
-    conn.execute_batch(
-        "
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA foreign_keys = ON;
-        PRAGMA temp_store = MEMORY;
-    ",
-    )?;
-
-    create_schema(&conn)?;
-
-    Ok(conn)
+#[derive(Clone)]
+pub struct Database {
+    pub pool: SqlitePool,
 }
 
-fn create_schema(conn: &Connection) -> Result<()> {
-    create_tables(conn)?;
-    create_indexes(conn)?;
-    create_triggers(conn)?;
+impl Database {
+    pub async fn init(db_path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let exists = fs::exists(db_path)?.then(|| ());
+        exists.is_none().then(|| {
+            fs::File::create(db_path).expect("Failed to create database file");
+        });
 
-    Ok(())
+        let connection_options = SqliteConnectOptions::new()
+            .create_if_missing(true)
+            .filename(db_path);
+
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .after_connect(|conn, _| {
+                Box::pin(async move {
+                    conn.execute("PRAGMA journal_mode=WAL;").await?;
+                    Ok(())
+                })
+            })
+            .connect_with(connection_options)
+            .await?;
+
+        sqlx::migrate!("./migrations").run(&pool).await?;
+
+        Ok(Self { pool })
+    }
 }

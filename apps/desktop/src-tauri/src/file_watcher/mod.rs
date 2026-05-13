@@ -12,7 +12,6 @@ use notify::RecursiveMode;
 use notify::Watcher;
 use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{new_debouncer, Debouncer, FileIdMap};
-use rusqlite::Connection;
 
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -91,16 +90,12 @@ impl FileWatcher {
         let state = app_handle.state::<AppState>();
 
         if self.is_folder_view == true {
-            let db: std::sync::Arc<std::sync::Mutex<Connection>> = state.conn.clone();
-
-            let conn = db
-                .lock()
-                .map_err(|e| format!("Failed to lock DB connection: {e}"))?;
-            let imported_folders = get_imported_folders(&conn);
+            let db = state.db.clone();
+            let imported_folders =
+                tauri::async_runtime::block_on(async { get_imported_folders(&db).await });
             for folder in imported_folders {
                 roots.insert(PathBuf::from(folder));
             }
-            drop(conn);
         } else {
             if let Ok(ws_guard) = state.workspace.lock() {
                 for f in &ws_guard.files {

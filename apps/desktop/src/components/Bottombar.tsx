@@ -25,7 +25,7 @@ export default function Bottombar({ left }: { left: number }): ReactNode {
       const minHeight = 200;
       const maxHeight = window.innerHeight - 200;
       document.body.style.userSelect = "none";
-      console.log({ newHeight });
+
       if (newHeight >= minHeight && newHeight <= maxHeight) {
         setBottombarHeight(newHeight);
       }

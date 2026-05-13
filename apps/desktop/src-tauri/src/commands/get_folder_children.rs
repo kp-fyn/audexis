@@ -3,8 +3,7 @@ use crate::utils::get_tags;
 use crate::{AppState, FileNode};
 
 use std::fs;
-use std::thread;
-use tauri::{command, AppHandle, Emitter, State};
+use tauri::{async_runtime, command, AppHandle, Emitter, State};
 
 #[command]
 pub fn get_folder_children(
@@ -12,11 +11,7 @@ pub fn get_folder_children(
     state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<Vec<FileNode>, String> {
-    let db = state.conn.clone();
-    // let conn = match db.lock() {
-    //     Ok(c) => c,
-    //     Err(poisoned) => poisoned.into_inner(),
-    // };
+    let db = state.db.clone();
     let mut children: Vec<FileNode> = Vec::new();
     let result = fs::read_dir(folder_path);
     if result.is_err() {
@@ -53,24 +48,17 @@ pub fn get_folder_children(
         .map(|node| node.path.clone())
         .collect::<Vec<String>>();
 
-    thread::spawn(move || {
-        let mut conn = match db.lock() {
-            Ok(c) => c,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        let result = get_tags(&mut conn, audio_files);
-        if result.is_err() {
-            println!("Error getting tags: ");
-        } else {
-            let files = result.unwrap();
-            let serializable_files: Vec<SerializableFile> = files
-                .into_iter()
-                .map(|f| SerializableFile::from(f))
-                .collect();
+    async_runtime::spawn(async move {
+        match get_tags(&db, audio_files).await {
+            Ok(files) => {
+                let serializable_files: Vec<SerializableFile> =
+                    files.into_iter().map(SerializableFile::from).collect();
 
-            app_handle
-                .emit("workspace-updated", serializable_files)
-                .unwrap();
+                let _ = app_handle.emit("workspace-updated", serializable_files);
+            }
+            Err(e) => {
+                println!("Error getting tags: {e}");
+            }
         }
     });
     Ok(children)

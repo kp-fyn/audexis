@@ -18,7 +18,7 @@ const params = new URLSearchParams(window.location.href);
 
 let viewMode = params.get("view") ?? "simple";
 if (viewMode != "folder" && viewMode != "simple") viewMode = "simple";
-console.log({ viewMode });
+
 const UserConfigContext = createContext<Config>({
   config: {
     theme: "light",
@@ -99,10 +99,8 @@ export function UserConfigProvider({
       "user-config-updated",
       (event: Event<UserConfig>) => {
         const config = event.payload;
-        console.log({ config });
         if (config.just_updated && config.onboarding === false) {
           setChangelogModalOpen(true);
-          console.log("opening changelog modal");
         }
         const params = new URLSearchParams(window.location.search);
         const themeLower = (config.theme as string).toLowerCase() as

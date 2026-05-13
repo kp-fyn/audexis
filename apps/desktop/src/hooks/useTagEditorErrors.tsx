@@ -51,7 +51,6 @@ export function TagEditorErrorsProvider({
     if (errors.length > 0) {
       setIsOpen(true);
     }
-    console.log("Errors updated:", errors);
   }, [errors]);
 
   return (

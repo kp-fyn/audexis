@@ -31,7 +31,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
   useEffect(() => {
     setDefaultValues({});
-    // console.log(defaultValues);
 
     if (selected.size === 0) return;
 
@@ -42,9 +41,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
       return file;
     });
-    console.log({ sf });
 
-    // console.log(sf);
     const sfs = sf
       .filter((item) => item !== null && item !== undefined)
       .filter((f) => f?.frames !== null)
@@ -61,7 +58,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       });
 
       Object.entries(selectedFiles[0]).forEach(([key, value]) => {
-        // console.log({ value });
         if (Array.isArray(value) && value.length > 0) {
           map[key] = value[0];
         }
@@ -78,7 +74,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             .filter((v) => v && v.type === "Picture" && v.value)
             .map((v) => ({ type: "Picture", value: v.value }))
         : [];
-      console.log({ framePics });
+
       if (framePics.length > 0) {
         setPictures(framePics);
         setImage(framePics[0]);
@@ -91,7 +87,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           | undefined;
         if (!img) return;
         if (!img.value) return;
-        console.log({ img });
+
         setPictures([img]);
         setImage(img);
       } else {
@@ -243,7 +239,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
                             variant="outline"
                             disabled={disabled}
                             onClick={() => {
-                              console.log("opened");
                               setListEditor({
                                 field: item.value,
                                 open: true,

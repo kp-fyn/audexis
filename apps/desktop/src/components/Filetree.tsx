@@ -18,6 +18,7 @@ export default function TreeRoot(): ReactNode {
   const [loadedFileTree, setLoadedFileTree] = useState<ExtendedFileNode[]>([]);
 
   useEffect(() => {
+    console.log("Filetree updated", { fileTree });
     setRootNodes(fileTree);
   }, [fileTree]);
 
@@ -47,8 +48,6 @@ export default function TreeRoot(): ReactNode {
       "folder-view-events",
       async (event) => {
         for (const ev of event.payload) {
-          console.log(ev.op);
-
           switch (ev.op) {
             case "Create": {
               const file = ev.file;
@@ -59,7 +58,6 @@ export default function TreeRoot(): ReactNode {
                   (fileNode) => fileNode.path === ev.file.parent_path,
                 );
                 if (parentDirIndex === -1) {
-                  console.log("not found");
                   return prev;
                 }
                 const updatedParent = { ...newFileTree[parentDirIndex] };
@@ -87,7 +85,7 @@ export default function TreeRoot(): ReactNode {
             }
             case "Modify": {
               const file = ev.file;
-              console.log({ file });
+
               const oldFile = allFiles.get(file.path);
               let newFil: File | undefined;
               if (!oldFile) {
@@ -112,9 +110,7 @@ export default function TreeRoot(): ReactNode {
                       return [...prev, newFil as File];
                     });
                   }
-                } catch {
-                  console.log("error");
-                }
+                } catch {}
               }
 
               setLoadedFileTree((prev) => {
@@ -137,7 +133,7 @@ export default function TreeRoot(): ReactNode {
                           file.path,
                         );
                         const oldPath = ch.path;
-                        console.log({ oldPath, newPath });
+
                         newChildren.push({
                           ...ch,
                           path: ch.path.replace(
@@ -158,7 +154,6 @@ export default function TreeRoot(): ReactNode {
                     });
                   }
 
-                  console.log({ badNodes, goodNodes });
                   newFileTree = [...goodNodes];
                   setAllFiles((prevAllFiles) => {
                     return new Map(
@@ -194,10 +189,8 @@ export default function TreeRoot(): ReactNode {
                   (fileNode) => fileNode.path === ev.file.parent_path,
                 );
                 if (parentDirIndex === -1) {
-                  console.log("not found");
                   return newFileTree;
                 }
-                console.log("modify");
 
                 const updatedParent = { ...newFileTree[parentDirIndex] };
                 if (!updatedParent.children) {
@@ -206,7 +199,7 @@ export default function TreeRoot(): ReactNode {
                   const oldChildIndex = updatedParent.children.findIndex(
                     (child) => child.path === file.old_path,
                   );
-                  console.log({ newFil });
+
                   if (oldChildIndex === -1) {
                     if (file.is_directory) {
                       updatedParent.children.push(file);
@@ -215,7 +208,6 @@ export default function TreeRoot(): ReactNode {
                         updatedParent.children.push(file);
                       }
 
-                      console.log({ newFileTree });
                       return newFileTree;
                     }
                   }
@@ -232,14 +224,13 @@ export default function TreeRoot(): ReactNode {
             }
             case "Remove": {
               const file = ev.file;
-              console.log(file);
+
               setLoadedFileTree((prev) => {
                 let newFileTree = [...prev];
                 const parentDirIndex = newFileTree.findIndex(
                   (fileNode) => fileNode.path === ev.file.parent_path,
                 );
                 if (parentDirIndex === -1) {
-                  console.log("not found");
                   return prev;
                 }
                 if (newFileTree[parentDirIndex].children) {
@@ -346,9 +337,9 @@ function FiletreeNode({
         //   : [];
 
         // filesNeeded.forEach((file) => {
-        //   console.log({ allFiles });
+
         //   const f = allFiles.get(file.path.toString());
-        //   console.log({ f });
+
         //   if (f) {
         //     arr.push(f);
         //   }
@@ -366,10 +357,9 @@ function FiletreeNode({
         );
 
         // children.forEach((file) => {
-        //   console.log({ allFiles });
+
         //   const f = allFiles.get(file.path);
-        //   console.log(file.path);
-        //   console.log({ f });
+
         //   if (f) {
         //     arr.push(f);
         //   }
@@ -418,9 +408,9 @@ function FiletreeNode({
         //   : [];
 
         // filesNeeded.forEach((file) => {
-        //   console.log({ allFiles });
+
         //   const f = allFiles.get(file.path.toString());
-        //   console.log({ f });
+
         //   if (f) {
         //     arr.push(f);
         //   }
