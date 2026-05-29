@@ -15,7 +15,6 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{self, metadata};
 use std::path::PathBuf;
-use std::thread;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{async_runtime, Emitter, Manager, State};

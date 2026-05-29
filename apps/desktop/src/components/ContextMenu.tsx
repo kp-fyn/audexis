@@ -17,6 +17,7 @@ type MenuRef = {
 export function ContextMenuArea({
   items,
   children,
+  ...props
 }: {
   items: () => MenuOptions;
 
@@ -46,7 +47,7 @@ export function ContextMenuArea({
   }, []);
 
   return (
-    <div onContextMenu={clickHandler}>
+    <div {...props} onContextMenu={clickHandler}>
       {children}
       <PortalContextMenu
         menuState={menuState}

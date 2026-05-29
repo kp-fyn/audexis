@@ -10,6 +10,14 @@ pub struct Database {
 
 impl Database {
     pub async fn init(db_path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let config_folder = db_path.parent();
+        if config_folder.is_none() {
+            panic!("No Config folder bruh")
+        }
+        let config_folder = config_folder.unwrap();
+        println!("{}", &config_folder.as_os_str().display());
+        fs::create_dir_all(config_folder).expect("Could not create config folder");
+
         let exists = fs::exists(db_path)?.then(|| ());
         exists.is_none().then(|| {
             fs::File::create(db_path).expect("Failed to create database file");

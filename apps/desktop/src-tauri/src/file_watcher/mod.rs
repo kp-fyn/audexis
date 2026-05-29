@@ -272,7 +272,7 @@ impl FileWatcher {
 
                             if new_path.is_dir() && new_path.exists() {
                                 let op_event = OpEvent::Modify(ModifiedFile {
-                                    path: new_path,
+                                    path: new_path.clone(),
                                     old_path,
                                     name: file_name,
                                     is_directory: true,
@@ -280,6 +280,7 @@ impl FileWatcher {
                                 });
 
                                 op_events.push(op_event);
+                                handle_auto_tagging(new_path.clone());
                             } else {
                                 if is_supported_file(&old_path) == true {
                                     if is_folder_view == true {
@@ -289,13 +290,14 @@ impl FileWatcher {
                                             new_path.clone(),
                                         );
                                         let op_event = OpEvent::Modify(ModifiedFile {
-                                            path: new_path,
+                                            path: new_path.clone(),
                                             old_path,
                                             name: file_name,
                                             is_directory: false,
                                             parent_path,
                                         });
                                         op_events.push(op_event);
+                                        handle_auto_tagging(new_path.clone());
                                     } else {
                                         modified.insert(
                                             ev.paths
@@ -354,6 +356,7 @@ impl FileWatcher {
                                         parent_path,
                                     });
                                     op_events.push(op_event);
+                                    handle_auto_tagging(new_path.clone());
                                 }
                             }
                         }
@@ -385,6 +388,7 @@ impl FileWatcher {
                         });
 
                         op_events.push(op_event);
+                        handle_auto_tagging(new_path.clone());
                     }
                 },
                 EventKind::Modify(_) => {
@@ -643,3 +647,5 @@ impl FileWatcher {
         }
     }
 }
+
+fn handle_auto_tagging(path: PathBuf) {}

@@ -291,12 +291,13 @@ export function ChangesProvider({
 
     try {
       await invoke("save_frame_changes", {
-        frameChanges: { paths: selected, frames },
+        frameChanges: { paths: [...selected], frames },
       });
 
       setChanges({});
       toast.success("Changes saved successfully");
     } catch (err: unknown) {
+      console.log(err);
       const message = err instanceof Error ? err.message : "Unknown error";
       toast.error(`Failed to save changes: ${message}`);
     }

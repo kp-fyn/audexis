@@ -609,6 +609,97 @@ impl FrameKey {
     }
 }
 // string to frame key
+pub struct TagValuesWrapper(pub Vec<TagValue>);
+pub struct SerializableTagValuesWrapper(pub Vec<SerializableTagValue>);
+
+impl From<TagValuesWrapper> for Vec<SerializableTagValue> {
+    fn from(values: TagValuesWrapper) -> Vec<SerializableTagValue> {
+        let e: Vec<SerializableTagValue> = values
+            .0
+            .into_iter()
+            .map(|value| match value {
+                TagValue::Text(s) => SerializableTagValue::Text(s),
+                TagValue::Picture {
+                    mime,
+                    data,
+                    picture_type,
+                    description,
+                } => {
+                    use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+                    let data_base64 = STANDARD.encode(data);
+
+                    SerializableTagValue::Picture {
+                        mime,
+                        data_base64,
+                        picture_type,
+                        description,
+                    }
+                }
+                TagValue::UserText(entry) => SerializableTagValue::UserText(entry),
+                TagValue::UserUrl(entry) => SerializableTagValue::UserUrl(entry),
+                TagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                } => SerializableTagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                },
+            })
+            .collect();
+        e
+    }
+}
+
+impl From<SerializableTagValuesWrapper> for Vec<TagValue> {
+    fn from(values: SerializableTagValuesWrapper) -> Vec<TagValue> {
+        let collected = values
+            .0
+            .iter()
+            .map(|value| match value {
+                SerializableTagValue::Text(s) => TagValue::Text(s.clone()),
+                SerializableTagValue::Picture {
+                    mime,
+                    data_base64,
+                    picture_type,
+                    description,
+                } => {
+                    use base64::{engine::general_purpose::STANDARD, Engine as _};
+                    let mime = mime.clone();
+
+                    let data = STANDARD.decode(data_base64);
+                    let data = data.unwrap_or_default();
+                    let picture_type = picture_type.clone();
+                    let description = description.clone();
+                    TagValue::Picture {
+                        mime,
+                        data,
+                        picture_type,
+                        description,
+                    }
+                }
+                SerializableTagValue::UserText(entry) => TagValue::UserText(entry.clone()),
+                SerializableTagValue::UserUrl(entry) => TagValue::UserUrl(entry.clone()),
+                SerializableTagValue::Comment {
+                    encoding,
+                    language,
+                    description,
+                    text,
+                } => TagValue::Comment {
+                    encoding: encoding.to_owned(),
+                    language: language.to_owned(),
+                    description: description.to_owned(),
+                    text: text.to_owned(),
+                },
+            })
+            .collect();
+        collected
+    }
+}
 
 /// Internal File struct to file that can be sent via ipc
 impl From<File> for SerializableFile {
@@ -617,6 +708,7 @@ impl From<File> for SerializableFile {
         for (k, vals) in file.tags.into_iter() {
             let key = k.to_string();
             let mut out_vals: Vec<SerializableTagValue> = Vec::new();
+
             for v in vals {
                 match v {
                     TagValue::Text(s) => out_vals.push(SerializableTagValue::Text(s)),

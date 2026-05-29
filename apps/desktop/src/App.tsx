@@ -595,7 +595,7 @@ function App() {
             height:
               config.view === "simple"
                 ? "100%"
-                : `calc(100% - ${bottombarHeight}px - 84px)`,
+                : `calc(100% - ${bottombarHeight}px - 24px)`,
           }}
           className="flex flex-col  w-full select-none"
         >
@@ -622,7 +622,7 @@ function App() {
               }}
             >
               <div
-                className=" outline-none  flex flex-col overflow-y-auto"
+                className=" outline-none  h-full  flex flex-col overflow-y-auto"
                 style={{
                   width: Math.max(
                     // what kinda drugs was i doin
@@ -636,7 +636,7 @@ function App() {
                       170,
                     600,
                   ),
-                  height: `calc(100% - ${bottombarHeight}px)`,
+
                   minWidth: "100%",
                 }}
               >
@@ -664,7 +664,7 @@ function App() {
 
           marginLeft: `${sidebarWidth}px`,
         }}
-        className="fixed w-full shrink-0 h-[24px] px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
+        className="fixed w-full shrink-0 h-6 px-3 flex items-center text-[11px] text-foreground/60 bg-background/85 backdrop-blur border-t border-border"
       >
         <span className="truncate">{allFiles.size} files loaded</span>
       </div>

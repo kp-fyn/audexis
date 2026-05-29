@@ -189,9 +189,6 @@ export default function DataGrid({
   return (
     <div
       tabIndex={0}
-      style={{
-        height: `calc(100% - ${bottombarHeight}px)`,
-      }}
       ref={gridRef}
       onKeyDown={handleKeyDown}
       aria-multiselectable
@@ -200,7 +197,7 @@ export default function DataGrid({
           ? `row-${focusedIndex}`
           : undefined
       }
-      className="pb-2 outline-none h-full overflow-auto"
+      className="pb-2 outline-none  h-full overflow-auto"
     >
       {table.getSortedRowModel().rows.map((row, i: number) => {
         const selectedNow = selected.has(row.original.path);

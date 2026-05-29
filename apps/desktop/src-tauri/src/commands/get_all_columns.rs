@@ -4,14 +4,16 @@ use crate::tag_manager::utils::FrameKey;
 use crate::utils::{to_label, to_value};
 use tauri::command;
 #[command]
-pub fn get_all_columns() -> Vec<Column> {
+pub fn get_all_columns(remove: Option<bool>) -> Vec<Column> {
     let mut columns: Vec<Column> = Vec::new();
-    columns.push(Column {
-        label: "File Name".to_string(),
-        value: "fileName".to_string(),
-        size: 300,
-        kind: ColumnKind::Text,
-    });
+    if remove != Some(true) {
+        columns.push(Column {
+            label: "File Name".to_string(),
+            value: "fileName".to_string(),
+            size: 300,
+            kind: ColumnKind::Text,
+        });
+    }
     for frame_key in FRAME_KEYS {
         columns.push(Column {
             label: to_label(&frame_key.to_string()),

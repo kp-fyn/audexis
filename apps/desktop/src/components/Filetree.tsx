@@ -18,7 +18,6 @@ export default function TreeRoot(): ReactNode {
   const [loadedFileTree, setLoadedFileTree] = useState<ExtendedFileNode[]>([]);
 
   useEffect(() => {
-    console.log("Filetree updated", { fileTree });
     setRootNodes(fileTree);
   }, [fileTree]);
 
@@ -128,12 +127,6 @@ export default function TreeRoot(): ReactNode {
                     const newChildren: FileNode[] = [];
                     if (fileNode.children) {
                       for (const ch of fileNode.children) {
-                        const newPath = ch.path.replace(
-                          file.old_path,
-                          file.path,
-                        );
-                        const oldPath = ch.path;
-
                         newChildren.push({
                           ...ch,
                           path: ch.path.replace(
@@ -381,7 +374,7 @@ function FiletreeNode({
       }
       if (!fromChild) setExpanded((prev) => !prev);
     } else {
-      setSelected((sel) => new Set([node.path]));
+      setSelected(() => new Set([node.path]));
       const parentPath = await path.dirname(node.path);
       const parentPathName = await path.basename(parentPath);
       const realNode = loadedFileTree.find((n) => n.path === parentPath);
@@ -442,7 +435,6 @@ function FiletreeNode({
         {
           text: "Default Values for files...",
           action: () => {
-            const sel = realNode.path;
             setFolderConfigOpened(true);
           },
         },
@@ -565,6 +557,7 @@ function FiletreeNode({
         </div>
       )}
       <FolderConfigModal
+        folderPath={node.path}
         open={folderConfigOpened}
         onClose={() => setFolderConfigOpened(false)}
       />
