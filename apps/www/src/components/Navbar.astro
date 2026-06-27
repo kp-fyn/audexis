@@ -5,9 +5,7 @@ import sun from "../assets/sun.svg";
 import { Image } from "astro:assets";
 ---
 
-<div
-  class="sticky flex top-0 p-7 px-0 z-50 bg-background border-b border-primary w-full h-14"
->
+<div class="flex top-0 p-7 px-0 z-50 bg-background w-full h-14">
   <div
     class="px-2 w-full h-full flex items-center bg-transparent backdrop-blur-3xl md:px-8 gap-4"
   >
@@ -32,7 +30,7 @@ import { Image } from "astro:assets";
         <Image src={logo} alt="Audexis logo" width={26} height={26} />
         <span class="text-lg font- text-foreground">Audexis</span>
       </a>
-      <div class="hidden md:flex gap-8 text-sm text-muted-foreground">
+      <div class="hidden md:flex md:ml-8 gap-8 text-sm text-muted-foreground">
         <a href="/docs">Docs</a>
         <a href="/blog">Blog</a>
         <a href="/releases">Releases</a>
@@ -43,7 +41,7 @@ import { Image } from "astro:assets";
       <div class="md:block hidden">
         <div class="flex flex-col">
           <a
-            class="download-latest-release text-muted-foreground rounded text-sm px-4 py-2 border border-primary hover:bg-hover"
+            class="download-latest-release bg-primary text-primary-foreground hover:bg-primary/70 rounded text-sm px-4 py-2 border border-black"
           >
             Download Latest Release
           </a>
@@ -82,23 +80,23 @@ import { Image } from "astro:assets";
     >
       <div class="flex flex-col py-2">
         <a
-          class="px-4 py-2 text-sm text-muted-foreground hover:bg-"
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-background/30"
           href="/docs">Docs</a
         >
         <a
-          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-background/30"
           href="/blog">Blog</a
         >
         <a
-          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-background/30"
           href="/releases">Releases</a
         >
         <a
-          class="px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          class="px-4 py-2 text-sm text-muted-foreground hover:bg-background/30"
           href="https://github.com/kp-fyn/audexis">Github</a
         >
         <a
-          class="download-latest-release px-4 py-2 text-sm text-muted-foreground hover:bg-hover"
+          class="download-latest-release px-4 py-2 text-sm text-muted-foreground hover:bg-background/30"
           >Download Latest Release</a
         >
       </div>

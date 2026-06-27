@@ -5,7 +5,7 @@
 [data-theme="light"] {
   --background: #f1f1f1;
   --foreground: #262b35;
-  --hover: #e5e5e5;
+  --hover: #cec8c8;
   --hover-foreground: #0f172a;
 
   --card: #ffffff;
@@ -20,7 +20,7 @@
   --secondary: #bbc4d0;
   --secondary-foreground: #1e293b;
 
-  --muted: #f1f5f9;
+  --muted: #d9dee3;
   --muted-foreground: rgb(90, 87, 113);
 
   --destructive: #ef4444;
@@ -45,7 +45,7 @@
   --heading: #ffffff;
   --background: #0a0a0a;
   --foreground: #f1f1f1;
-  --hover: #1f1f2e;
+  --hover: rgb(49, 49, 57);
   --hover-foreground: #f1f5f9;
 
   --card: #1e293b;
@@ -60,7 +60,7 @@
   --secondary: #334155;
   --secondary-foreground: #c8cdd3;
 
-  --muted: #1e293b;
+  --muted: #253145;
   --muted-foreground: #94a3b8;
 
   --destructive: #ef4444;
@@ -82,7 +82,7 @@
 @theme {
   --color-headings: var(--heading);
   --color-border: var(--border);
-  --color--hover-foreground: var(--hover-foreground);
+  --color-hover-foreground: var(--hover-foreground);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-background: var(--background);

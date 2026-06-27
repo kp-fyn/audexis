@@ -96,6 +96,8 @@ export default function TreeRoot(): ReactNode {
                   if (newF) {
                     newFil = {
                       ...newF,
+                      fileName: newF.file_name,
+
                       frames: newF.tags,
                     };
 
@@ -443,8 +445,7 @@ function FiletreeNode({
         {
           text: "Rename using pattern…",
           action: () => {
-            const targets = selected.size > 0 ? [...selected] : [node.path];
-            startRename(targets, "{artist} - {title}.{ext}");
+            startRename(node.path, "{artist} - {title}.{ext}");
           },
         },
         {

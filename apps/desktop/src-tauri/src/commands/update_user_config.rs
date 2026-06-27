@@ -1,6 +1,6 @@
 use crate::config::user::{get_config_path, load_config, save_config, PartialUserConfig};
 
-use tauri::{command, AppHandle, Emitter, Manager};
+use tauri::{command, AppHandle, Emitter};
 
 #[command]
 pub fn update_user_config(patch: PartialUserConfig, app_handle: AppHandle) -> Result<(), String> {

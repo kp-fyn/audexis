@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useChanges } from "@/ui/hooks/useChanges";
-import { useUserConfig } from "@/ui/hooks/useUserConfig";
+
 import { Button } from "@/ui/components/Button";
 import { cn } from "@/ui/lib/utils";
 import DiffModal from "@/ui/components/modals/DiffModal";
@@ -8,7 +8,6 @@ import DiffModal from "@/ui/components/modals/DiffModal";
 export default function SaveBar() {
   const { changes, saveChanges, clearChanges, selected, saveBarNudge, files } =
     useChanges();
-  const { config } = useUserConfig();
   const [attention, setAttention] = useState(false);
   const [show_diff_modal, setshow_diff_modal] = useState(false);
 
@@ -35,11 +34,11 @@ export default function SaveBar() {
   }, [saveBarNudge, hasChanges]);
 
   const handleSave = () => {
-    if (config.show_diff_modal) {
-      setshow_diff_modal(true);
-    } else {
-      saveChanges();
-    }
+    // if (config.show_diff_modal) {
+    //   setshow_diff_modal(true);
+    // } else {
+    saveChanges();
+    // }
   };
 
   const handleConfirmSave = () => {

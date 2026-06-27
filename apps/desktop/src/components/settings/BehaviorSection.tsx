@@ -14,6 +14,10 @@ interface BehaviorSectionProps {
 
 const defaultOptions: BehaviorOption[] = [
   { key: "showDiffModal", label: "Show diff preview before saving" },
+  {
+    key: "autostart",
+    label: "Start Audexis in the background on system startup",
+  },
 ];
 
 export function BehaviorSection({

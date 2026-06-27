@@ -5,6 +5,7 @@ import { TagPicture } from "@/ui/types";
 import { invoke } from "@tauri-apps/api/core";
 import { cn } from "@/ui/lib/utils";
 import { Modal } from "./Modal";
+import { useChanges } from "@/ui/hooks/useChanges";
 
 type Item = {
   mime: string;
@@ -47,7 +48,8 @@ export function ImageManagerModal({
 
   const [index, setIndex] = useState(0);
   const [types] = useState<Record<number, number>>({});
-
+  const { selected } = useChanges();
+  console.log(selected);
   const current = items[index];
 
   const currentTypeId = current?.picture_type ?? types[index] ?? 3;
@@ -210,8 +212,8 @@ export function ImageManagerModal({
               <button
                 key={i}
                 className={cn(
-                  "flex w-full items-center gap-2 p-2 hover:bg-muted/40",
-                  i === index && "bg-muted/40",
+                  "flex w-full items-center gap-2 p-2",
+                  i === index && "bg-primary/15",
                 )}
                 onClick={() => setIndex(i)}
               >
@@ -245,7 +247,11 @@ export function ImageManagerModal({
             )}
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" disabled={!current} onClick={addImage}>
+            <Button
+              className="flex-1"
+              disabled={selected.size === 0}
+              onClick={addImage}
+            >
               Add image
             </Button>
             <Button

@@ -1,9 +1,6 @@
 import { ReactNode, useRef } from "react";
-import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
 import EditMenu from "./EditMenu";
-import { useUserConfig } from "../hooks/useUserConfig";
 
-import { useChanges } from "../hooks/useChanges";
 import { useBottombarHeight } from "../hooks/useBottombarHeight";
 
 export default function Bottombar({ left }: { left: number }): ReactNode {

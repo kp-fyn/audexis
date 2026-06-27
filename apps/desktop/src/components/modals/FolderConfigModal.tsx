@@ -12,9 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "../Dropdown";
 import { Button } from "../Button";
-import { col } from "framer-motion/client";
+
 type FolderConfig = {
-  default_values: Record<string, SerializableTagFrameValue>;
+  default_values: Record<string, SerializableTagFrameValue[]>;
   path_pattern: string | null;
 };
 
@@ -128,7 +128,7 @@ export function FolderConfigModal({
                             ...prevConfig,
                             default_values: {
                               ...prevConfig.default_values,
-                              [col.value]: defaultValue,
+                              [col.value]: [defaultValue],
                             },
                           }));
                         }}
@@ -141,88 +141,90 @@ export function FolderConfigModal({
               </div>
             </div>
             {Object.entries(config.default_values).map(([key, val]) => (
-              <div key={key} className="mb-2 flex">
-                {val.type === "Text" && (
-                  <div className="flex flex-col w-full">
-                    <label className="block text-sm font-medium mb-1">
-                      {(columns.find((col) => col.value === key)?.label || key)
-                        .substring(0, 1)
-                        .toUpperCase() +
-                        (
-                          columns.find((col) => col.value === key)?.label || key
-                        ).substring(1)}
-                    </label>
-                    <Input
-                      value={config.default_values[key].value as string}
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        setConfig((prevConfig) => ({
-                          ...prevConfig,
-                          default_values: {
-                            ...prevConfig.default_values,
-                            [key]: {
-                              type: "Text",
-                              value: newValue,
-                            },
-                          },
-                        }));
-                      }}
-                    />
-                  </div>
-                )}
-                {val.value && val.type === "Picture" && (
-                  <div className="flex flex-col w-full">
-                    <label className="block text-sm font-medium mb-1">
-                      {(columns.find((col) => col.value === key)?.label || key)
-                        .substring(0, 1)
-                        .toUpperCase() +
-                        (
-                          columns.find((col) => col.value === key)?.label || key
-                        ).substring(1)}
-                    </label>
-                    <div>
-                      <Button
-                        onClick={async () => {
-                          const img: TagPicture | null =
-                            await invoke("import_image");
-                          if (!img) return;
+              <div key={key} className="mb-2 flex flex-col">
+                <label className="block text-sm font-medium mb-1">
+                  {(columns.find((col) => col.value === key)?.label || key)
+                    .substring(0, 1)
+                    .toUpperCase() +
+                    (
+                      columns.find((col) => col.value === key)?.label || key
+                    ).substring(1)}
+                </label>
+                <div className="flex gap-2">
+                  {val[0].type === "Text" && (
+                    <div className="flex flex-col w-full">
+                      <Input
+                        value={config.default_values[key][0].value as string}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
                           setConfig((prevConfig) => ({
                             ...prevConfig,
                             default_values: {
                               ...prevConfig.default_values,
-                              [key]: img,
+                              [key]: [{ type: "Text", value: newValue }],
                             },
                           }));
                         }}
-                        variant={"default"}
-                      >
-                        Upload Image
-                      </Button>
+                      />
                     </div>
-                    <img
-                      src={`data:${val.value.mime};base64,${val.value.data_base64}`}
-                      className="h-20 w-20 object-cover rounded"
-                    />
+                  )}
+                  {val[0].value && val[0].type === "Picture" && (
+                    <div className="flex flex-col w-full">
+                      <label className="block text-sm font-medium mb-1">
+                        {(
+                          columns.find((col) => col.value === key)?.label || key
+                        )
+                          .substring(0, 1)
+                          .toUpperCase() +
+                          (
+                            columns.find((col) => col.value === key)?.label ||
+                            key
+                          ).substring(1)}
+                      </label>
+                      <div>
+                        <Button
+                          onClick={async () => {
+                            const img: TagPicture | null =
+                              await invoke("import_image");
+                            if (!img) return;
+                            setConfig((prevConfig) => ({
+                              ...prevConfig,
+                              default_values: {
+                                ...prevConfig.default_values,
+                                [key]: [img],
+                              },
+                            }));
+                          }}
+                          variant={"default"}
+                        >
+                          Upload Image
+                        </Button>
+                      </div>
+                      <img
+                        src={`data:${val[0].value.mime};base64,${val[0].value.data_base64}`}
+                        className="h-20 w-20 object-cover rounded"
+                      />
+                    </div>
+                  )}
+                  <div className="my-auto justify-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger>
+                        <Ellipsis />{" "}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="z-999999">
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            const newConfig = { ...config };
+                            delete newConfig.default_values[key];
+                            setConfig(newConfig);
+                          }}
+                        >
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                )}
-                <div className="ml-auto">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Ellipsis />{" "}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="z-999999">
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => {
-                          const newConfig = { ...config };
-                          delete newConfig.default_values[key];
-                          setConfig(newConfig);
-                        }}
-                      >
-                        Remove
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               </div>
             ))}

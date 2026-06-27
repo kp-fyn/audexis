@@ -8,3 +8,12 @@
 .activeButton {
   @apply !text-primary !font-medium;
 }
+blockquote p {
+  color: var(--muted-foreground) !important;
+}
+blockquote {
+  border-color: var(--muted) !important;
+}
+code {
+  color: var(--muted-foreground) !important;
+}

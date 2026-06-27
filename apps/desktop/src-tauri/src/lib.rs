@@ -18,7 +18,13 @@ use serde::Serialize;
 
 use std::env;
 use std::sync::Mutex;
-use tauri::{async_runtime, Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder};
+
+use tauri::{
+    async_runtime,
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    ActivationPolicy, Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder,
+};
 
 pub struct AppState {
     pub workspace: Mutex<Workspace>,
@@ -37,9 +43,108 @@ pub struct FileNode {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]), // Optional CLI args when auto-starting
+        ))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_i])?;
+            TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|_app, event| match event.id.as_ref() {
+                    "quit" => {
+                        std::process::exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| match event {
+                    TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } => {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        } else {
+                            #[cfg(target_os = "macos")]
+                            let _ = app.set_activation_policy(ActivationPolicy::Regular);
+                            let path = app
+                                .path()
+                                .app_data_dir()
+                                .expect("Failed to get app data directory");
+                            let app_path = app.path().app_data_dir();
+                            if app_path.is_err() {
+                                return;
+                            }
+                            let app_path = app_path.unwrap();
+                            let db_path = app_path.join("audexis.db");
+                            let db = async_runtime::block_on(async {
+                                Database::init(&db_path)
+                                    .await
+                                    .expect("Database failed to initialize")
+                            });
+                            let config_path = path.join(CONFIG_FILE);
+
+                            let user_config = load_config(&config_path);
+                            let theme = match user_config.theme {
+                                Theme::Light => "light",
+                                Theme::Dark => "dark",
+                            };
+                            let view = match user_config.view {
+                                ViewMode::Folder => "folder",
+                                ViewMode::Simple => "simple",
+                            };
+                            let onboarding = user_config.onboarding;
+
+                            app.manage(AppState {
+                                workspace: Mutex::new(Workspace::new(&app)),
+                                file_watcher: Mutex::new(FileWatcher::new(&app)),
+                                history: Mutex::new(history::History::new(&app)),
+                                db: db,
+                                view_mode: user_config.view,
+                            });
+                            if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
+                                let _ = watcher.watch_workspace();
+                            }
+                            let win_builder = WebviewWindowBuilder::new(
+                                app,
+                                "main",
+                                WebviewUrl::App(
+                                    format!(
+                                        "index.html?theme={}&onboarding={}&view={}",
+                                        theme,
+                                        onboarding.to_string(),
+                                        view
+                                    )
+                                    .into(),
+                                ),
+                            )
+                            .title("Audexis")
+                            .min_inner_size(800.0, 600.0)
+                            .maximized(true)
+                            .visible(false);
+                            let win_builder = win_builder.maximized(true);
+                            #[cfg(target_os = "macos")]
+                            let win_builder =
+                                win_builder.title_bar_style(TitleBarStyle::Transparent);
+                            let win_builder = win_builder.decorations(false);
+                            let window = win_builder.build().unwrap();
+
+                            window.show().unwrap();
+                        }
+                    }
+                    _ => {}
+                })
+                .icon(app.default_window_icon().unwrap().clone())
+                .build(app)?;
+
             let path = app
                 .path()
                 .app_data_dir()
@@ -62,7 +167,22 @@ pub fn run() {
                 ViewMode::Folder => "folder",
                 ViewMode::Simple => "simple",
             };
+
             let onboarding = user_config.onboarding;
+
+            let args: Vec<String> = std::env::args().collect();
+            let is_autostart = args.contains(&"--autostart".to_string());
+            if is_autostart == true {
+                #[cfg(target_os = "macos")]
+                let _ = app
+                    .handle()
+                    .set_activation_policy(ActivationPolicy::Accessory);
+            } else {
+                #[cfg(target_os = "macos")]
+                let _ = app
+                    .handle()
+                    .set_activation_policy(ActivationPolicy::Regular);
+            }
 
             app.manage(AppState {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
@@ -74,7 +194,9 @@ pub fn run() {
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
             }
-
+            if is_autostart {
+                return Ok(());
+            }
             let win_builder = WebviewWindowBuilder::new(
                 app,
                 "main",
@@ -152,10 +274,15 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")
-        .run(|app_handle, event| {
-            #[cfg(any(target_os = "macos", target_os = "ios"))]
-            {
-                if let RunEvent::Opened { urls } = event {
+        .run(|app_handle, event| match event {
+            RunEvent::ExitRequested { api, .. } => {
+                api.prevent_exit();
+                #[cfg(target_os = "macos")]
+                let _ = app_handle.set_activation_policy(ActivationPolicy::Accessory);
+            }
+            RunEvent::Opened { urls } => {
+                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                {
                     let paths: Vec<std::path::PathBuf> = urls
                         .into_iter()
                         .filter_map(|url| url.to_file_path().ok())
@@ -163,5 +290,6 @@ pub fn run() {
                     handle_file_associations(app_handle.clone(), paths);
                 }
             }
+            _ => {}
         });
 }

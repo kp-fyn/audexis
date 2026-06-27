@@ -15,9 +15,13 @@ use notify_debouncer_full::{new_debouncer, Debouncer, FileIdMap};
 
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::config::folder::get_folder_config;
 use crate::config::user::load_config;
 use crate::config::user::ViewMode;
 use crate::config::user::CONFIG_FILE;
+use crate::tag_manager::tag_backend::DefaultBackend;
+use crate::tag_manager::tag_backend::TagBackend;
+use crate::tag_manager::utils::Changes;
 use crate::tag_manager::utils::SerializableFile;
 use crate::utils::delete_file_path;
 use crate::utils::get_imported_folders;
@@ -648,4 +652,29 @@ impl FileWatcher {
     }
 }
 
-fn handle_auto_tagging(path: PathBuf) {}
+fn handle_auto_tagging(file_path: PathBuf) {
+    let folder_path = file_path.parent();
+    if folder_path.is_none() {
+        println!("err13");
+        return;
+    }
+    let folder_path = folder_path.unwrap();
+    let folder_path_str = folder_path.to_str();
+    if folder_path_str.is_none() {
+        return;
+    }
+    let folder_path_str = folder_path_str.unwrap();
+
+    let config = get_folder_config(folder_path_str);
+    if config.is_err() {
+        return;
+    }
+    let file_path_string = file_path.to_string_lossy().to_string();
+    let config = config.unwrap();
+    let changes = Changes {
+        paths: vec![file_path_string],
+        tags: config.default_values,
+    };
+    let backend = DefaultBackend::new();
+    backend.write_changes(&changes);
+}

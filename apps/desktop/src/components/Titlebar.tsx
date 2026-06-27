@@ -172,7 +172,7 @@ export default function Titlebar() {
         >
           <>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger>
                 <Button>Import...</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>

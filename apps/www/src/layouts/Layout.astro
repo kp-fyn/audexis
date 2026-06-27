@@ -2,6 +2,7 @@
 interface Props {
   title: string;
   description: string;
+  keywords?: string;
 }
 import "../styles/global.css";
 import Navbar from "../components/Navbar.astro";
@@ -45,6 +46,16 @@ const url = Astro.url.pathname;
           height: 630,
         },
       }}
+      extend={{
+        meta: [
+          {
+            name: "keywords",
+            content:
+              Astro.props.keywords ??
+              "audexis, metadata editing, metadata editor",
+          },
+        ],
+      }}
       titleTemplate="%s — Audexis"
     />
     <style is:inline>
@@ -73,6 +84,22 @@ const url = Astro.url.pathname;
         document.documentElement.setAttribute("data-theme", theme);
       } else {
         document.documentElement.setAttribute("data-theme", theme);
+      }
+    </script>
+    <script is:inline type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Audexis",
+        "operatingSystem": "Windows 10, Windows 11, macOS 10.15+",
+        "applicationCategory": "MultimediaApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "downloadUrl": "https://github.com/kp-fyn/audexis/releases",
+        "license": "https://opensource.org/license/mit"
       }
     </script>
     <script>

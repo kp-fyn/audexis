@@ -3,7 +3,6 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import DraggableHeader from "@/ui/components/table/DraggableHeader";
-import { ContextMenuArea } from "@/ui/components/ContextMenu";
 import { useRef } from "react";
 
 type TableHeaderRowProps = {
@@ -26,7 +25,6 @@ export default function TableHeaderRow({
   columnOrder,
   config,
   setColumns,
-  allColumns,
 }: TableHeaderRowProps) {
   const resizingColumnIdRef = useRef<string | null>(null);
   const initialResizeData = useRef<{ startX: number; startWidth: number }>({
@@ -94,7 +92,7 @@ export default function TableHeaderRow({
             strategy={horizontalListSortingStrategy}
             key={headerGroup.id}
           >
-            {headerGroup.headers.map((header: any, index: number) => (
+            {headerGroup.headers.map((header: any) => (
               <DraggableHeader header={header} key={header.id}>
                 <div
                   onMouseDown={(e) => {

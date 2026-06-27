@@ -8,4 +8,3 @@ export { IconButton } from "./IconButton";
 export { AppearanceSection } from "./AppearanceSection";
 export { ColumnsSection } from "./ColumnsSection";
 export { BehaviorSection } from "./BehaviorSection";
-export { AdvancedSection } from "./AdvancedSection";

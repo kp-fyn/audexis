@@ -9,7 +9,6 @@ import { useChanges } from "@/ui/hooks/useChanges";
 import { useRename } from "@/ui/hooks/useRename";
 import { useCleanup } from "@/ui/hooks/useCleanup";
 import { Table } from "@tanstack/react-table";
-import { useBottombarHeight } from "@/ui/hooks/useBottombarHeight";
 
 type DataGridProps = {
   table: Table<File>;
@@ -19,14 +18,7 @@ type DataGridProps = {
   columnOrder: string[];
 };
 
-export default function DataGrid({
-  table,
-  files,
-  selected,
-
-  columnOrder,
-}: DataGridProps) {
-  const { bottombarHeight } = useBottombarHeight();
+export default function DataGrid({ table, files, selected }: DataGridProps) {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const lastInteractedIndexRef = useRef<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(0);

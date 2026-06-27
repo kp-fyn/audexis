@@ -1,7 +1,6 @@
 import { useChanges } from "../hooks/useChanges";
 import { Input } from "./Input";
 import { AllTags, SerializableTagFrameValue, TagPicture } from "@/ui/types";
-import Img from "../assets/images/unknown.jpg";
 import { ReactNode, useEffect, useState } from "react";
 import { Button } from "./Button";
 
@@ -12,7 +11,6 @@ import { invoke } from "@tauri-apps/api/core";
 import ValueListEditor from "./modals/ValueListEditor";
 
 export default function EditMenu({ bottombar }: Props): ReactNode {
-  const [image, setImage] = useState<TagPicture | null>(null);
   const [pictures, setPictures] = useState<TagPicture[]>([]);
   const [artworkOpen, setArtworkOpen] = useState(false);
   const [listEditor, setListEditor] = useState<{
@@ -77,7 +75,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
       if (framePics.length > 0) {
         setPictures(framePics);
-        setImage(framePics[0]);
       } else if (selectedFiles[0].attachedPicture) {
         if (!selectedFiles[0]) return;
         if (!selectedFiles[0].attachedPicture) return;
@@ -89,10 +86,8 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
         if (!img.value) return;
 
         setPictures([img]);
-        setImage(img);
       } else {
         setPictures([]);
-        setImage(null);
       }
     } else {
       const defaultValue: Record<
@@ -141,7 +136,6 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           : [];
         if (framePics.length > 0) {
           setPictures(framePics);
-          setImage(framePics[0]);
         } else {
           if (!selectedFiles[0].attachedPicture) return;
           const img = selectedFiles[0].attachedPicture[0] as
@@ -149,10 +143,8 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
             | undefined;
           if (img && img.value) {
             setPictures([img]);
-            setImage(img);
           } else {
             setPictures([]);
-            setImage(null);
           }
         }
       }
@@ -259,66 +251,29 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
       </div>
 
       <>
-        {!bottombar ? (
-          <img
-            src={(() => {
-              if (image) {
-                return `data:${image.value.mime};base64,${image.value.data_base64}`;
-              }
-              if (!changes) return Img;
-              if (!changes.attachedPicture) return Img;
-              const c = changes.attachedPicture[0];
-              if (!c) return Img;
-              if (c?.type === "Picture") {
-                return `data:${c.value.mime};base64,${c.value.data_base64}`;
-              }
-              return Img;
-            })()}
-            onClick={() => {
-              const selectedFormats = [...selected]
-                .map((fp) => files.find((f) => f.path === fp))
-                .filter(Boolean)
-                .map((f) => (f as any).tag_format as string);
-              const anyV1 = selectedFormats.some(
-                (fmt) =>
-                  typeof fmt === "string" &&
-                  fmt.toLowerCase().startsWith("id3v1"),
+        <Button
+          className="ml-12 mt-5"
+          onClick={() => {
+            const selectedFormats = [...selected]
+              .map((fp) => files.find((f) => f.path === fp))
+              .filter(Boolean)
+              .map((f) => (f as any).tag_format as string);
+            const anyV1 = selectedFormats.some(
+              (fmt) =>
+                typeof fmt === "string" &&
+                fmt.toLowerCase().startsWith("id3v1"),
+            );
+            if (anyV1) {
+              toast.error(
+                "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images.",
               );
-              if (anyV1) {
-                toast.error(
-                  "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images.",
-                );
-                return;
-              }
-              setArtworkOpen(true);
-            }}
-            className="w-full aspect-square self-center justify-self-center mt-4"
-          ></img>
-        ) : (
-          <Button
-            className="ml-12 mt-5"
-            onClick={() => {
-              const selectedFormats = [...selected]
-                .map((fp) => files.find((f) => f.path === fp))
-                .filter(Boolean)
-                .map((f) => (f as any).tag_format as string);
-              const anyV1 = selectedFormats.some(
-                (fmt) =>
-                  typeof fmt === "string" &&
-                  fmt.toLowerCase().startsWith("id3v1"),
-              );
-              if (anyV1) {
-                toast.error(
-                  "ID3v1 doesn’t support embedded artwork. Select an ID3v2 file to add images.",
-                );
-                return;
-              }
-              setArtworkOpen(true);
-            }}
-          >
-            Edit Artwork
-          </Button>
-        )}
+              return;
+            }
+            setArtworkOpen(true);
+          }}
+        >
+          Edit Artwork
+        </Button>
 
         <ImageManagerModal
           open={artworkOpen}
@@ -326,11 +281,10 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           pictures={pictures}
           onChange={(nextList) => {
             if (nextList.length === 0) {
-              setImage(null);
               setPictures([]);
               invoke("save_frame_changes", {
                 frameChanges: {
-                  paths: selected,
+                  paths: [...selected],
                   frames: [
                     {
                       key: "attachedPicture",
@@ -346,10 +300,10 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
               return;
             }
             setPictures(nextList);
-            setImage(nextList[0]);
+
             invoke("save_frame_changes", {
               frameChanges: {
-                paths: selected,
+                paths: [...selected],
                 frames: [
                   {
                     key: "attachedPicture",
@@ -390,7 +344,7 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
 
             invoke("save_frame_changes", {
               frameChanges: {
-                paths: selected,
+                paths: [...selected],
                 frames: [
                   {
                     key: listEditor.field,

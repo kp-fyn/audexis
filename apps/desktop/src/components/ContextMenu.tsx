@@ -17,6 +17,7 @@ type MenuRef = {
 export function ContextMenuArea({
   items,
   children,
+  asChild,
   ...props
 }: {
   items: () => MenuOptions;
@@ -126,10 +127,9 @@ function Menu({
         if ("text" in item) {
           return (
             <div
-              className="hover:bg-hover"
+              className="hover:bg-hover px-2 py-1 rounded"
               key={index}
               style={{
-                padding: "4px 8px",
                 cursor: item.disabled === true ? "not-allowed" : "default",
                 color: item.disabled
                   ? "text-muted-foreground"
@@ -141,7 +141,7 @@ function Menu({
                 setMenuState(null);
               }}
             >
-              {item.text}
+              <span>{item.text}</span>
             </div>
           );
         } else if ("item" in item) {

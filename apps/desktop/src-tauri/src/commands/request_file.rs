@@ -1,11 +1,11 @@
 use crate::database::Database;
-use crate::tag_manager::utils::{File, SerializableFile};
+use crate::tag_manager::utils::SerializableFile;
 use crate::utils::{get_imported_folders, get_tags, is_in_folder};
 use crate::AppState;
 use std::fs;
 use std::path::PathBuf;
 
-use tauri::{command, AppHandle, State};
+use tauri::{command, State};
 
 #[command]
 pub async fn request_file(

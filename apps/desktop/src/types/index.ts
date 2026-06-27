@@ -266,7 +266,7 @@ export interface FrameChangesPayload {
 
 export interface RawFile {
   path: string;
-
+  file_name: string;
   tag_format: string;
   tag_formats?: string[];
   tags: Frames;

@@ -5,7 +5,6 @@ use crate::tag_manager::utils::{
     SerializableTagValuesWrapper, TagValue, TagValuesWrapper,
 };
 use crate::utils::get_tags;
-use base64::{engine::general_purpose as b64_gp, Engine as _};
 
 use crate::tag_manager::tag_backend::{DefaultBackend, TagBackend};
 use crate::AppState;
@@ -111,18 +110,34 @@ pub async fn save_frame_changes(
             app_handle.emit("error", res).unwrap();
         }
     } else {
-        let current_files = get_tags(&state.db, frame_changes.paths).await;
+        let current_files = get_tags(&state.db, frame_changes.paths.clone()).await;
 
         if current_files.is_err() {
             //come back later
             return Ok(());
         }
-        let current_files = current_files.unwrap();
 
         let mut tag_map: HashMap<FrameKey, Vec<TagValue>> = HashMap::new();
-        for frame in frame_changes.frames {
-            for value in &frame.values {}
+        let backend = DefaultBackend::new();
+        let mut write_changes = Changes {
+            paths: frame_changes.paths.clone(),
+            tags: HashMap::new(),
+        };
+
+        for frame in &frame_changes.frames {
+            let wrapped_values = SerializableTagValuesWrapper(frame.values.clone());
+            let frame_values: Vec<TagValue> = wrapped_values.into();
+
+            tag_map.insert(frame.key, frame_values);
         }
+        for (k, vec_vals) in tag_map.into_iter() {
+            // wrap tag values in wrapper to allow conversion
+            let p = TagValuesWrapper(vec_vals);
+            let ser_vals: Vec<SerializableTagValue> = p.into();
+
+            write_changes.tags.insert(k, ser_vals);
+        }
+        backend.write_changes(&write_changes);
     }
     return Ok(());
 }

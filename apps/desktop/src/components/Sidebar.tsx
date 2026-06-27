@@ -4,14 +4,12 @@ import useWindowDimensions from "@/ui/hooks/useWindowDimensions";
 import EditMenu from "./EditMenu";
 import { useUserConfig } from "../hooks/useUserConfig";
 import Filetree from "./Filetree";
-import { useChanges } from "../hooks/useChanges";
 
 export default function Sidebar(): ReactNode {
   const { sidebarWidth, setSidebarWidth } = useSidebarWidth();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const { config } = useUserConfig();
-  const { fileTree } = useChanges();
 
   const { width } = useWindowDimensions();
 
@@ -68,11 +66,9 @@ export default function Sidebar(): ReactNode {
 
       <div
         style={{ left: `${sidebarWidth}px` }}
-        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-0.5 cursor-col-resize  bg-border hover:bg-border `}
+        className={`fixed top-12 bottom-0  left-[${sidebarWidth}px] h-screen w-[0.25px] cursor-col-resize  bg-border hover:bg-border `}
         onMouseDown={startResizing}
-      >
-        <div className="border-r h-screen border-border "></div>
-      </div>
+      ></div>
     </div>
   );
 }

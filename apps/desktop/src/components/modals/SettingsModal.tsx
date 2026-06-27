@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useUserConfig } from "@/ui/hooks/useUserConfig";
 import type { Column, SidebarItem, Column as UserColumn } from "@/ui/types";
 import { getVersion } from "@tauri-apps/api/app";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
+
 import {
   SectionNavButton,
   AppearanceSection,
   ColumnsSection,
   BehaviorSection,
-  AdvancedSection,
 } from "../settings";
 import { SidebarItemsSection } from "../settings/SidebarItemsSection";
 import { Modal, useAnimatedModalClose } from "./Modal";
@@ -27,6 +28,7 @@ interface SettingsDraft {
 }
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
+  const [loading, setLoading] = useState(true);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const firstFocusableRef = useRef<HTMLButtonElement | null>(null);
   const [appVersion, setAppVersion] = useState<string>("");
@@ -61,10 +63,21 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [behavior, setBehavior] = useState<Record<string, boolean>>({
     showDiffModal: false,
   });
-
   useEffect(() => {
-    setBehavior({
-      showDiffModal: config.show_diff_modal ?? false,
+    isEnabled().then((val) => {
+      setBehavior({
+        showDiffModal: config.show_diff_modal ?? false,
+        autostart: val,
+      });
+      setLoading(false);
+    });
+  }, []);
+  useEffect(() => {
+    isEnabled().then((val) => {
+      setBehavior({
+        showDiffModal: config.show_diff_modal ?? false,
+        autostart: val,
+      });
     });
   }, [config.show_diff_modal]);
 
@@ -99,7 +112,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         setActiveNum((prev) => Math.max(0, prev - 1));
       }
       if (e.key === "ArrowDown") {
-        const max = 4;
+        const max = 3;
         setActiveNum((prev) => Math.min(max, prev + 1));
       }
     };
@@ -126,6 +139,12 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
       if (key === "showDiffModal") {
         setShowDiffModal(value);
+      } else if (key === "autostart") {
+        if (value === true) {
+          enable();
+        } else {
+          disable();
+        }
       }
     },
     [setShowDiffModal],
@@ -172,86 +191,96 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         </>
       }
     >
-      <div className="flex max-h-[66vh] h-[66vh]">
-        <nav className="hidden sm:flex flex-col w-40 p-3 border-r border-border/60 bg-background/40 gap-2 overflow-y-auto">
-          <SectionNavButton
-            label="General"
-            isActive={activeNum === 0}
-            onClick={() => setActiveNum(0)}
-          />
-          <SectionNavButton
-            label="Sidebar Items"
-            isActive={activeNum === 1}
-            onClick={() => setActiveNum(1)}
-          />
-          <SectionNavButton
-            label="Columns"
-            isActive={activeNum === 2}
-            onClick={() => setActiveNum(2)}
-          />
+      {loading ? (
+        <></>
+      ) : (
+        <>
+          <div className="flex max-h-[66vh] h-[66vh]">
+            <nav className="hidden sm:flex flex-col w-40 p-3 border-r border-border/60 bg-background/40 gap-2 overflow-y-auto">
+              <SectionNavButton
+                label="General"
+                isActive={activeNum === 0}
+                onClick={() => setActiveNum(0)}
+              />
+              <SectionNavButton
+                label="Sidebar Items"
+                isActive={activeNum === 1}
+                onClick={() => setActiveNum(1)}
+              />
+              <SectionNavButton
+                label="Columns"
+                isActive={activeNum === 2}
+                onClick={() => setActiveNum(2)}
+              />
 
-          <SectionNavButton
-            label="Behavior"
-            isActive={activeNum === 3}
-            onClick={() => setActiveNum(3)}
-          />
-          <SectionNavButton
-            label="Advanced"
-            isActive={activeNum === 4}
-            onClick={() => setActiveNum(4)}
-          />
-          <div className="mt-auto pt-4 space-y-2">
-            <span className="text-[10px] text-foreground/40 leading-relaxed flex gap-1">
-              Use
-              <p className="border px-1 border-border w-max h-max ">↑</p> and
-              <p className="border px-1 border-border w-max h-max">↓</p> keys to
-              navigate
-            </span>
-            {appVersion && (
-              <div className="text-[10px] text-foreground/30 font-mono">
-                v{appVersion}
+              <SectionNavButton
+                label="Behavior"
+                isActive={activeNum === 3}
+                onClick={() => setActiveNum(3)}
+              />
+
+              <div className="mt-auto pt-4 space-y-2">
+                <span className="text-[10px] text-foreground/40 leading-relaxed flex gap-1">
+                  Use
+                  <p className="border px-1 border-border w-max h-max ">
+                    ↑
+                  </p>{" "}
+                  and
+                  <p className="border px-1 border-border w-max h-max">
+                    ↓
+                  </p>{" "}
+                  keys to navigate
+                </span>
+                {appVersion && (
+                  <div className="text-[10px] text-foreground/30 font-mono">
+                    v{appVersion}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </nav>
+            </nav>
 
-        <div className="flex-1 overflow-auto p-6 space-y-6 custom-scrollbar">
-          {activeNum === 0 && (
-            <AppearanceSection
-              theme={config.theme}
-              density={config.density}
-              view={config.view}
-              onViewChange={setView}
-              onThemeChange={setTheme}
-              onDensityChange={persistDensity}
-            />
-          )}
-          {activeNum === 1 && (
-            <SidebarItemsSection
-              sidebarItems={config.sidebar_items}
-              sidebarItemMetaById={sidebarItemMetaById}
-              setSidebarItems={setSidebarItems}
-              allSidebarItems={allSidebarItems}
-            />
-          )}
-          {activeNum === 2 && (
-            <ColumnsSection
-              columns={config.columns}
-              allColumns={allColumns}
-              columnMetaById={columnMetaById}
-              setColumns={setColumns}
-            />
-          )}
-          {activeNum === 3 && (
-            <BehaviorSection
-              behavior={behavior}
-              onBehaviorChange={handleBehaviorChange}
-            />
-          )}
-          {activeNum === 4 && <AdvancedSection />}
-        </div>
-      </div>
-      <div id="settings-modal-live" aria-live="polite" className="sr-only" />
+            <div className="flex-1 overflow-auto p-6 space-y-6 custom-scrollbar">
+              {activeNum === 0 && (
+                <AppearanceSection
+                  theme={config.theme}
+                  density={config.density}
+                  view={config.view}
+                  onViewChange={setView}
+                  onThemeChange={setTheme}
+                  onDensityChange={persistDensity}
+                />
+              )}
+              {activeNum === 1 && (
+                <SidebarItemsSection
+                  sidebarItems={config.sidebar_items}
+                  sidebarItemMetaById={sidebarItemMetaById}
+                  setSidebarItems={setSidebarItems}
+                  allSidebarItems={allSidebarItems}
+                />
+              )}
+              {activeNum === 2 && (
+                <ColumnsSection
+                  columns={config.columns}
+                  allColumns={allColumns}
+                  columnMetaById={columnMetaById}
+                  setColumns={setColumns}
+                />
+              )}
+              {activeNum === 3 && (
+                <BehaviorSection
+                  behavior={behavior}
+                  onBehaviorChange={handleBehaviorChange}
+                />
+              )}
+            </div>
+          </div>
+          <div
+            id="settings-modal-live"
+            aria-live="polite"
+            className="sr-only"
+          />
+        </>
+      )}
     </Modal>
   );
 }
