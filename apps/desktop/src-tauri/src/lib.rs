@@ -23,7 +23,7 @@ use tauri::{
     async_runtime,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    ActivationPolicy, Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder,
+    Manager, RunEvent, TitleBarStyle, WebviewUrl, WebviewWindowBuilder,
 };
 
 pub struct AppState {
@@ -45,7 +45,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--autostart"]), // Optional CLI args when auto-starting
+            Some(vec!["--autostart"]),
         ))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
@@ -74,7 +74,9 @@ pub fn run() {
                             let _ = window.set_focus();
                         } else {
                             #[cfg(target_os = "macos")]
-                            let _ = app.set_activation_policy(ActivationPolicy::Regular);
+                            {
+                                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                            }
                             let path = app
                                 .path()
                                 .app_data_dir()
@@ -174,14 +176,18 @@ pub fn run() {
             let is_autostart = args.contains(&"--autostart".to_string());
             if is_autostart == true {
                 #[cfg(target_os = "macos")]
-                let _ = app
-                    .handle()
-                    .set_activation_policy(ActivationPolicy::Accessory);
+                {
+                    let _ = app
+                        .handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                }
             } else {
                 #[cfg(target_os = "macos")]
-                let _ = app
-                    .handle()
-                    .set_activation_policy(ActivationPolicy::Regular);
+                {
+                    let _ = app
+                        .handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Regular);
+                }
             }
 
             app.manage(AppState {
@@ -221,20 +227,20 @@ pub fn run() {
             let window = win_builder.build().unwrap();
 
             window.show().unwrap();
-
-            #[cfg(any(windows, target_os = "linux"))]
+            #[cfg(target_os = "windows")]
             {
                 let mut files = Vec::new();
                 for maybe_file in std::env::args().skip(1) {
                     if maybe_file.starts_with('-') {
                         continue;
                     }
+
                     if let Ok(url) = url::Url::parse(&maybe_file) {
                         if let Ok(path) = url.to_file_path() {
                             files.push(path);
                         }
                     } else {
-                        files.push(PathBuf::from(maybe_file))
+                        files.push(std::path::PathBuf::from(maybe_file))
                     }
                 }
 
@@ -278,17 +284,17 @@ pub fn run() {
             RunEvent::ExitRequested { api, .. } => {
                 api.prevent_exit();
                 #[cfg(target_os = "macos")]
-                let _ = app_handle.set_activation_policy(ActivationPolicy::Accessory);
-            }
-            RunEvent::Opened { urls } => {
-                #[cfg(any(target_os = "macos", target_os = "ios"))]
                 {
-                    let paths: Vec<std::path::PathBuf> = urls
-                        .into_iter()
-                        .filter_map(|url| url.to_file_path().ok())
-                        .collect::<Vec<_>>();
-                    handle_file_associations(app_handle.clone(), paths);
+                    let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
                 }
+            }
+            #[cfg(any(target_os = "macos"))]
+            RunEvent::Opened { urls } => {
+                let paths: Vec<std::path::PathBuf> = urls
+                    .into_iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .collect::<Vec<_>>();
+                handle_file_associations(app_handle.clone(), paths);
             }
             _ => {}
         });
