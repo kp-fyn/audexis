@@ -79,7 +79,7 @@ export function AutoUpdaterProvider({
 
     checkForUpdates();
 
-    const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
+    const interval = setInterval(checkForUpdates, 60 * 60 * 1000);
 
     (window as any).checkForUpdates = checkForUpdates;
 

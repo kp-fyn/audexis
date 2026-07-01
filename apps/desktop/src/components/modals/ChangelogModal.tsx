@@ -117,7 +117,7 @@ export function ChangelogModal({ open, onClose }: OnboardingModalProps) {
   useEffect(() => {
     if (!open) return;
     fetch(
-      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/src/pages/v${version}.md`,
+      `https://raw.githubusercontent.com/kp-fyn/audexis/refs/heads/main/apps/www/src/pages/releases/v${version}.md`,
     )
       .then((res) => res.text())
       .then((text) => {

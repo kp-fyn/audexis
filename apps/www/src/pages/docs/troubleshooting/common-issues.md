@@ -52,7 +52,7 @@ chmod u+w /path/to/file.mp3
 ## Update Not Working
 
 1. Check internet connection
-2. Wait 5 minutes for the next check
+2. Wait 1 hour for the next check
 3. Download manually from [GitHub](https://github.com/kp-fyn/audexis/releases)
 
 ## Still Need Help?

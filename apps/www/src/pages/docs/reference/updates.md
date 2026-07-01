@@ -12,7 +12,7 @@ Audexis checks for updates automatically.
 ## How It Works
 
 - Checks on app launch
-- Checks every 5 minutes while running
+- Checks every 1 hour while running
 - Shows a notification when updates are available
 
 ## Installing Updates
@@ -52,7 +52,7 @@ Audexis includes built-in auto-update functionality to keep you on the latest ve
 Audexis automatically checks for updates:
 
 - **On app launch** — Checks once when you open the app
-- **Every 5 minutes** — While the app is running
+- **Every 1 hour** — While the app is running
 - **Manual trigger** — You can manually check anytime
 
 When an update is available, you'll see a notification with options to:

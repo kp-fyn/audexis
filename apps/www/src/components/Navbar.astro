@@ -30,7 +30,9 @@ import { Image } from "astro:assets";
         <Image src={logo} alt="Audexis logo" width={26} height={26} />
         <span class="text-lg font- text-foreground">Audexis</span>
       </a>
-      <div class="hidden md:flex md:ml-8 gap-8 text-sm text-muted-foreground">
+      <div
+        class="hidden md:flex top-0 md:ml-8 gap-8 text-sm text-muted-foreground"
+      >
         <a href="/docs">Docs</a>
         <a href="/blog">Blog</a>
         <a href="/releases">Releases</a>
@@ -73,7 +75,7 @@ import { Image } from "astro:assets";
 
   <div
     id="mobile-menu"
-    class="hidden md:hidden absolute left-0 right-0 top-full px-2 md:px-8"
+    class="hidden md:hidden absolute left-0 right-0 mt-6 px-2 md:px-8"
   >
     <div
       class="mt-2 rounded border border-primary bg-transparent backdrop-blur-2xl"
