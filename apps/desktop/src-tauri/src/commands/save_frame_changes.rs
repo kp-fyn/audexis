@@ -110,7 +110,7 @@ pub async fn save_frame_changes(
             app_handle.emit("error", res).unwrap();
         }
     } else {
-        let current_files = get_tags(&state.db, frame_changes.paths.clone()).await;
+        let current_files = get_tags(&state.db, frame_changes.paths.clone(), false).await;
 
         if current_files.is_err() {
             //come back later
@@ -137,6 +137,7 @@ pub async fn save_frame_changes(
 
             write_changes.tags.insert(k, ser_vals);
         }
+
         backend.write_changes(&write_changes);
     }
     return Ok(());

@@ -30,7 +30,7 @@ pub async fn request_file(
         return Err(());
     }
 
-    let files = get_tags(&db, vec![path]).await.map_err(|_| ())?;
+    let files = get_tags(&db, vec![path], false).await.map_err(|_| ())?;
     let file = files.get(0);
     if file.is_none() {
         return Err(());

@@ -126,7 +126,6 @@ const url = Astro.url.pathname;
 
             img.classList.remove("hidden");
           } else if (images[i].tagName.toLowerCase() === "img") {
-            console.log("imgg!");
             const img = images[i] as HTMLImageElement;
 
             img.src = img.src.replace(oldTheme, newTheme);
@@ -192,7 +191,6 @@ const url = Astro.url.pathname;
             size: number;
           };
 
-          console.log({ release });
           let defaultUrl = "https://github.com/kp-fyn/audexis/releases/latest";
           let macDownloadUrl = defaultUrl;
           let windowsDownloadUrl = defaultUrl;

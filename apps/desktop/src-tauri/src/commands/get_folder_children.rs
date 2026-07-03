@@ -49,7 +49,7 @@ pub fn get_folder_children(
         .collect::<Vec<String>>();
 
     async_runtime::spawn(async move {
-        match get_tags(&db, audio_files).await {
+        match get_tags(&db, audio_files, false).await {
             Ok(files) => {
                 let serializable_files: Vec<SerializableFile> =
                     files.into_iter().map(SerializableFile::from).collect();

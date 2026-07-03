@@ -14,8 +14,6 @@ const matches = import.meta.glob<MarkdownInstance<Frontmatter>>(
 );
 
 const posts = Object.values(matches);
-
-console.log({ posts: posts.length });
 ---
 
 <Layout

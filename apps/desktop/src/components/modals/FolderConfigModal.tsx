@@ -38,13 +38,11 @@ export function FolderConfigModal({
     path_pattern: null,
   });
   useEffect(() => {
-    console.log({ open });
     if (open) {
       setLoading(true);
       invoke<FolderConfig>("get_folder_config", { path: folderPath }).then(
         (cfg) => {
           setConfig(cfg);
-          console.log({ cfg });
 
           invoke<Column[]>("get_all_columns", { remove: true }).then((cols) => {
             setColumns(cols);

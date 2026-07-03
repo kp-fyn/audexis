@@ -290,6 +290,7 @@ export function ChangesProvider({
     }
 
     try {
+      console.log({ frames });
       await invoke("save_frame_changes", {
         frameChanges: { paths: [...selected], frames },
       });

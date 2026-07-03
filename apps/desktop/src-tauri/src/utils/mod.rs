@@ -515,6 +515,7 @@ async fn update_root_scan_time(pool: &SqlitePool, path: &str) -> Result<(), sqlx
 pub async fn get_tags(
     db: &Database,
     file_paths: Vec<String>,
+    force: bool,
 ) -> std::result::Result<Vec<File>, String> {
     let tag_backend = DefaultBackend::new();
     let mut files: Vec<File> = vec![];
@@ -537,7 +538,7 @@ pub async fn get_tags(
             }
         }
 
-        let is_indexed = sqlx::query_scalar::<_, i64>(
+        let mut is_indexed = sqlx::query_scalar::<_, i64>(
             "SELECT 1 FROM files WHERE path = ?1 AND metadata_status = 'indexed'",
         )
         .bind(file_path.as_str())
@@ -545,6 +546,10 @@ pub async fn get_tags(
         .await
         .map_err(|e| e.to_string())?
         .is_some();
+
+        if force == true {
+            is_indexed = false
+        }
 
         let db_modified: Option<SystemTime> =
             sqlx::query_scalar::<_, i64>("SELECT last_modified FROM files WHERE path = ?1")

@@ -49,7 +49,7 @@ export function ImageManagerModal({
   const [index, setIndex] = useState(0);
   const [types] = useState<Record<number, number>>({});
   const { selected } = useChanges();
-  console.log(selected);
+
   const current = items[index];
 
   const currentTypeId = current?.picture_type ?? types[index] ?? 3;

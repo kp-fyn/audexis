@@ -54,7 +54,7 @@ const { headings } = Astro.props;
             for (const ac of currActive) {
               ac.classList.remove("activeButton");
             }
-            console.log(entry.target.id);
+
             const newActive = document.querySelector(
               `[data-heading-slug="${entry.target.id}"]`,
             );
@@ -76,7 +76,7 @@ const { headings } = Astro.props;
   }
 
   const els = document.querySelectorAll(".scrollbutton");
-  console.log(els);
+
   els.forEach((el) => {
     el.addEventListener("click", () =>
       scrollToHeading(el as HTMLButtonElement),
@@ -84,7 +84,7 @@ const { headings } = Astro.props;
   });
   function scrollToHeading(el: HTMLButtonElement) {
     const id = el.getAttribute("data-heading-slug");
-    console.log({ id });
+
     if (id) {
       const element = document.getElementById(id);
       if (element) {
