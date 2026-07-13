@@ -16,7 +16,7 @@ type TableHeaderRowProps = {
       size?: number;
     }>;
   };
-  setColumns: (cols: any[]) => void;
+  setColumns: (cols: any[], update?: boolean) => void;
   allColumns: Array<{ label: string; value: string; kind: string }>;
 };
 
@@ -31,6 +31,7 @@ export default function TableHeaderRow({
     startX: 0,
     startWidth: 0,
   });
+  const columnsToSet = useRef(config.columns);
   const isResizing = useRef(false);
 
   const startResizing = (
@@ -71,14 +72,15 @@ export default function TableHeaderRow({
     if (columnIndex === -1) return;
 
     columnsCopy[columnIndex].size = newWidth;
-    setColumns(columnsCopy);
+    setColumns(columnsCopy, false);
+    columnsToSet.current = columnsCopy;
   };
 
   const stopResizing = (): void => {
     resizingColumnIdRef.current = null;
     isResizing.current = false;
     document.body.style.userSelect = "";
-
+    setColumns(columnsToSet.current);
     document.removeEventListener("mousemove", resize as any);
     document.removeEventListener("mouseup", stopResizing as any);
   };

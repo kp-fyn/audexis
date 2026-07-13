@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 
 import { twMerge } from "tailwind-merge";
+import { SerializableTagFrameValue } from "../types";
 
 export function parseShortcut(shortcut: string) {
   shortcut = shortcut.replace(
@@ -34,6 +35,18 @@ const reservedFileNames = [
   ...Array.from({ length: 9 }, (_, i) => `COM${i + 1}`),
   ...Array.from({ length: 9 }, (_, i) => `LPT${i + 1}`),
 ];
+export function getFirstValue<T extends SerializableTagFrameValue["type"]>(
+  val: SerializableTagFrameValue[],
+  targetType: T,
+): Extract<SerializableTagFrameValue, { type: T }> | undefined {
+  if (val && Array.isArray(val) && val[0]) {
+    const value = val[0];
+    if (value.type === targetType) {
+      return value as Extract<SerializableTagFrameValue, { type: T }>;
+    }
+  }
+  return undefined;
+}
 
 export function isValidFileName(
   name: string,

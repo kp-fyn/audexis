@@ -9,10 +9,12 @@ import toast from "react-hot-toast";
 import ImageManagerModal from "./modals/ImageManagerModal";
 import { invoke } from "@tauri-apps/api/core";
 import ValueListEditor from "./modals/ValueListEditor";
+import LyricsManagerModal from "./modals/LyricsManagerModal";
 
 export default function EditMenu({ bottombar }: Props): ReactNode {
   const [pictures, setPictures] = useState<TagPicture[]>([]);
   const [artworkOpen, setArtworkOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
   const [listEditor, setListEditor] = useState<{
     field: string | null;
     open: boolean;
@@ -275,6 +277,33 @@ export default function EditMenu({ bottombar }: Props): ReactNode {
           Edit Artwork
         </Button>
 
+        <Button
+          className="ml-12 mt-5"
+          onClick={() => {
+            const selectedFormats = [...selected]
+              .map((fp) => files.find((f) => f.path === fp))
+              .filter(Boolean)
+              .map((f) => (f as any).tag_format as string);
+            const anyV1 = selectedFormats.some(
+              (fmt) =>
+                typeof fmt === "string" &&
+                fmt.toLowerCase().startsWith("id3v1"),
+            );
+            if (anyV1) {
+              toast.error(
+                "ID3v1 doesn’t support lyrics. Select an ID3v2 file to add lyrics.",
+              );
+              return;
+            }
+            setLyricsOpen(true);
+          }}
+        >
+          Edit Lyrics
+        </Button>
+        <LyricsManagerModal
+          open={lyricsOpen}
+          onClose={() => setLyricsOpen(false)}
+        ></LyricsManagerModal>
         <ImageManagerModal
           open={artworkOpen}
           onClose={() => setArtworkOpen(false)}

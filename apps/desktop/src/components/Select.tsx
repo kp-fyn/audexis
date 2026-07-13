@@ -69,7 +69,7 @@ export function Select<V extends string = string>({
 
   const getIndex = React.useCallback(
     (val: V | undefined) => options.findIndex((o) => o.value === val),
-    [options]
+    [options],
   );
 
   const nextEnabledIndex = React.useCallback(
@@ -82,7 +82,7 @@ export function Select<V extends string = string>({
       }
       return start;
     },
-    [options]
+    [options],
   );
 
   const commitIndex = React.useCallback(
@@ -92,7 +92,7 @@ export function Select<V extends string = string>({
       if (opt?.disabled) return;
       onChange?.(opt.value);
     },
-    [onChange, options]
+    [onChange, options],
   );
 
   const onTriggerKeyDown = React.useCallback(
@@ -105,7 +105,7 @@ export function Select<V extends string = string>({
             e.preventDefault();
             const next = nextEnabledIndex(
               currentIndex >= 0 ? currentIndex : -1,
-              1
+              1,
             );
             if (next !== -1) commitIndex(next);
           }
@@ -116,7 +116,7 @@ export function Select<V extends string = string>({
             e.preventDefault();
             const prev = nextEnabledIndex(
               currentIndex >= 0 ? currentIndex : 0,
-              -1
+              -1,
             );
             if (prev !== -1) commitIndex(prev);
           }
@@ -147,7 +147,7 @@ export function Select<V extends string = string>({
             const ref = typeaheadRef.current;
             ref.text = (ref.text + ch).slice(-32);
             const foundIdx = options.findIndex((o) =>
-              (o.label ?? "").toLowerCase().startsWith(ref.text)
+              (o.label ?? "").toLowerCase().startsWith(ref.text),
             );
             if (foundIdx !== -1) commitIndex(foundIdx);
             if (ref.timer) window.clearTimeout(ref.timer);
@@ -159,7 +159,7 @@ export function Select<V extends string = string>({
         }
       }
     },
-    [disabled, getIndex, value, open, nextEnabledIndex, commitIndex]
+    [disabled, getIndex, value, open, nextEnabledIndex, commitIndex],
   );
 
   return (
@@ -175,7 +175,7 @@ export function Select<V extends string = string>({
             "group inline-flex items-center justify-between rounded border border-border bg-muted/20 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 disabled:cursor-not-allowed",
             sizeClasses(size),
             fullWidth ? "w-full" : "",
-            className
+            className,
           )}
         >
           <span
@@ -192,7 +192,10 @@ export function Select<V extends string = string>({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className={cn("min-w-[12rem] p-1 max-h-56", contentClassName)}
+        className={cn(
+          "min-w-[12rem] z-[99999999999] p-1 max-h-56",
+          contentClassName,
+        )}
         align={align}
         side={side}
         sideOffset={6}
@@ -211,7 +214,7 @@ export function Select<V extends string = string>({
               }}
               className={cn(
                 "flex items-center gap-2 px-2 py-1.5 rounded text-sm",
-                isSelected && "bg-primary/10 text-primary"
+                isSelected && "bg-primary/10 text-primary",
               )}
             >
               <span className={cn("inline-flex items-center gap-2")}>

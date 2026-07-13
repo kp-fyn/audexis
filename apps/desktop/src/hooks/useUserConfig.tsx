@@ -54,7 +54,7 @@ interface Config {
   setTheme: (theme: "light" | "dark") => void;
   setView: (view: "simple" | "folder") => void;
   setSidebarItems: (items: SidebarItem[]) => void;
-  setColumns: (column: Column[]) => void;
+  setColumns: (column: Column[], update?: boolean) => void;
   setDensity: (density: "default" | "compact" | "comfort") => void;
   setShowDiffModal: (enabled: boolean) => void;
   setMultiFrameKeys: Dispatch<SetStateAction<string[]>>;
@@ -179,14 +179,15 @@ export function UserConfigProvider({
             return updated;
           });
         },
-        setColumns: (c) => {
+        setColumns: (c, update = true) => {
           setUserConfig((prev) => {
             const updated: UserConfig = { ...prev, columns: c };
-            invoke("update_user_config", {
-              patch: {
-                columns: c,
-              },
-            });
+            if (update === true)
+              invoke("update_user_config", {
+                patch: {
+                  columns: c,
+                },
+              });
             return updated;
           });
         },

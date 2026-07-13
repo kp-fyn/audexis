@@ -60,6 +60,7 @@ export interface ModalProps {
   description?: ReactNode;
   header?: ReactNode;
   footer?: ReactNode;
+  sizeMax?: boolean;
 
   closing?: boolean;
 
@@ -93,6 +94,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
     closeOnEsc = true,
     trapFocus = true,
     preventScroll = true,
+    sizeMax = false,
     initialFocusRef,
     zIndexClassName = "z-[1200]",
     overlayClassName,
@@ -213,6 +215,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
         className={cn(
           "relative w-full max-w-4xl rounded-lg border border-border bg-linear-to-b from-background/95 to-background/80 shadow-xl ring-1 ring-border/50 overflow-hidden",
           "flex flex-col max-h-[85vh]",
+          sizeMax ? "h-[85vh] w-full" : "",
           "animate-in duration-150",
           closing ? "animate-out fade-out zoom-out-95" : "zoom-in-90",
 
@@ -259,10 +262,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
         )}
 
         <div
-          className={cn(
-            "flex-1 overflow-auto p-6 custom-scrollbar",
-            bodyClassName,
-          )}
+          className={cn("flex-1 overflow-auto custom-scrollbar", bodyClassName)}
         >
           {children}
         </div>

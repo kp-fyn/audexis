@@ -30,6 +30,7 @@ export default function DraggableHeader({
 
   return (
     <div
+      id={`header-${header.id}`}
       ref={setNodeRef}
       tabIndex={-1}
       className="flex items-center gap-x-1 relative select-none group"

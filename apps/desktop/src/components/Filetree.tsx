@@ -493,8 +493,6 @@ function FiletreeNode({
             action: () => invoke("open", { path: node.path }),
           },
           { item: "Separator" },
-
-          { text: "Delete" },
         ]}
       >
         <div
