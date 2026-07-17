@@ -34,7 +34,7 @@ impl HistoryActionType {
                 let ws = app.workspace.lock().unwrap();
 
                 fc.iter().for_each(|(id, fc)| {
-                    let file = ws.get_file(*id);
+                    let file = ws.get_file(id.to_owned());
                     if file.is_none() {
                         return;
                     }

@@ -71,7 +71,10 @@ pub async fn save_frame_changes(
                 action_type: HistoryActionType::Tags({
                     let mut fc_map: HashMap<Uuid, Frames> = HashMap::new();
                     for p in &frame_changes.paths {
-                        if let Some(file) = ws.files.iter().find(|f| f.path.to_string_lossy() == *p)
+                        if let Some(file) = ws
+                            .files
+                            .iter()
+                            .find(|f| f.path.to_string_lossy() == p.to_string())
                         {
                             let before_map: HashMap<FrameKey, Vec<SerializableTagValue>> =
                                 before_changes

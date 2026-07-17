@@ -16,6 +16,7 @@ pub mod redo;
 pub mod remove_files;
 pub mod rename_files;
 pub mod request_file;
+pub mod request_playback;
 pub mod save_frame_changes;
 pub mod set_folder_config;
 pub mod undo;

@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/ui/components/Button";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import TextareaAutosize from "react-textarea-autosize";
 import Img from "../../assets/images/unknown.jpg";
 import { Line, LyricLine, MetadataLine, LineType } from "clrc";
@@ -566,7 +566,9 @@ export default function LyricsManagerModal({
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0 }}
-                      onClick={() => audioElement.current?.play()}
+                      onClick={() =>
+                        invoke("request_playback", { paths: [...selected] })
+                      }
                     >
                       <PlayIcon fill="currentColor" />
                     </motion.div>

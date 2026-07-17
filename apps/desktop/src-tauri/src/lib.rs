@@ -1,3 +1,4 @@
+mod audio_player;
 mod commands;
 mod config;
 mod constants;
@@ -8,6 +9,7 @@ mod tag_manager;
 mod utils;
 mod workspace;
 
+use crate::audio_player::AudioPlayer;
 use crate::config::user::{load_config, Theme, ViewMode, CONFIG_FILE};
 use crate::database::Database;
 use crate::file_watcher::FileWatcher;
@@ -17,7 +19,7 @@ use crate::workspace::Workspace;
 use serde::Serialize;
 
 use std::env;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use tauri::{
     async_runtime,
@@ -30,6 +32,7 @@ pub struct AppState {
     pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
+    pub audio_player: Arc<Mutex<AudioPlayer>>,
     pub db: Database,
     pub view_mode: ViewMode,
 }
@@ -108,6 +111,7 @@ pub fn run() {
                             app.manage(AppState {
                                 workspace: Mutex::new(Workspace::new(&app)),
                                 file_watcher: Mutex::new(FileWatcher::new(&app)),
+                                audio_player: AudioPlayer::new(),
                                 history: Mutex::new(history::History::new(&app)),
                                 db: db,
                                 view_mode: user_config.view,
@@ -194,6 +198,7 @@ pub fn run() {
                 workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
+                audio_player: AudioPlayer::new(),
                 db: db,
                 view_mode: user_config.view,
             });
@@ -258,6 +263,7 @@ pub fn run() {
             commands::get_workspace_files::get_workspace_files,
             commands::update_user_config::update_user_config,
             commands::import_image::import_image,
+            commands::request_playback::request_playback,
             commands::set_folder_config::set_folder_config,
             commands::save_frame_changes::save_frame_changes,
             commands::remove_files::remove_files,
