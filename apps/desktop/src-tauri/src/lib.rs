@@ -156,7 +156,7 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to get app data directory");
             let db_path = app.path().app_data_dir()?.join("audexis.db");
-
+            println!("{}", db_path.to_str().unwrap());
             let db = async_runtime::block_on(async {
                 Database::init(&db_path)
                     .await

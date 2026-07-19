@@ -12,7 +12,7 @@ impl Database {
     pub async fn init(db_path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         let config_folder = db_path.parent();
         if config_folder.is_none() {
-            panic!("No Config folder bruh")
+            panic!("No Config folder bruh");
         }
         let config_folder = config_folder.unwrap();
         println!("{}", &config_folder.as_os_str().display());

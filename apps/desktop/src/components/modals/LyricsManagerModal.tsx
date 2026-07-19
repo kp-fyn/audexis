@@ -567,7 +567,7 @@ export default function LyricsManagerModal({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0 }}
                       onClick={() =>
-                        invoke("request_playback", { paths: [...selected] })
+                        invoke("request_playback", { paths: [file.path] })
                       }
                     >
                       <PlayIcon fill="currentColor" />

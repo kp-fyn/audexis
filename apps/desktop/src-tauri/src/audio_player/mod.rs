@@ -1,17 +1,20 @@
 // shi sounds funky on device change for bout 5 secs
+mod queue;
+mod queue_track;
+
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::Stream;
+use queue::Queue;
 use ringbuf::storage::Heap;
 use ringbuf::wrap::caching::Caching;
 use ringbuf::SharedRb;
-use std::fmt::{self, Display};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use ringbuf::{
     traits::{Consumer, Producer, Split},
     HeapRb,
 };
+use std::fmt::{self, Display};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use symphonia::core::errors::Error;
 use symphonia::core::formats::probe::Hint;
@@ -21,12 +24,16 @@ use symphonia::core::io::MediaSourceStream;
 use audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{Async, FixedAsync, Indexing, PolynomialDegree, Resampler};
 
-enum PlayerCmd {
-    Play(String),
+use crate::audio_player::queue_track::QueueTrack;
+
+pub enum PlayerCmd {
+    Play,
+    Preload,
     UpdateDeviceConfig { target_sample_rate: u32 },
 }
 
 pub struct AudioPlayer {
+    pub queue: Arc<Mutex<queue::Queue>>,
     stream: Option<Stream>,
     cmd_tx: crossbeam_channel::Sender<PlayerCmd>,
     consumer: Arc<Mutex<Caching<Arc<SharedRb<Heap<f32>>>, false, true>>>,
@@ -42,9 +49,17 @@ impl AudioPlayer {
     pub fn new() -> Arc<Mutex<Self>> {
         let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded::<PlayerCmd>();
 
+        let cmd_rx2 = cmd_rx.clone();
+        let cmd_tx2 = cmd_tx.clone();
         let rb = HeapRb::<f32>::new(192000 * 2 * 2);
         let (mut producer, consumer) = rb.split();
+        let queue = Arc::new(Mutex::new(Queue::new(cmd_tx.clone())));
         let consumer = Arc::new(Mutex::new(consumer));
+
+        let queue_1 = Arc::clone(&queue);
+        // queue for preloaded track
+        let queue_2 = Arc::clone(&queue);
+        // strictly for preloading
 
         std::thread::spawn(move || {
             let mut format = None;
@@ -53,7 +68,7 @@ impl AudioPlayer {
             let mut source_sample_rate = 44100;
             let mut channels_uz = 2usize;
             let mut target_sample_rate = 44100u32;
-
+            let mut is_done = false;
             let mut resampler = None;
             let mut indata = Vec::new();
             let mut outdata = Vec::new();
@@ -63,16 +78,56 @@ impl AudioPlayer {
             let mut packet_samples: Vec<f32> = Vec::new();
 
             loop {
-                while let Ok(cmd) = cmd_rx.try_recv() {
+                if is_done {
+                    let q = queue_1.lock().unwrap();
+                    let current_t = q.tracks.get(q.index as usize);
+                    if current_t.is_none() {
+                        continue;
+                    }
+                    let current_t_arc = Arc::clone(current_t.unwrap());
+                    let mut current_track = current_t_arc.lock().unwrap();
+                    if current_track.is_preloaded == true {
+                        track_id = current_track.track_id;
+
+                        source_sample_rate = current_track.source_sample_rate;
+
+                        channels_uz = current_track.channels_uz;
+
+                        decoder = current_track.decoder.take();
+
+                        format = current_track.format.take();
+                        current_track.is_preloaded = false;
+                        decode_buffer.clear();
+                        packet_samples.clear();
+                        println!("Preloaded!!!");
+                    } else {
+                        println!("Preloaded\n\n\n not:(\n");
+                        let _ = cmd_tx2.send(PlayerCmd::Play);
+                    }
+
+                    is_done = false;
+                }
+                while let Ok(cmd) = cmd_rx.recv_timeout(Duration::from_millis(10)) {
                     match cmd {
-                        PlayerCmd::Play(path) => {
+                        PlayerCmd::Play => {
+                            let mut q = queue_1.lock().unwrap();
+                            let current_t = q.tracks.get(q.index as usize);
+                            if current_t.is_none() {
+                                continue;
+                            }
+                            let current_t_arc = Arc::clone(current_t.unwrap());
+                            let current_track = current_t_arc;
+                            drop(q);
+
                             decode_buffer.clear();
                             packet_samples.clear();
 
-                            let src = std::fs::File::open(&path).expect("failed to open file");
+                            let file_path = &current_track.lock().unwrap().path;
+                            let src = std::fs::File::open(&file_path).expect("failed to open file");
+
                             let mss = MediaSourceStream::new(Box::new(src), Default::default());
                             let mut hint = Hint::new();
-                            if let Some(ext) = std::path::Path::new(&path)
+                            if let Some(ext) = std::path::Path::new(&file_path)
                                 .extension()
                                 .and_then(|e| e.to_str())
                             {
@@ -84,6 +139,7 @@ impl AudioPlayer {
                                 .expect("unsupported format");
 
                             let track = probed.default_track(TrackType::Audio).expect("no track");
+
                             track_id = track.id;
 
                             let codec_params = track.codec_params.as_ref().expect("no params");
@@ -111,6 +167,8 @@ impl AudioPlayer {
                             target_sample_rate = new_rate;
                             resampler = None;
                         }
+                        PlayerCmd::Preload => {}
+                        _ => {}
                     }
                 }
 
@@ -147,6 +205,15 @@ impl AudioPlayer {
                     match fmt_ref.next_packet() {
                         Ok(packet) => {
                             if packet.is_none() {
+                                if is_done == true {
+                                    continue;
+                                }
+                                let mut q = queue_1.lock().unwrap();
+                                let new_t = q.tracks.get(q.index as usize + 1usize);
+                                if new_t.is_some() {
+                                    is_done = true;
+                                    q.next();
+                                }
                                 continue;
                             }
                             let packet = packet.unwrap();
@@ -154,16 +221,21 @@ impl AudioPlayer {
                                 if let Ok(audio_buf) = dec_ref.decode(&packet) {
                                     let needed = audio_buf.samples_interleaved();
                                     packet_samples.resize(needed, 0.0);
+
                                     audio_buf.copy_to_slice_interleaved(&mut packet_samples);
                                     decode_buffer.extend_from_slice(&packet_samples);
                                 }
                             }
                         }
+
                         Err(Error::ResetRequired) => {
+                            println!("hmm");
                             // create decoder prolly
                         }
                         Err(_) => {
                             // probably eof
+                            println!("eof");
+
                             std::thread::sleep(Duration::from_millis(10));
                             continue;
                         }
@@ -205,6 +277,7 @@ impl AudioPlayer {
 
         let player = Arc::new(Mutex::new(Self {
             stream: None,
+            queue: queue,
             cmd_tx,
             consumer: Arc::clone(&consumer),
         }));
@@ -270,9 +343,5 @@ impl AudioPlayer {
 
         stream.play().unwrap();
         self.stream = Some(stream);
-    }
-
-    pub fn play(&self, path: String) {
-        let _ = self.cmd_tx.send(PlayerCmd::Play(path));
     }
 }

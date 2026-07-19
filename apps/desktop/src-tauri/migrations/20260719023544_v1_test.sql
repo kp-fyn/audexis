@@ -1,7 +1,8 @@
 -- Add migration script here
 CREATE TABLE
     IF NOT EXISTS files (
-        path TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        path TEXT UNIQUE NOT NULL,
         file_name TEXT NOT NULL,
         file_size INTEGER,
         duration_ms INTEGER,
@@ -16,63 +17,63 @@ CREATE TABLE
 CREATE TABLE
     IF NOT EXISTS tag_text (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         value TEXT NOT NULL,
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
     IF NOT EXISTS tag_pictures (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         mime_type TEXT NOT NULL,
         data BLOB NOT NULL,
         picture_type INTEGER NOT NULL DEFAULT 3,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
     IF NOT EXISTS tag_user_text (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         value TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
     IF NOT EXISTS tag_user_url (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         url TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
     IF NOT EXISTS tag_comment (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         text TEXT NOT NULL,
         encoding TEXT NOT NULL,
         language TEXT NOT NULL,
         description TEXT NOT NULL,
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
     IF NOT EXISTS freeform_tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT NOT NULL,
+        file_id INTEGER NOT NULL,
         description TEXT NOT NULL,
         value TEXT NOT NULL,
-        FOREIGN KEY (file_path) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
     );
 
 CREATE TABLE
