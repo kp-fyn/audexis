@@ -3,11 +3,11 @@
   "productName": "audexis",
 
   "version": "0.9.6",
-  "identifier": "com.kp.aud",
+  "identifier": "com.audexis",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "pnpm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist"
   },
 

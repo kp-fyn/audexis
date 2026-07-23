@@ -2,7 +2,7 @@
   --radius: 0.5rem;
 }
 
-[data-theme="light"] {
+:not([data-theme="dark"]) {
   --background: #fff;
   --foreground: #2a2523;
 
@@ -44,13 +44,14 @@
 
 [data-theme="dark"] {
   --heading: #ffffff;
-
+  /* Darker than #181615, but softer than harsh pure black */
   --background: #100f0e;
   --foreground: #f1f1f1;
 
   --hover: #2e2926;
   --hover-foreground: #ffffff;
 
+  /* Cards and popovers scaled down proportionally */
   --card: #181615;
   --card-foreground: #f8f7f6;
 

@@ -4,6 +4,14 @@
 
 @import "./animations.css";
 
+@font-face {
+  font-family: "Open Sans";
+  src: url("../assets/Open_Sans/OpenSans-VariableFont_wdth,wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 html,
 body {
   background-color: var(--background);
