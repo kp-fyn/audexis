@@ -13,7 +13,7 @@ use ringbuf::{
     HeapRb,
 };
 use std::fmt::{self, Display};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use symphonia::core::errors::Error;
@@ -23,8 +23,6 @@ use symphonia::core::io::MediaSourceStream;
 
 use audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{Async, FixedAsync, Indexing, PolynomialDegree, Resampler};
-
-use crate::audio_player::queue_track::QueueTrack;
 
 pub enum PlayerCmd {
     Play,
@@ -49,7 +47,6 @@ impl AudioPlayer {
     pub fn new() -> Arc<Mutex<Self>> {
         let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded::<PlayerCmd>();
 
-        let cmd_rx2 = cmd_rx.clone();
         let cmd_tx2 = cmd_tx.clone();
         let rb = HeapRb::<f32>::new(192000 * 2 * 2);
         let (mut producer, consumer) = rb.split();
@@ -57,9 +54,6 @@ impl AudioPlayer {
         let consumer = Arc::new(Mutex::new(consumer));
 
         let queue_1 = Arc::clone(&queue);
-        // queue for preloaded track
-        let queue_2 = Arc::clone(&queue);
-        // strictly for preloading
 
         std::thread::spawn(move || {
             let mut format = None;
@@ -110,7 +104,7 @@ impl AudioPlayer {
                 while let Ok(cmd) = cmd_rx.recv_timeout(Duration::from_millis(10)) {
                     match cmd {
                         PlayerCmd::Play => {
-                            let mut q = queue_1.lock().unwrap();
+                            let q = queue_1.lock().unwrap();
                             let current_t = q.tracks.get(q.index as usize);
                             if current_t.is_none() {
                                 continue;
@@ -168,7 +162,6 @@ impl AudioPlayer {
                             resampler = None;
                         }
                         PlayerCmd::Preload => {}
-                        _ => {}
                     }
                 }
 

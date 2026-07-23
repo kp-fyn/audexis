@@ -7,16 +7,15 @@ mod file_watcher;
 mod history;
 mod tag_manager;
 mod utils;
-mod workspace;
 
 use crate::audio_player::AudioPlayer;
-use crate::config::user::{load_config, Theme, ViewMode, CONFIG_FILE};
+use crate::config::user::{load_config, Theme, CONFIG_FILE};
 use crate::database::Database;
 use crate::file_watcher::FileWatcher;
 use crate::utils::handle_file_associations;
-use crate::workspace::Workspace;
 
 use serde::Serialize;
+use tauri::{LogicalPosition, Position};
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -29,12 +28,10 @@ use tauri::{
 };
 
 pub struct AppState {
-    pub workspace: Mutex<Workspace>,
     pub file_watcher: Mutex<FileWatcher>,
     pub history: Mutex<history::History>,
     pub audio_player: Arc<Mutex<AudioPlayer>>,
     pub db: Database,
-    pub view_mode: ViewMode,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct FileNode {
@@ -102,19 +99,14 @@ pub fn run() {
                                 Theme::Light => "light",
                                 Theme::Dark => "dark",
                             };
-                            let view = match user_config.view {
-                                ViewMode::Folder => "folder",
-                                ViewMode::Simple => "simple",
-                            };
+                            let view = "folder";
                             let onboarding = user_config.onboarding;
 
                             app.manage(AppState {
-                                workspace: Mutex::new(Workspace::new(&app)),
                                 file_watcher: Mutex::new(FileWatcher::new(&app)),
                                 audio_player: AudioPlayer::new(),
                                 history: Mutex::new(history::History::new(&app)),
                                 db: db,
-                                view_mode: user_config.view,
                             });
                             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                                 let _ = watcher.watch_workspace();
@@ -138,9 +130,9 @@ pub fn run() {
                             .visible(false);
                             let win_builder = win_builder.maximized(true);
                             #[cfg(target_os = "macos")]
-                            let win_builder =
-                                win_builder.title_bar_style(TitleBarStyle::Transparent);
-                            let win_builder = win_builder.decorations(false);
+                            let win_builder = win_builder.decorations(true);
+                            let win_builder = win_builder
+                                .traffic_light_position(LogicalPosition::new(16.0, 20.0));
                             let window = win_builder.build().unwrap();
 
                             window.show().unwrap();
@@ -169,11 +161,7 @@ pub fn run() {
                 Theme::Light => "light",
                 Theme::Dark => "dark",
             };
-            let view = match user_config.view {
-                ViewMode::Folder => "folder",
-                ViewMode::Simple => "simple",
-            };
-
+            let view = "folder";
             let onboarding = user_config.onboarding;
 
             let args: Vec<String> = std::env::args().collect();
@@ -195,12 +183,10 @@ pub fn run() {
             }
 
             app.manage(AppState {
-                workspace: Mutex::new(Workspace::new(&app.handle())),
                 file_watcher: Mutex::new(FileWatcher::new(&app.handle())),
                 history: Mutex::new(history::History::new(&app.handle())),
                 audio_player: AudioPlayer::new(),
                 db: db,
-                view_mode: user_config.view,
             });
             if let Ok(mut watcher) = app.state::<AppState>().file_watcher.lock() {
                 let _ = watcher.watch_workspace();
@@ -208,30 +194,30 @@ pub fn run() {
             if is_autostart {
                 return Ok(());
             }
-            let win_builder = WebviewWindowBuilder::new(
-                app,
-                "main",
-                WebviewUrl::App(
-                    format!(
-                        "index.html?theme={}&onboarding={}&view={}",
-                        theme,
-                        onboarding.to_string(),
-                        view
-                    )
-                    .into(),
-                ),
-            )
-            .title("Audexis")
-            .min_inner_size(800.0, 600.0)
-            .maximized(true)
-            .visible(false);
-            let win_builder = win_builder.maximized(true);
-            #[cfg(target_os = "macos")]
-            let win_builder = win_builder.title_bar_style(TitleBarStyle::Transparent);
-            let win_builder = win_builder.decorations(false);
-            let window = win_builder.build().unwrap();
+            // let win_builder = WebviewWindowBuilder::new(
+            //     app,
+            //     "main",
+            //     WebviewUrl::App(
+            //         format!(
+            //             "index.html?theme={}&onboarding={}&view={}",
+            //             theme,
+            //             onboarding.to_string(),
+            //             view
+            //         )
+            //         .into(),
+            //     ),
+            // )
+            // .title("Audexis")
+            // .min_inner_size(800.0, 600.0)
+            // .maximized(true)
+            // .visible(false);
+            // let win_builder = win_builder.maximized(true);
+            // #[cfg(target_os = "macos")]
+            // let win_builder = win_builder.title_bar_style(TitleBarStyle::Transparent);
+            // let win_builder = win_builder.decorations(false);
+            // let window = win_builder.build().unwrap();
 
-            window.show().unwrap();
+            // window.show().unwrap();
             #[cfg(target_os = "windows")]
             {
                 let mut files = Vec::new();
@@ -282,7 +268,8 @@ pub fn run() {
             commands::redo::redo,
             commands::get_workspace_root::get_workspace_root,
             commands::get_folder_children::get_folder_children,
-            commands::request_file::request_file
+            commands::request_file::request_file,
+            commands::get_files::get_files
         ])
         .build(tauri::generate_context!())
         .expect("Error while running Audexis")

@@ -2,6 +2,7 @@
 CREATE TABLE
     IF NOT EXISTS files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at INTEGER NOT NULL DEFAULT (strftime ('%s', 'now')),
         path TEXT UNIQUE NOT NULL,
         file_name TEXT NOT NULL,
         file_size INTEGER,
@@ -20,7 +21,7 @@ CREATE TABLE
         file_id INTEGER NOT NULL,
         key TEXT NOT NULL,
         value TEXT NOT NULL,
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -32,7 +33,7 @@ CREATE TABLE
         data BLOB NOT NULL,
         picture_type INTEGER NOT NULL DEFAULT 3,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -42,7 +43,7 @@ CREATE TABLE
         key TEXT NOT NULL,
         value TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -52,7 +53,7 @@ CREATE TABLE
         key TEXT NOT NULL,
         url TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -64,7 +65,7 @@ CREATE TABLE
         encoding TEXT NOT NULL,
         language TEXT NOT NULL,
         description TEXT NOT NULL,
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -73,7 +74,7 @@ CREATE TABLE
         file_id INTEGER NOT NULL,
         description TEXT NOT NULL,
         value TEXT NOT NULL,
-        FOREIGN KEY (file_id) REFERENCES files (path) ON DELETE CASCADE
+        FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE
     );
 
 CREATE TABLE

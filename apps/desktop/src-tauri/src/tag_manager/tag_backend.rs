@@ -6,7 +6,6 @@ use base64::Engine;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use uuid::Uuid;
 pub trait TagBackend {
     fn read(&self, path: &PathBuf) -> Result<File, BackendError>;
 
@@ -187,7 +186,7 @@ impl TagBackend for DefaultBackend {
         let freeforms = release.get_freeforms(path).unwrap_or_default();
         let tag_formats = self.detect_all_formats(path, &fmt);
         Ok(File {
-            id: Uuid::new_v4(),
+            id: 0,
             path: path.clone(),
             tags: tag_map,
             tag_format: fmt,

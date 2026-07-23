@@ -8,7 +8,7 @@ html,
 body {
   background-color: var(--background);
   width: 100%;
-  font-family: "Reddit Sans", sans-serif;
+  font-family: "Open Sans", sans-serif;
   box-sizing: border-box;
   color: var(--foreground);
   border-color: var(--border) !important;

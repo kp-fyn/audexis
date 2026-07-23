@@ -26,7 +26,7 @@ export const useSidebarWidth = (): SidebarWidth => {
 
   if (!context) {
     throw new Error(
-      "useSidebarWidth must be used within a SidebarWidthProvider"
+      "useSidebarWidth must be used within a SidebarWidthProvider",
     );
   }
   return context;
@@ -36,20 +36,20 @@ export const SidebarWidthProvider: FC<{
   children: ReactNode;
 }> = ({ children }) => {
   const { width } = useWindowDimensions();
-  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
 
   useEffect(() => {
-    if (width / 4 >= 300) {
-      setSidebarWidth(width / 4);
+    if (width / 5 >= 250) {
+      setSidebarWidth(width / 5);
     } else {
-      setSidebarWidth(300);
+      setSidebarWidth(250);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (sidebarWidth > width - 200) {
-      if (width - 200 < 300) {
-        setSidebarWidth(300);
+      if (width - 200 < 250) {
+        setSidebarWidth(250);
       } else {
         setSidebarWidth(width - 200);
       }
@@ -58,10 +58,10 @@ export const SidebarWidthProvider: FC<{
 
   function setWidth(w: number): void {
     const nw = w;
-    if (nw < 300 || isNaN(nw)) {
-      setSidebarWidth(300);
-    } else if (nw > width - 300) {
-      setSidebarWidth(width - 300);
+    if (nw < 250 || isNaN(nw)) {
+      setSidebarWidth(250);
+    } else if (nw > width - 250) {
+      setSidebarWidth(width - 250);
     } else {
       setSidebarWidth(w);
     }

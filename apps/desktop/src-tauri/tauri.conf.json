@@ -3,7 +3,7 @@
   "productName": "audexis",
 
   "version": "0.9.6",
-  "identifier": "com.audexis",
+  "identifier": "com.kp.aud",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,19 @@
   "app": {
     "macOSPrivateApi": true,
 
-    "windows": [],
+    "windows": [
+      {
+        "url": "index.html",
+        "titleBarStyle": "Overlay",
+        "decorations": true,
+        "hiddenTitle": true,
+        "transparent": true,
+        "trafficLightPosition": {
+          "x": 15,
+          "y": 30
+        }
+      }
+    ],
 
     "security": {
       "assetProtocol": {

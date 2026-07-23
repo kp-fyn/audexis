@@ -4,8 +4,8 @@
 /* @custom-variant light (&:where([data-theme=light], [data-theme=light] *));
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *)); */
 @font-face {
-  font-family: "Reddit Sans";
-  src: url("./Reddit_Sans/RedditSans-VariableFont_wght.ttf") format("truetype");
+  font-family: "Open Sans";
+  src: url("./Open_Sans/OpenSans-VariableFont_wdth,wght.ttf") format("truetype");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -16,7 +16,7 @@
   height: 100%;
   width: 100%;
   position: relative;
-  font-family: "Reddit Sans", sans-serif;
+  font-family: "Open Sans", sans-serif;
   box-sizing: border-box;
   color: var(--foreground);
   border-color: var(--border) !important;

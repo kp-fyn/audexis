@@ -72,8 +72,8 @@ function Root() {
     >
       <Titlebar />
       <div
-        style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
-        className="flex flex-col flex-1 min-h-0 overflow-y-hidden overflow-x-hidden"
+        // style={{ marginTop: 48, height: "calc(100vh - 48px)" }}
+        className="flex flex-col h-full w-full flex-1 min-h-0 overflow-y-hidden overflow-x-hidden absolute"
       >
         <App />
         <TagEditorError />

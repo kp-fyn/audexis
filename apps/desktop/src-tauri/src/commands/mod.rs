@@ -2,6 +2,7 @@ pub mod check_update;
 pub mod clean_up_file_names;
 pub mod get_all_columns;
 pub mod get_all_sidebar_items;
+pub mod get_files;
 pub mod get_folder_children;
 pub mod get_folder_config;
 pub mod get_multi_frame_keys;

@@ -93,22 +93,13 @@ impl FileWatcher {
         let app_handle = self.app_handle.clone();
         let state = app_handle.state::<AppState>();
 
-        if self.is_folder_view == true {
-            let db = state.db.clone();
-            let imported_folders =
-                tauri::async_runtime::block_on(async { get_imported_folders(&db).await });
-            for folder in imported_folders {
-                roots.insert(PathBuf::from(folder));
-            }
-        } else {
-            if let Ok(ws_guard) = state.workspace.lock() {
-                for f in &ws_guard.files {
-                    if let Some(parent) = f.path.parent() {
-                        roots.insert(parent.to_path_buf());
-                    }
-                }
-            }
+        let db = state.db.clone();
+        let imported_folders =
+            tauri::async_runtime::block_on(async { get_imported_folders(&db).await });
+        for folder in imported_folders {
+            roots.insert(PathBuf::from(folder));
         }
+
         let val = roots.clone();
 
         let mut debouncer = new_debouncer(
@@ -537,118 +528,9 @@ impl FileWatcher {
                 _ => {}
             }
         }
-        if is_folder_view == true {
-            app_handle.emit("folder-view-events", op_events).ok();
-            return;
-        }
-        let state: tauri::State<AppState> = app_handle.state();
-        let mut ws = match state.workspace.lock() {
-            Ok(g) => g,
-            Err(_) => return,
-        };
 
-        let mut was_modified = false;
-
-        if modified.is_empty() == false {
-            for (k, v) in modified {
-                let mut prev_path: Option<PathBuf> = k.clone().into();
-
-                for p in v.iter() {
-                    let path_to_find: PathBuf =
-                        prev_path.as_ref().cloned().unwrap_or_else(|| k.clone());
-
-                    let file = ws.get_file_by_path_mut(&path_to_find);
-                    if file.is_none() {
-                        continue;
-                    }
-                    let file = file.unwrap();
-
-                    if p == &path_to_find {
-                        continue;
-                    }
-
-                    let pe = fs::exists(p.as_path());
-                    let path_exists: bool = match pe {
-                        Ok(exists) => {
-                            if !exists {
-                                false
-                            } else {
-                                true
-                            }
-                        }
-                        Err(_) => continue,
-                    };
-                    if path_exists == false {
-                        continue;
-                    }
-
-                    prev_path = Some(p.clone());
-                    file.path = p.clone();
-                    was_modified = true;
-                }
-            }
-        }
-        if was_modified {
-            let serializable_files: Vec<SerializableFile> = ws
-                .files
-                .clone()
-                .into_iter()
-                .map(SerializableFile::from)
-                .collect();
-            let _ = app_handle.emit("workspace-updated", serializable_files);
-        }
-        if touched.is_empty() {
-            return;
-        }
-
-        let (did_change, serializable_files) = {
-            let mut changed = false;
-            for p in touched {
-                let pe = fs::exists(p.0.as_path());
-                let path_exists: bool = match pe {
-                    Ok(exists) => {
-                        if !exists {
-                            if ws.remove_file(&p.0) {
-                                changed = true;
-                            }
-                            false
-                        } else {
-                            true
-                        }
-                    }
-                    Err(_) => {
-                        if ws.remove_file(&p.0) {
-                            changed = true;
-                        }
-                        false
-                    }
-                };
-                let pth = p.0.clone();
-
-                if p.1.kind.is_create() || p.1.kind.is_modify() {
-                    changed = true;
-                } else {
-                    if path_exists && p.1.kind.is_modify() {
-                        ws.refresh_tags(&pth);
-                    }
-                }
-            }
-            if !changed {
-                (false, Vec::new())
-            } else {
-                let files: Vec<SerializableFile> = ws
-                    .files
-                    .clone()
-                    .into_iter()
-                    .map(SerializableFile::from)
-                    .collect();
-                (true, files)
-            }
-        };
-
-        if did_change {
-            let _ = app_handle.emit("workspace-updated", serializable_files);
-        }
+        app_handle.emit("folder-view-events", op_events).ok();
+        return;
     }
 }
 

@@ -6,7 +6,6 @@ use serde::Serialize;
 use std::collections::HashMap;
 use tauri::State;
 use tauri::{AppHandle, Emitter};
-use uuid::Uuid;
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryUpdate {
@@ -24,37 +23,40 @@ pub struct Frames {
     pub after: HashMap<FrameKey, Vec<SerializableTagValue>>,
 }
 pub enum HistoryActionType {
-    Tags(HashMap<Uuid, Frames>),
+    Tags(HashMap<String, Frames>),
 }
 
 impl HistoryActionType {
     pub fn apply(&self, app: &State<'_, AppState>, is_undo: bool) {
         match self {
-            HistoryActionType::Tags(fc) => {
-                let ws = app.workspace.lock().unwrap();
+            _ => {} // HistoryActionType::Tags(fc) => {
+                    //     let ws = app.workspace.lock().unwrap();
 
-                fc.iter().for_each(|(id, fc)| {
-                    let file = ws.get_file(id.to_owned());
-                    if file.is_none() {
-                        return;
-                    }
-                    let file = file.unwrap();
-                    let frames = if is_undo {
-                        fc.before.clone()
-                    } else {
-                        fc.after.clone()
-                    };
-                    println!("{:?}", frames);
-                    let backend = DefaultBackend::new();
-                    backend.write_changes(&Changes {
-                        tags: frames,
-                        paths: vec![file.path.to_string_lossy().to_string()],
-                    });
-                });
-            }
+                    //     fc.iter().for_each(|(path, fc)| {
+                    //         let file = ws
+                    //             .files
+                    //             .iter()
+                    //             .find(|f| f.path.to_string_lossy() == path.as_str());
+                    //         if file.is_none() {
+                    //             return;
+                    //         }
+                    //         let file = file.unwrap();
+                    //         let frames = if is_undo {
+                    //             fc.before.clone()
+                    //         } else {
+                    //             fc.after.clone()
+                    //         };
+                    //         println!("{:?}", frames);
+                    //         let backend = DefaultBackend::new();
+                    //         backend.write_changes(&Changes {
+                    //             tags: frames,
+                    //             paths: vec![file.path.to_string_lossy().to_string()],
+                    //         });
+                    //     });
         }
     }
 }
+
 pub struct Action {
     pub action_type: HistoryActionType,
 }

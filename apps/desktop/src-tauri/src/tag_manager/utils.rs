@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -140,6 +139,74 @@ pub enum FrameKey {
     ReleaseDate,
 }
 impl FrameKey {
+    pub fn table_frame_keys() -> Vec<FrameKey> {
+        vec![
+            FrameKey::Title,
+            FrameKey::Artist,
+            FrameKey::Album,
+            FrameKey::Year,
+            FrameKey::TrackNumber,
+            FrameKey::Genre,
+            FrameKey::AlbumArtist,
+            FrameKey::AlbumArtistSort,
+            FrameKey::AlbumSort,
+            FrameKey::Arranger,
+            FrameKey::ArtistSort,
+            FrameKey::Artists,
+            FrameKey::Compilation,
+            FrameKey::ComposerSort,
+            FrameKey::Director,
+            FrameKey::DiscNumber,
+            FrameKey::DiscSubtitle,
+            FrameKey::Engineer,
+            FrameKey::Grouping,
+            FrameKey::Lyricist,
+            FrameKey::Lyrics,
+            FrameKey::Media,
+            FrameKey::Mixer,
+            FrameKey::Mood,
+            FrameKey::Movement,
+            FrameKey::MovementTotal,
+            FrameKey::MovementNumber,
+            FrameKey::OriginalAlbum,
+            FrameKey::OriginalArtist,
+            FrameKey::OriginalDate,
+            FrameKey::OriginalYear,
+            FrameKey::Performer,
+            FrameKey::Podcast,
+            FrameKey::Producer,
+            FrameKey::Rating,
+            FrameKey::Label,
+            FrameKey::ReleaseCountry,
+            FrameKey::ReleaseStatus,
+            FrameKey::ReleaseType,
+            FrameKey::Remixer,
+            FrameKey::Show,
+            FrameKey::ShowSort,
+            FrameKey::ShowMovement,
+            FrameKey::Subtitle,
+            FrameKey::TotalDiscs,
+            FrameKey::TotalTracks,
+            FrameKey::TitleSort,
+            FrameKey::Website,
+            FrameKey::Work,
+            FrameKey::Writer,
+            FrameKey::ContentGroup,
+            FrameKey::Composer,
+            FrameKey::EncodedBy,
+            FrameKey::UnsyncedLyrics,
+            FrameKey::Length,
+            FrameKey::Conductor,
+            FrameKey::Comments,
+            FrameKey::PlayCount,
+            FrameKey::BeatsPerMinute,
+            FrameKey::Language,
+            FrameKey::Time,
+            FrameKey::RecordingDate,
+            FrameKey::ReleaseDate,
+        ]
+    }
+
     pub fn is_multi_valued(&self) -> bool {
         match self {
             FrameKey::AttachedPicture
@@ -223,6 +290,7 @@ pub struct FreeformTag {
 #[derive(Debug, Clone, Serialize)]
 /// File struct that can be sent to frontend via ipc
 pub struct SerializableFile {
+    pub id: i64,
     pub path: String,
     pub file_name: String,
     pub tag_format: String,
@@ -292,7 +360,7 @@ pub struct SerializableFreeform {
 /// Internal File Struct
 #[derive(Debug, Clone)]
 pub struct File {
-    pub id: Uuid,
+    pub id: i64,
     pub path: PathBuf,
 
     pub tags: HashMap<FrameKey, Vec<TagValue>>,
@@ -742,6 +810,7 @@ impl From<File> for SerializableFile {
         }
 
         SerializableFile {
+            id: file.id,
             path: file.path.display().to_string(),
             tag_format: file.tag_format.to_string(),
             file_name: file

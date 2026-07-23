@@ -1,32 +1,10 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
-import { Button } from "./Button";
-import { Settings } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+
 import { SettingsModal } from "@/ui/components/modals/SettingsModal";
 import useShortcuts from "@/ui/hooks/useShortcuts";
-import toast from "react-hot-toast";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/components/Dropdown";
-import { MaximizeIcon } from "./icons/maximize";
-import { MinimizeIcon } from "./icons/minimize";
-import { CloseIcon } from "./icons/close";
-import { parseShortcut } from "../lib/utils";
-import { useUserConfig } from "../hooks/useUserConfig";
 
 export default function Titlebar() {
-  const { config } = useUserConfig();
-  const [hover, setHover] = useState<boolean>(false);
-  const [isWindowFocused, setIsWindowFocused] = useState<boolean>(true);
-  const [isWindowFullscreen, setIsWindowFullscreen] = useState<boolean>(false);
-  const window = getCurrentWindow();
-  const os = platform();
   const shortcuts = useShortcuts();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -36,134 +14,51 @@ export default function Titlebar() {
     ]);
     return () => remove();
   }, [shortcuts]);
-  useEffect(() => {
-    window.onFocusChanged(({ payload: focused }) => {
-      setIsWindowFocused(focused);
-    });
-    window.onResized(async () => {
-      if (await window.isFullscreen()) {
-        setIsWindowFullscreen(true);
-      } else {
-        setIsWindowFullscreen(false);
-      }
-    });
-  }, []);
+  // useEffect(() => {
+  //   window.onFocusChanged(({ payload: focused }) => {
+  //     setIsWindowFocused(focused);
+  //   });
+  //   window.onResized(async () => {
+  //     if (await window.isFullscreen()) {
+  //       setIsWindowFullscreen(true);
+  //     } else {
+  //       setIsWindowFullscreen(false);
+  //     }
+  //   });
+  // }, []);
 
-  async function maximizeWindow() {
-    if (os === "macos") {
-      if (await window.isFullscreen()) {
-        await window.setFullscreen(false);
-      } else {
-        await window.setFullscreen(true);
-      }
-    } else {
-      if (await window.isMaximized()) {
-        await window.unmaximize();
-      } else {
-        if (await window.isMaximizable()) await window.maximize();
-      }
-    }
-  }
+  // async function maximizeWindow() {
+  //   if (os === "macos") {
+  //     if (await window.isFullscreen()) {
+  //       await window.setFullscreen(false);
+  //     } else {
+  //       await window.setFullscreen(true);
+  //     }
+  //   } else {
+  //     if (await window.isMaximized()) {
+  //       await window.unmaximize();
+  //     } else {
+  //       if (await window.isMaximizable()) await window.maximize();
+  //     }
+  //   }
+  // }
 
-  async function minimizeWindow() {
-    if (!(await window.isMinimized())) {
-      await window.minimize();
-    }
-  }
+  // async function minimizeWindow() {
+  //   if (!(await window.isMinimized())) {
+  //     await window.minimize();
+  //   }
+  // }
 
-  async function closeWindow() {
-    await window.close();
-  }
+  // async function closeWindow() {
+  //   await window.close();
+  // }
 
   return (
     <div
       data-tauri-drag-region={true}
-      className={`header items-start flex ${
-        os !== "macos" && "flex-row-reverse"
-      } bg-background border-b w-full z-9999999  border-border fixed h-12 top-0`}
+      className={`header fixed items-start flex  bg-transparent   w-full z-9999999  border-border  h-14 top-0`}
     >
-      {os === "macos" && !isWindowFullscreen && (
-        <div data-tauri-drag-region={true} className="h-full items-center flex">
-          <div
-            onMouseOver={() => setHover(true)}
-            onMouseOut={() => setHover(false)}
-            className="flex items-center space-x-2 h-max   ml-2 text-black"
-          >
-            <button
-              aria-label="Close"
-              onClick={closeWindow}
-              className={`relative w-3 h-3 rounded-full ${
-                isWindowFocused || hover ? "bg-[#FF5F57]" : "bg-[#595959]"
-              } hover:brightness-110 active:scale-90`}
-            >
-              {hover && isWindowFocused && (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-black leading-none">
-                  ×
-                </span>
-              )}
-            </button>
-
-            <button
-              aria-label="Minimize"
-              onClick={minimizeWindow}
-              className={`relative w-3 h-3 rounded-full ${
-                isWindowFocused || hover ? "bg-[#FFBD2E]" : "bg-[#595959]"
-              } hover:brightness-110 active:scale-90`}
-            >
-              {hover && isWindowFocused && (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-black leading-none">
-                  –
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={maximizeWindow}
-              aria-label="Maximize"
-              className={`relative w-3 h-3 rounded-full ${
-                isWindowFocused || hover ? "bg-[#28C840]" : "bg-[#595959]"
-              } hover:brightness-110 active:scale-90`}
-            >
-              {hover && isWindowFocused && (
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-black leading-none">
-                  ⤢
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-      {os !== "macos" && !isWindowFullscreen && (
-        <div
-          data-tauri-drag-region={true}
-          className="h-full items-center flex flex-1"
-        >
-          <div className="flex ml-auto">
-            <button
-              onClick={minimizeWindow}
-              aria-label="Minimize"
-              className="hover:bg-hover px-3 py-4 h-full"
-            >
-              <MinimizeIcon className="w-4 h-4"></MinimizeIcon>
-            </button>
-            <button
-              onClick={maximizeWindow}
-              aria-label="Maximize"
-              className="hover:bg-hover px-3 py-4 h-full"
-            >
-              <MaximizeIcon className="w-4 h-4"></MaximizeIcon>
-            </button>
-            <button
-              onClick={closeWindow}
-              aria-label="Close"
-              className="hover:bg-red-600 px-3 py-4 h-full"
-            >
-              <CloseIcon className="w-4 h-4"></CloseIcon>
-            </button>
-          </div>
-        </div>
-      )}
-      {window.label === "main" && (
+      {/* {window.label === "main" && (
         <div
           data-tauri-drag-region={true}
           className={`z-999999 ${
@@ -213,7 +108,7 @@ export default function Titlebar() {
             </div>
           </>
         </div>
-      )}
+      )} */}
       {settingsOpen && (
         <SettingsModal
           open={settingsOpen}

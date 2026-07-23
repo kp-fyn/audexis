@@ -3,82 +3,85 @@
 }
 
 [data-theme="light"] {
-  --background: #f1f1f1;
-  --foreground: #262b35;
-  --hover: #cec8c8;
-  --hover-foreground: #0f172a;
+  --background: #fff;
+  --foreground: #2a2523;
 
-  --card: #ffffff;
-  --card-foreground: #1e293b;
+  --hover: #d4d6d8;
+  --hover-foreground: #2a2523;
 
-  --popover: #f1f5f9;
-  --popover-foreground: #1e293b;
+  --card: #fafafa;
+  --card-foreground: #2a2523;
+
+  --popover: #f7f5f4;
+  --popover-foreground: #2a2523;
 
   --primary: #c44d4d;
   --primary-foreground: #fff;
 
-  --secondary: #bbc4d0;
-  --secondary-foreground: #1e293b;
+  --secondary: #e6e0de;
+  --secondary-foreground: #2a2523;
 
-  --muted: #d9dee3;
-  --muted-foreground: rgb(90, 87, 113);
+  --muted: #ebe6e4;
+  --muted-foreground: #7a7371;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #cbd5e1;
-  --input: #cbd5e1;
+  --border: #ddd6d4;
+  --input: #ddd6d4;
 
   --accent: #eb6e6e;
   --accent-foreground: #ffffff;
 
-  --ring: #fca5a5;
+  --ring: #eb6e6e;
 
-  --scrollbar-track: #e5e7eb;
-  --scrollbar-thumb: #eb5757;
+  --scrollbar-track: #e6e0de;
+  --scrollbar-thumb: #c44d4d;
 
   --primary-washed: #c44d4d1a;
-  --heading: #0a0a0a;
+  --heading: #1a1614;
 }
 
 [data-theme="dark"] {
   --heading: #ffffff;
-  --background: #0a0a0a;
+
+  --background: #100f0e;
   --foreground: #f1f1f1;
-  --hover: rgb(49, 49, 57);
-  --hover-foreground: #f1f5f9;
 
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
+  --hover: #2e2926;
+  --hover-foreground: #ffffff;
 
-  --popover: #1a222d;
-  --popover-foreground: #f8fafc;
+  --card: #181615;
+  --card-foreground: #f8f7f6;
+
+  --popover: #1f1c1a;
+  --popover-foreground: #f8f7f6;
 
   --primary: #d65757;
   --primary-foreground: #f8fafc;
 
-  --secondary: #334155;
-  --secondary-foreground: #c8cdd3;
+  --secondary: #272220;
+  --secondary-foreground: #dcd7d4;
 
-  --muted: #253145;
-  --muted-foreground: #94a3b8;
+  --muted: #201c1a;
+  --muted-foreground: #a09792;
 
   --destructive: #ef4444;
   --destructive-foreground: #f8fafc;
 
-  --border: #334155;
-  --input: #334155;
+  --border: #312c29;
+  --input: #312c29;
 
   --accent: #eb6e6e;
   --accent-foreground: #f8fafc;
 
-  --ring: #fca5a5;
+  --ring: #eb6e6e;
 
-  --scrollbar-track: #1e293b;
-  --scrollbar-thumb: #eb5757;
+  --scrollbar-track: #181615;
+  --scrollbar-thumb: #d65757;
+
   --primary-washed: #d657571a;
 }
-
 @theme {
   --color-headings: var(--heading);
   --color-border: var(--border);
