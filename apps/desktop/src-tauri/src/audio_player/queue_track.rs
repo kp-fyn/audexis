@@ -1,5 +1,4 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
 
 use rubato::{Async, Indexing};
 use symphonia::core::codecs::audio::AudioDecoder;
@@ -24,8 +23,7 @@ pub struct QueueTrack {
 impl fmt::Debug for QueueTrack {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("QueeTrack")
-            .field("username", &self.path)
-            .field("secret_token", &"<REDACTED>") // Masking the value
+            .field("path", &self.path)
             .finish()
     }
 }
@@ -48,6 +46,23 @@ impl QueueTrack {
             decode_buffer: Vec::new(),
             packet_samples: Vec::new(),
         }
+    }
+    pub fn unload(&mut self) {
+        self.format = None;
+        self.decoder = None;
+        self.is_preloaded = false;
+        self.track_id = 0;
+        self.source_sample_rate = 44100;
+        self.channels_uz = 2usize;
+        self.target_sample_rate = 44100u32;
+
+        self.resampler = None;
+        self.indata = Vec::new();
+        self.outdata = Vec::new();
+        self.indexing = Indexing::new();
+
+        self.decode_buffer = Vec::new();
+        self.packet_samples = Vec::new();
     }
     pub fn get_indexing(&self) -> &Indexing {
         return &self.indexing;

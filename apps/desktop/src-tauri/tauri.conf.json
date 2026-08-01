@@ -12,15 +12,15 @@
   },
 
   "app": {
-    "macOSPrivateApi": true,
-
     "windows": [
       {
         "url": "index.html",
         "titleBarStyle": "Overlay",
         "decorations": true,
         "hiddenTitle": true,
-        "transparent": true,
+        "visible": false,
+        "minHeight": 800,
+        "minWidth": 900,
         "trafficLightPosition": {
           "x": 15,
           "y": 30

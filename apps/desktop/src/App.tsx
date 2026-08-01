@@ -1,4 +1,4 @@
-import "./styles/main.css";
+import { invoke } from "@tauri-apps/api/core";
 
 function App() {
   return <main className="w-full h-full">sss</main>;
