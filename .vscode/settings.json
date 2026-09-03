@@ -13,6 +13,15 @@
     "**/Thumbs.db": true,
     "**/.cargo": true
   },
+  "files.readonlyInclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "search.exclude": {
+    "**/routeTree.gen.ts": true
+  },
   "rust-analyzer.diagnostics.disabled": ["inactive-code"],
   "rust-analyzer.cargo.buildScripts.overrideCommand": [
     "cargo",

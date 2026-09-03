@@ -35,7 +35,7 @@ export const StoreProvider: FC<{
   children: ReactNode;
 }> = ({ children }) => {
   const [stateTheme, setStateTheme] = useState<"light" | "dark">("light");
-  const [needsOnboarding, setNeedsOnboarding] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   useEffect(() => {
     store.onChange((key, val) => {
       if (key === "theme") {
@@ -56,7 +56,7 @@ export const StoreProvider: FC<{
     });
 
     store.reload();
-    store.init().then((s) => {
+    store.init().then(() => {
       store.get("theme").then((ogTheme) => {
         let theme: "light" | "dark" = "light";
         if (!ogTheme || (ogTheme !== "dark" && ogTheme !== "light")) {
@@ -76,6 +76,8 @@ export const StoreProvider: FC<{
         store.get("needsOnboarding").then((val) => {
           if (val === false) {
             setNeedsOnboarding(false);
+          } else {
+            setNeedsOnboarding(true);
           }
           getCurrentWindow().show();
         });
@@ -85,17 +87,18 @@ export const StoreProvider: FC<{
 
   return (
     <StoreContext.Provider value={{ store: store, currentTheme: stateTheme }}>
-      <div className="h-full w-full mt-14"></div>
-      <OnboardingModal
-        open={needsOnboarding}
-        onClose={() => {
-          store.set("needsOnboarding", false).then(() => {
-            store.save();
-          });
-          setNeedsOnboarding(false);
-        }}
-      />
-      {children}
+      <div className="h-full w-full">
+        <OnboardingModal
+          open={needsOnboarding}
+          onClose={() => {
+            store.set("needsOnboarding", false).then(() => {
+              store.save();
+            });
+            setNeedsOnboarding(false);
+          }}
+        />
+        {children}
+      </div>
     </StoreContext.Provider>
   );
 };

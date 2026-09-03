@@ -20,7 +20,7 @@
         "hiddenTitle": true,
         "visible": false,
         "minHeight": 800,
-        "minWidth": 900,
+        "minWidth": 1000,
         "trafficLightPosition": {
           "x": 15,
           "y": 30

@@ -107,7 +107,7 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
           <div className="ml-auto flex flex-col justify-center">
             <button
               onClick={() => {
-                invoke("import_roots").then((folders: string[]) => {
+                invoke<string[]>("import_roots").then((folders) => {
                   setImportRoots((oldImportRoots) => {
                     return [...new Set([...oldImportRoots, ...folders])];
                   });

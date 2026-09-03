@@ -25,7 +25,8 @@ pub async fn set_library_roots(
         }
         real_folders.push(path);
     }
-    for path in real_folders {
+
+    for path in real_folders.clone() {
         let status = sqlx::query(
             "INSERT INTO import_roots (path, last_scanned) VALUES (?1, 0)\
          ON CONFLICT(path) DO NOTHING",
@@ -38,5 +39,12 @@ pub async fn set_library_roots(
             Err(err) => println!("{:?}", err),
         };
     }
+    let mut fw = state.file_watcher.lock().unwrap();
+    fw.watch_folders(
+        real_folders
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect(),
+    );
     Ok(())
 }

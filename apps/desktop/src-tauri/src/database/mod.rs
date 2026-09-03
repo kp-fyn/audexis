@@ -2,8 +2,8 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Executor;
 use std::fs;
 use std::path::PathBuf;
-
-#[derive(Clone)]
+pub mod types;
+#[derive(Clone, Debug)]
 pub struct Database {
     pub pool: SqlitePool,
 }

@@ -2,7 +2,6 @@ use std::env;
 
 use rfd::FileDialog;
 
-// remember to call `.manage(MyState::default())`
 #[tauri::command]
 pub fn import_roots() -> Vec<String> {
     let home_dir: String = match env::home_dir() {
